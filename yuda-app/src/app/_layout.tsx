@@ -1,6 +1,10 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { Stack } from 'expo-router';
 import "../../global.css"
 import { StatusBar } from 'react-native';
+
+export const unstable_settings = {
+  initialRouteName: 'auth',
+};
 
 export default function TabLayout() {
   return (
@@ -8,6 +12,7 @@ export default function TabLayout() {
       <StatusBar barStyle='auto' />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name='index' />
+        <Stack.Screen name="auth" />
       </Stack>
     </>
   );

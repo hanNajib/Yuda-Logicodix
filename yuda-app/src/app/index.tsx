@@ -7,8 +7,9 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 items-center justify-center bg-yuda-bg">
       <Text
-        className={`${fontsLoaded ? 'font-[Outfit_400Regular]' : ''} text-2xl text-yuda-text`}>
-        Tes Yuda
+        className="text-2xl text-yuda-text"
+        style={{ fontFamily: fontsLoaded ? 'Outfit_400Regular' : undefined }}>
+        Tes Yudaa
       </Text>
     </View>
   )
