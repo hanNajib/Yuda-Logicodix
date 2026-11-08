@@ -1,4 +1,9 @@
 import {
+    loginWithGoogleNative,
+    signInWithNativeGoogle,
+} from '@/features/auth/services/authService';
+import { useAuthStore } from '@/stores/useAuthStore';
+import {
     Outfit_500Medium,
     Outfit_600SemiBold,
     Outfit_700Bold,
@@ -6,14 +11,18 @@ import {
     useFonts,
 } from '@expo-google-fonts/outfit';
 import { GoogleIcon } from '../../../../assets/icons/GoogleIcon';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
+    ActivityIndicator,
+    Alert,
     Image,
     Text,
     TouchableOpacity,
     useWindowDimensions,
     View,
 } from 'react-native';
+import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, {
     Circle,
@@ -42,8 +51,11 @@ function Sparkle({ x, y, s }: { x: number; y: number; s: number }) {
 }
 
 export default function AuthScreen() {
+    const router = useRouter();
     const insets = useSafeAreaInsets();
     const { width: W, height: H } = useWindowDimensions();
+    const [isLoading, setIsLoading] = useState(false);
+    const setAuthSession = useAuthStore((state) => state.setAuthSession);
 
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
@@ -75,6 +87,31 @@ export default function AuthScreen() {
 
     const ringCy = H * 0.8;
     const rings = [H * 0.53, H * 0.36, H * 0.25];
+
+    const handleGoogleLogin = async () => {
+        if (isLoading) return;
+
+        try {
+            setIsLoading(true);
+            const nativeResult = await signInWithNativeGoogle();
+
+            if (nativeResult.isCancelled || !nativeResult.idToken) return;
+
+            const authData = await loginWithGoogleNative(nativeResult.idToken);
+            await setAuthSession(authData.token, authData.user);
+            router.replace('/');
+        } catch (error) {
+            console.error('Kesalahan login Google Native:', error);
+            Alert.alert(
+                'Gagal Masuk dengan Google',
+                error instanceof Error
+                    ? error.message
+                    : 'Terjadi kesalahan saat memproses login Google.',
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <View className="flex-1 bg-[#f5f3ec]">
@@ -163,25 +200,45 @@ export default function AuthScreen() {
                 </Text>
 
                 <TouchableOpacity
-                    className="flex-row items-center justify-center bg-[#2e6b4e] border-b-[#25563f]"
+                    className="flex-row items-center justify-center border-b-[#25563f] bg-[#2e6b4e]"
                     style={{
                         height: 66 * s,
                         borderRadius: 15 * s,
                         borderBottomWidth: 6 * s,
+                        opacity: isLoading ? 0.75 : 1,
                     }}
+                    onPress={handleGoogleLogin}
+                    disabled={isLoading}
                 >
-                    <View style={{ marginRight: 12 * s }}>
-                        <GoogleIcon size={28 * s} />
-                    </View>
-                    <Text
-                        className="text-white"
-                        style={{
-                            fontFamily: fontsLoaded ? 'Outfit_700Bold' : undefined,
-                            fontSize: 19 * s,
-                        }}
-                    >
-                        Lanjut dengan Google
-                    </Text>
+                    {isLoading ? (
+                        <>
+                            <ActivityIndicator color="#ffffff" />
+                            <Text
+                                className="ml-3 text-white"
+                                style={{
+                                    fontFamily: fontsLoaded ? 'Outfit_700Bold' : undefined,
+                                    fontSize: 19 * s,
+                                }}
+                            >
+                                Menghubungkan...
+                            </Text>
+                        </>
+                    ) : (
+                        <>
+                            <View style={{ marginRight: 12 * s }}>
+                                <GoogleIcon size={28 * s} />
+                            </View>
+                            <Text
+                                className="text-white"
+                                style={{
+                                    fontFamily: fontsLoaded ? 'Outfit_700Bold' : undefined,
+                                    fontSize: 19 * s,
+                                }}
+                            >
+                                Lanjut dengan Google
+                            </Text>
+                        </>
+                    )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -191,7 +248,10 @@ export default function AuthScreen() {
                         borderRadius: 15 * s,
                         borderWidth: 1.5 * s,
                         marginTop: 15 * s,
+                        opacity: isLoading ? 0.6 : 1,
                     }}
+                    onPress={() => router.replace('/')}
+                    disabled={isLoading}
                 >
                     <Text
                         className="text-[#2e4938]"

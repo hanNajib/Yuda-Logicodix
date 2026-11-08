@@ -1,18 +1,69 @@
-import { Stack } from 'expo-router';
-import "../../global.css"
-import { StatusBar } from 'react-native';
+import { useAuthStore } from "@/stores/useAuthStore";
+import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import "../../global.css";
 
-export const unstable_settings = {
-  initialRouteName: 'auth',
-};
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
-export default function TabLayout() {
+export default function RootLayout() {
+  const router = useRouter();
+  const segments = useSegments();
+
+  const { isHydrated, hasCompletedOnboarding, userToken, hydrateAuth } = useAuthStore();
+
+  useEffect(() => {
+    async function prepareApp() {
+      try {
+        await hydrateAuth();
+      } catch (e) {
+        console.warn("Gagal inisialisasi sesi autentikasi:", e);
+      } finally {
+        await SplashScreen.hideAsync().catch(() => {});
+      }
+    }
+
+    prepareApp();
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const isCallback = segments[0] === "auth" && segments[1] === "callback";
+    if (isCallback) return;
+
+    const inOnboarding = (segments[0] as string) === "onboarding";
+    if (inOnboarding) return;
+
+    const inAuthGroup =
+      (segments[0] as string) === "auth";
+
+    if (userToken) {
+      if (inAuthGroup || inOnboarding) {
+        router.replace("/" as any);
+      }
+    } else if (!hasCompletedOnboarding) {
+      if (!inAuthGroup && !inOnboarding) {
+        router.replace("/auth" as any);
+      }
+    } else {
+      if (inAuthGroup || inOnboarding) {
+        router.replace("/" as any);
+      }
+    }
+  }, [isHydrated, hasCompletedOnboarding, userToken, segments]);
+
+  if (!isHydrated) {
+    return null;
+  }
+
   return (
     <>
-      <StatusBar barStyle='auto' />
+      <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name='index' />
+        <Stack.Screen name="index" />
         <Stack.Screen name="auth" />
+        <Stack.Screen name="auth/callback" />
       </Stack>
     </>
   );

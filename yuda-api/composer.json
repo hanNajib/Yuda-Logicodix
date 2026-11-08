@@ -10,7 +10,10 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "firebase/php-jwt": "^7.2",
         "laravel/framework": "^13.17",
+        "laravel/sanctum": "^4.0",
+        "laravel/socialite": "*",
         "laravel/tinker": "^3.0"
     },
     "require-dev": {
@@ -43,6 +46,9 @@
             "@php artisan migrate --force",
             "npm install --ignore-scripts",
             "npm run build"
+        ],
+        "serve:host": [
+            "php artisan serve --host=0.0.0.0 --port=8000"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
