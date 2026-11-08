@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "yuda",
+    "name": "Yuda",
     "slug": "yuda",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,9 +8,17 @@
     "scheme": "yuda",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.mieayamproject.yuda",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.mieayamproject.yuda",
+      "permissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.QUERY_ALL_PACKAGES"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -20,6 +28,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "bundler": "metro",
       "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
@@ -29,14 +38,27 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash_icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "cdd79daa-0e55-4aec-a33a-3f7f232deb7a"
+      }
     }
   }
 }
