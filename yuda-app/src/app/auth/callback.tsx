@@ -24,9 +24,12 @@ export default function AuthCallbackScreen() {
                 const result = await exchangeGoogleCode(code!);
 
                 await setAuthSession(result.token, result.user);
-                await completeOnboarding();
-
-                router.replace("/");
+                if (result.needs_profile_setup) {
+                    router.replace("/onboarding/profile");
+                } else {
+                    await completeOnboarding();
+                    router.replace("/");
+                }
             } catch (err) {
                 console.error("Google authentication error:", err);
 

@@ -56,6 +56,7 @@ export default function AuthScreen() {
     const { width: W, height: H } = useWindowDimensions();
     const [isLoading, setIsLoading] = useState(false);
     const setAuthSession = useAuthStore((state) => state.setAuthSession);
+    const completeOnboarding = useAuthStore((state) => state.completeOnboarding);
 
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
@@ -99,7 +100,12 @@ export default function AuthScreen() {
 
             const authData = await loginWithGoogleNative(nativeResult.idToken);
             await setAuthSession(authData.token, authData.user);
-            router.replace('/');
+            if (authData.needs_profile_setup) {
+                router.replace('/onboarding/profile');
+            } else {
+                await completeOnboarding();
+                router.replace('/');
+            }
         } catch (error) {
             console.error('Kesalahan login Google Native:', error);
             Alert.alert(

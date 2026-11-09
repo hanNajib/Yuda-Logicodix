@@ -33,13 +33,18 @@ export default function RootLayout() {
     if (isCallback) return;
 
     const inOnboarding = (segments[0] as string) === "onboarding";
+    const inSetupProfile =
+      inOnboarding && (segments[1] as string) === "profile";
+    if (inSetupProfile) return;
     if (inOnboarding) return;
 
     const inAuthGroup =
       (segments[0] as string) === "auth";
 
     if (userToken) {
-      if (inAuthGroup || inOnboarding) {
+      if (!hasCompletedOnboarding && !inSetupProfile) {
+        router.replace("/onboarding/profile" as any);
+      } else if (inAuthGroup || (inOnboarding && !inSetupProfile)) {
         router.replace("/" as any);
       }
     } else if (!hasCompletedOnboarding) {
@@ -62,6 +67,7 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="auth" />
         <Stack.Screen name="auth/callback" />
       </Stack>
