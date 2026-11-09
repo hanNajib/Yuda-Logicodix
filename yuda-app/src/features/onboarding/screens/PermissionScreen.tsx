@@ -620,7 +620,7 @@ export default function PermissionsScreen() {
         if (submitting.current) return;
         submitting.current = true;
         try {
-            router.push('/onboarding/select-apps');
+            router.push('/onboarding/timer');
         } finally {
             submitting.current = false;
         }
