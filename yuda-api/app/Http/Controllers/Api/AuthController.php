@@ -15,6 +15,24 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AuthController extends Controller
 {
+    public function updateProfile(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:12',
+        ]);
+
+        $user = $request->user();
+        $user->name = $validated['name'];
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated successfully.',
+            'data' => [
+                'user' => $user,
+            ],
+        ]);
+    }
+
     public function googleNative(Request $request, ?GoogleTokenVerifier $verifier = null)
     {
         $request->validate([
@@ -62,10 +80,11 @@ class AuthController extends Controller
 
             $googleId = (string) $payload['sub'];
             $email = (string) $payload['email'];
-            $name = $payload['name'] ?? explode('@', $email)[0];
+            $fullName = $payload['name'] ?? null;
             $avatar = $payload['avatar'] ?? null;
+            $needsProfileSetup = false;
 
-            $user = DB::transaction(function () use ($googleId, $email, $name, $avatar) {
+            $user = DB::transaction(function () use ($googleId, $email, $fullName, $avatar, &$needsProfileSetup) {
                 $user = User::query()
                     ->where('google_id', $googleId)
                     ->lockForUpdate()
@@ -82,7 +101,9 @@ class AuthController extends Controller
                     }
 
                     if (!$user) {
+                        $needsProfileSetup = true;
                         $user = new User([
+                            'full_name' => $fullName,
                             'email' => $email,
                             'password' => Hash::make(Str::random(64)),
                         ]);
@@ -91,7 +112,10 @@ class AuthController extends Controller
                     $user->google_id = $googleId;
                 }
 
-                $user->name = $name ?: ($user->name ?: explode('@', $email)[0]);
+                $needsProfileSetup = $needsProfileSetup || empty($user->name);
+                if (!$user->full_name && $fullName) {
+                    $user->full_name = $fullName;
+                }
                 $user->email = $email;
                 if ($avatar) {
                     $user->avatar = $avatar;
@@ -114,8 +138,10 @@ class AuthController extends Controller
                 'message' => 'Authentication successful.',
                 'data' => [
                     'token' => $sanctumToken,
+                    'needs_profile_setup' => $needsProfileSetup,
                     'user' => [
                         'id' => $user->id,
+                        'full_name' => $user->full_name,
                         'name' => $user->name,
                         'email' => $user->email,
                         'avatar' => $user->avatar,
@@ -142,4 +168,3 @@ class AuthController extends Controller
         }
     }
 }
-

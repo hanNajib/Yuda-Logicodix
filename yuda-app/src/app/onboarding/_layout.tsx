@@ -1,0 +1,16 @@
+import { Stack } from 'expo-router';
+
+export default function OnboardingLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="profile" />
+      <Stack.Screen name="permissions" />
+      <Stack.Screen name="timer" />
+      <Stack.Screen name="set-timer" />
+      <Stack.Screen name="select-apps" />
+      <Stack.Screen name="welcome" />
+      <Stack.Screen name="quiz-intro" />
+    </Stack>
+  );
+}
+

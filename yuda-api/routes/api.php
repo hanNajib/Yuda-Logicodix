@@ -19,6 +19,8 @@ Route::middleware('throttle:10,1')->group(function () {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::patch('/user/profile', [AuthController::class, 'updateProfile']);
+
     Route::get('/user', function (Request $request) {
         return response()->json([
             'data' => $request->user(),
