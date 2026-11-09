@@ -327,11 +327,10 @@ export default function SetupProfileScreen() {
         submitting.current = true;
         Keyboard.dismiss();
         try {
-            if (!userToken) {
-                throw new Error('Sesi login tidak ditemukan.');
+            if (userToken) {
+                await updateProfileName(userToken, trimmed);
             }
 
-            await updateProfileName(userToken, trimmed);
             await setUserName(trimmed);
             await completeOnboarding();
             router.replace('/');
@@ -347,6 +346,23 @@ export default function SetupProfileScreen() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View className="flex-1 bg-[#f5f3ec]">
                 <StatusBar style="dark" />
+
+                <Pressable
+                    className="absolute left-5 z-20 h-11 w-11 items-center justify-center rounded-full bg-[#fdfcf9]"
+                    style={{ top: Math.max(insets.top, 24) }}
+                    onPress={() => {
+                        if (router.canGoBack()) {
+                            router.back();
+                        } else {
+                            router.replace('/auth');
+                        }
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Kembali"
+                    hitSlop={8}
+                >
+                    <Ionicons name="arrow-back" size={22} color="#1f2923" />
+                </Pressable>
 
                 <Animated.View className="absolute inset-0" style={bgStyle} pointerEvents="none">
                     <Svg width={W} height={H} className="absolute inset-0">

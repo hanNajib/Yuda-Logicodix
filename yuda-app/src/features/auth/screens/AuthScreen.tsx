@@ -256,7 +256,7 @@ export default function AuthScreen() {
                         marginTop: 15 * s,
                         opacity: isLoading ? 0.6 : 1,
                     }}
-                    onPress={() => router.replace('/')}
+                    onPress={() => router.replace('/onboarding/profile')}
                     disabled={isLoading}
                 >
                     <Text
