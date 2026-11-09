@@ -28,6 +28,10 @@ export async function submitQuestionnaireApi(
         conversation_id: answers.conversation_id ?? null,
     };
 
+    console.log("=== SUBMITTING QUESTIONNAIRE API ===");
+    console.log("URL:", API_ENDPOINTS.aiQuestionnaire);
+    console.log("Payload:", JSON.stringify(payload, null, 2));
+
     const response = await fetch(API_ENDPOINTS.aiQuestionnaire, {
         method: 'POST',
         headers,
@@ -36,9 +40,13 @@ export async function submitQuestionnaireApi(
 
     if (!response.ok) {
         const errorText = await response.text();
+        console.error(`[API Questionnaire Error] Status: ${response.status}`, errorText);
         throw new Error(`Kuis API error (${response.status}): ${errorText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log("=== AI QUESTIONNAIRE RESPONSE SUCCESS ===");
+    console.log(JSON.stringify(data, null, 2));
+    return data;
 }
 

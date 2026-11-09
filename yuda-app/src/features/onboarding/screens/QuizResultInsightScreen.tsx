@@ -97,14 +97,15 @@ export default function QuizResultInsightScreen() {
         analysisResult?.layar_1_insight_waktu?.subteks ||
         'Wow itu waktu yang banyak untuk dihabiskan dengan scrolling';
 
-    const iconY = useSharedValue(20);
     const iconFade = useSharedValue(0);
+    const iconY = useSharedValue(16);
+    const iconScale = useSharedValue(0.92);
 
     const titleFade = useSharedValue(0);
-    const titleY = useSharedValue(15);
+    const titleY = useSharedValue(14);
 
     const charFade = useSharedValue(0);
-    const charY = useSharedValue(25);
+    const charY = useSharedValue(20);
     const charScale = useSharedValue(0.95);
 
     const tapOpacity = useSharedValue(0.4);
@@ -115,6 +116,7 @@ export default function QuizResultInsightScreen() {
         if (reducedMotion) {
             iconFade.set(1);
             iconY.set(0);
+            iconScale.set(1);
             titleFade.set(1);
             titleY.set(0);
             charFade.set(1);
@@ -124,23 +126,24 @@ export default function QuizResultInsightScreen() {
             return;
         }
 
-        iconFade.set(withTiming(1, { duration: 400, easing: EASE_OUT }));
-        iconY.set(withSpring(0, { duration: 500, dampingRatio: 0.75 }));
+        iconFade.set(withTiming(1, { duration: 320, easing: EASE_OUT }));
+        iconY.set(withSpring(0, { duration: 380, dampingRatio: 0.8 }));
+        iconScale.set(withSpring(1, { duration: 380, dampingRatio: 0.8 }));
 
-        titleFade.set(withDelay(120, withTiming(1, { duration: 400, easing: EASE_OUT })));
-        titleY.set(withDelay(120, withSpring(0, { duration: 500, dampingRatio: 0.8 })));
+        titleFade.set(withDelay(80, withTiming(1, { duration: 320, easing: EASE_OUT })));
+        titleY.set(withDelay(80, withSpring(0, { duration: 400, dampingRatio: 0.8 })));
 
-        charFade.set(withDelay(240, withTiming(1, { duration: 420 })));
-        charY.set(withDelay(240, withSpring(0, { duration: 520, dampingRatio: 0.78 })));
-        charScale.set(withDelay(240, withSpring(1, { duration: 500, dampingRatio: 0.8 })));
+        charFade.set(withDelay(180, withTiming(1, { duration: 340, easing: EASE_OUT })));
+        charY.set(withDelay(180, withSpring(0, { duration: 420, dampingRatio: 0.8 })));
+        charScale.set(withDelay(180, withSpring(1, { duration: 420, dampingRatio: 0.8 })));
 
         tapOpacity.set(
             withDelay(
-                450,
+                350,
                 withRepeat(
                     withSequence(
-                        withTiming(0.95, { duration: 800 }),
-                        withTiming(0.35, { duration: 800 })
+                        withTiming(0.95, { duration: 750 }),
+                        withTiming(0.35, { duration: 750 })
                     ),
                     -1,
                     true
@@ -151,7 +154,7 @@ export default function QuizResultInsightScreen() {
 
     const animatedIconStyle = useAnimatedStyle(() => ({
         opacity: iconFade.get(),
-        transform: [{ translateY: iconY.get() }],
+        transform: [{ translateY: iconY.get() }, { scale: iconScale.get() }],
     }));
 
     const animatedTitleStyle = useAnimatedStyle(() => ({
