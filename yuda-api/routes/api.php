@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiController;
 
 Route::middleware('throttle:10,1')->group(function () {
     Route::post(
@@ -33,4 +34,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     
+});
+
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/ai/questionnaire', [AiController::class, 'analyze'])->name('api.ai.questionnaire');
 });
