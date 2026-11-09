@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     FlatList,
     Image,
     Modal,
@@ -48,7 +49,9 @@ interface AppItem {
     type: 'tiktok' | 'instagram' | 'facebook' | 'youtube' | 'twitter' | 'reddit' | 'game' | 'browser' | 'other';
     iconColor?: string;
     packageName?: string;
+    iconUri?: string;
     isCustom?: boolean;
+    isInstalled?: boolean;
 }
 
 const DEFAULT_APPS: AppItem[] = [
@@ -58,8 +61,18 @@ const DEFAULT_APPS: AppItem[] = [
     { id: 'youtube', name: 'YouTube', type: 'youtube', packageName: 'com.google.android.youtube' },
 ];
 
-function AppBrandIcon({ type, size = 38 }: { type: AppItem['type']; size?: number }) {
-    if (type === 'tiktok') {
+function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
+    if (item.iconUri) {
+        return (
+            <Image
+                source={{ uri: item.iconUri }}
+                style={{ width: size, height: size, borderRadius: size * 0.22 }}
+                resizeMode="cover"
+            />
+        );
+    }
+
+    if (item.type === 'tiktok') {
         return (
             <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <Path
@@ -70,7 +83,7 @@ function AppBrandIcon({ type, size = 38 }: { type: AppItem['type']; size?: numbe
         );
     }
 
-    if (type === 'instagram') {
+    if (item.type === 'instagram') {
         return (
             <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <Rect x="2" y="2" width="20" height="20" rx="5.5" stroke="#E1306C" strokeWidth="2.2" />
@@ -80,7 +93,7 @@ function AppBrandIcon({ type, size = 38 }: { type: AppItem['type']; size?: numbe
         );
     }
 
-    if (type === 'facebook') {
+    if (item.type === 'facebook') {
         return (
             <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <Circle cx="12" cy="12" r="11" fill="#1877F2" />
@@ -92,7 +105,7 @@ function AppBrandIcon({ type, size = 38 }: { type: AppItem['type']; size?: numbe
         );
     }
 
-    if (type === 'youtube') {
+    if (item.type === 'youtube') {
         return (
             <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <Rect x="2" y="5" width="20" height="14" rx="4" fill="#FF0000" />
@@ -101,19 +114,19 @@ function AppBrandIcon({ type, size = 38 }: { type: AppItem['type']; size?: numbe
         );
     }
 
-    if (type === 'twitter') {
+    if (item.type === 'twitter') {
         return <Ionicons name="logo-twitter" size={size} color="#1DA1F2" />;
     }
 
-    if (type === 'reddit') {
+    if (item.type === 'reddit') {
         return <Ionicons name="logo-reddit" size={size} color="#FF4500" />;
     }
 
-    if (type === 'game') {
+    if (item.type === 'game') {
         return <Ionicons name="game-controller" size={size} color="#6366f1" />;
     }
 
-    if (type === 'browser') {
+    if (item.type === 'browser') {
         return <Ionicons name="globe-outline" size={size} color="#0284c7" />;
     }
 
@@ -132,12 +145,15 @@ function AppGridCard({
     s?: number;
 }) {
     const scale = useSharedValue(1);
+    const disabled = item.isInstalled === false;
 
     const handlePressIn = () => {
+        if (disabled) return;
         scale.value = withTiming(0.95, { duration: 90, easing: EASE_OUT });
     };
 
     const handlePressOut = () => {
+        if (disabled) return;
         scale.value = withSpring(1, { duration: 250, dampingRatio: 0.75 });
     };
 
@@ -148,7 +164,11 @@ function AppGridCard({
     return (
         <AnimatedPressable
             className={`w-[48.5%] items-center border-[1.5px] shadow-sm elevation-2 ${
-                isSelected ? 'border-[#2e6b4e] bg-[#f4faf5]' : 'border-[#e5e7eb] bg-white'
+                disabled
+                    ? 'border-[#e2e8e3] bg-[#f0f3f1] opacity-55'
+                    : isSelected
+                    ? 'border-[#2e6b4e] bg-[#f4faf5]'
+                    : 'border-[#e5e7eb] bg-white'
             }`}
             style={[
                 { borderRadius: 16 * s, padding: 10 * s },
@@ -156,34 +176,54 @@ function AppGridCard({
             ]}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            onPress={onPress}
+            onPress={disabled ? undefined : onPress}
+            disabled={disabled}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
             <View
-                className="w-full items-center justify-center bg-[#e7ede7] relative"
+                className={`w-full items-center justify-center relative ${disabled ? 'bg-[#dce3de]' : 'bg-[#e7ede7]'}`}
                 style={{ borderRadius: 12 * s, height: 76 * s }}
             >
-                <AppBrandIcon type={item.type} size={36 * s} />
+                <AppBrandIcon item={item} size={36 * s} />
 
-                <View
-                    className={`absolute top-2 right-2 items-center justify-center ${
-                        isSelected ? 'bg-[#2e6b4e]' : 'bg-[#c5d1c8]'
-                    }`}
-                    style={{ width: 22 * s, height: 22 * s, borderRadius: 6 * s }}
-                >
-                    {isSelected && (
-                        <Ionicons name="checkmark" size={14 * s} color="#ffffff" />
-                    )}
-                </View>
+                {disabled ? (
+                    <View
+                        className="absolute top-2 right-2 items-center justify-center bg-[#a6b4aa]"
+                        style={{ width: 22 * s, height: 22 * s, borderRadius: 6 * s }}
+                    >
+                        <Ionicons name="close" size={13 * s} color="#ffffff" />
+                    </View>
+                ) : (
+                    <View
+                        className={`absolute top-2 right-2 items-center justify-center ${
+                            isSelected ? 'bg-[#2e6b4e]' : 'bg-[#c5d1c8]'
+                        }`}
+                        style={{ width: 22 * s, height: 22 * s, borderRadius: 6 * s }}
+                    >
+                        {isSelected && (
+                            <Ionicons name="checkmark" size={14 * s} color="#ffffff" />
+                        )}
+                    </View>
+                )}
             </View>
 
             <Text
-                className="text-center text-[#1f2923] px-1"
+                className={`text-center px-1 ${disabled ? 'text-[#87968c]' : 'text-[#1f2923]'}`}
                 style={{ fontFamily: 'Outfit_800ExtraBold', fontSize: 13.5 * s, marginTop: 8 * s }}
                 numberOfLines={1}
             >
                 {item.name}
             </Text>
+
+            {disabled && (
+                <Text
+                    className="text-center text-[#8e9d93] text-[10px]"
+                    style={{ fontFamily: 'Outfit_500Medium', marginTop: 1 }}
+                    numberOfLines={1}
+                >
+                    Belum Terinstall
+                </Text>
+            )}
         </AnimatedPressable>
     );
 }
@@ -198,8 +238,9 @@ export default function SelectAppsScreen() {
     const displayName = userName || user?.name || 'Gathan';
     const initialLetter = (displayName[0] || 'G').toUpperCase();
 
-    const [selectedIds, setSelectedIds] = useState<string[]>(['tiktok', 'instagram', 'facebook', 'youtube']);
-    const [extraAppsList, setExtraAppsList] = useState<AppItem[]>([]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [installedApps, setInstalledApps] = useState<AppItem[]>([]);
+    const [isLoadingApps, setIsLoadingApps] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [customAppName, setCustomAppName] = useState('');
@@ -227,54 +268,79 @@ export default function SelectAppsScreen() {
     const btnShakeX = useSharedValue(0);
 
     useEffect(() => {
-        try {
-            if (Platform.OS === 'android' && YudaPip.isNativeModuleAvailable()) {
-                const installed = YudaPip.getInstalledApps();
-                if (installed && installed.length > 0) {
-                    const mapped: AppItem[] = installed.map((app) => {
-                        const pkg = app.packageName.toLowerCase();
-                        let type: AppItem['type'] = 'other';
-                        if (pkg.includes('tiktok') || pkg.includes('musically')) type = 'tiktok';
-                        else if (pkg.includes('instagram')) type = 'instagram';
-                        else if (pkg.includes('facebook') || pkg.includes('katana')) type = 'facebook';
-                        else if (pkg.includes('youtube')) type = 'youtube';
-                        else if (pkg.includes('twitter')) type = 'twitter';
-                        else if (pkg.includes('reddit')) type = 'reddit';
-                        else if (pkg.includes('game') || pkg.includes('mobilelegends') || pkg.includes('pubg') || pkg.includes('freefire') || pkg.includes('roblox')) type = 'game';
-                        else if (pkg.includes('chrome') || pkg.includes('browser')) type = 'browser';
+        let isMounted = true;
 
-                        return {
-                            id: app.packageName,
-                            name: app.appName,
-                            type,
-                            packageName: app.packageName,
+        async function loadInstalled() {
+            try {
+                if (Platform.OS === 'android' && YudaPip.isNativeModuleAvailable()) {
+                    const apps = await YudaPip.getInstalledApps(true);
+                    if (!isMounted) return;
+
+                    if (apps && apps.length > 0) {
+                        const mapped: AppItem[] = apps.map((app) => {
+                            const pkg = app.packageName.toLowerCase();
+                            let type: AppItem['type'] = 'other';
+                            if (pkg.includes('tiktok') || pkg.includes('musically')) type = 'tiktok';
+                            else if (pkg.includes('instagram')) type = 'instagram';
+                            else if (pkg.includes('facebook') || pkg.includes('katana')) type = 'facebook';
+                            else if (pkg.includes('youtube')) type = 'youtube';
+                            else if (pkg.includes('twitter')) type = 'twitter';
+                            else if (pkg.includes('reddit')) type = 'reddit';
+                            else if (pkg.includes('game') || pkg.includes('mobilelegends') || pkg.includes('pubg') || pkg.includes('freefire') || pkg.includes('roblox')) type = 'game';
+                            else if (pkg.includes('chrome') || pkg.includes('browser')) type = 'browser';
+
+                            return {
+                                id: app.packageName,
+                                name: app.appName,
+                                type,
+                                packageName: app.packageName,
+                                iconUri: app.iconUri,
+                                isInstalled: true,
+                            };
+                        });
+
+                        setInstalledApps(mapped);
+
+                        const installedPkgs = new Set(apps.map((x) => x.packageName.toLowerCase()));
+                        const installedNames = apps.map((x) => x.appName.toLowerCase());
+
+                        const isPkgInstalled = (pkgName?: string) => {
+                            if (!pkgName) return false;
+                            const p = pkgName.toLowerCase();
+                            return installedPkgs.has(p) || Array.from(installedPkgs).some((x) => x.includes(p));
                         };
-                    });
 
-                    setExtraAppsList(mapped);
+                        const isNameMatches = (name: string) => {
+                            const n = name.toLowerCase();
+                            return installedNames.some((x) => x.includes(n));
+                        };
 
-                    const installedPkgs = installed.map((x) => x.packageName.toLowerCase());
-                    const installedNames = installed.map((x) => x.appName.toLowerCase());
+                        const autoSelected: string[] = [];
+                        DEFAULT_APPS.forEach((d) => {
+                            const isPresent = isPkgInstalled(d.packageName) || isNameMatches(d.name);
+                            if (isPresent) {
+                                autoSelected.push(d.id);
+                            }
+                        });
 
-                    const checkInstalled = (k: string) =>
-                        installedPkgs.some((p) => p.includes(k)) || installedNames.some((n) => n.includes(k));
-
-                    const detectedSelected: string[] = [];
-                    if (checkInstalled('tiktok') || checkInstalled('musically')) detectedSelected.push('tiktok');
-                    if (checkInstalled('instagram')) detectedSelected.push('instagram');
-                    if (checkInstalled('facebook') || checkInstalled('katana')) detectedSelected.push('facebook');
-                    if (checkInstalled('youtube')) detectedSelected.push('youtube');
-
-                    if (detectedSelected.length > 0) {
-                        setSelectedIds(detectedSelected);
-                    } else if (mapped.length > 0) {
-                        setSelectedIds([mapped[0].id]);
+                        if (autoSelected.length > 0) {
+                            setSelectedIds(autoSelected);
+                        } else if (mapped.length > 0) {
+                            setSelectedIds([mapped[0].id]);
+                        }
                     }
                 }
+            } catch (e) {
+                console.warn('Gagal membaca installed apps:', e);
+            } finally {
+                if (isMounted) setIsLoadingApps(false);
             }
-        } catch (e) {
-            console.warn('Gagal membaca installed apps:', e);
         }
+
+        loadInstalled();
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     useEffect(() => {
@@ -329,7 +395,38 @@ export default function SelectAppsScreen() {
         ],
     }));
 
-    const toggleApp = (id: string) => {
+    const defaultAppsWithStatus = useMemo(() => {
+        const installedPkgSet = new Set(installedApps.map((x) => x.packageName?.toLowerCase() ?? ''));
+        const installedNameList = installedApps.map((x) => x.name.toLowerCase());
+
+        return DEFAULT_APPS.map((d) => {
+            const p = d.packageName?.toLowerCase() ?? '';
+            const matchingApp = installedApps.find(
+                (x) => (x.packageName && x.packageName.toLowerCase().includes(p)) || x.name.toLowerCase() === d.name.toLowerCase()
+            );
+
+            const isInstalled = matchingApp
+                ? true
+                : installedPkgSet.has(p) || installedNameList.some((n) => n.includes(d.name.toLowerCase()));
+
+            return {
+                ...d,
+                iconUri: matchingApp?.iconUri,
+                isInstalled,
+            };
+        });
+    }, [installedApps]);
+
+    const displayMainApps = useMemo(() => {
+        const extraSelected = installedApps.filter(
+            (a) => selectedIds.includes(a.id) && !DEFAULT_APPS.some((d) => d.id === a.id || d.packageName === a.packageName)
+        );
+        return [...defaultAppsWithStatus, ...extraSelected];
+    }, [defaultAppsWithStatus, installedApps, selectedIds]);
+
+    const toggleApp = (id: string, isInstalled?: boolean) => {
+        if (isInstalled === false) return;
+
         setSelectedIds((prev) => {
             if (prev.includes(id)) {
                 return prev.filter((x) => x !== id);
@@ -348,25 +445,19 @@ export default function SelectAppsScreen() {
             name: trimmed,
             type: 'other',
             isCustom: true,
+            isInstalled: true,
         };
 
-        setExtraAppsList((prev) => [newApp, ...prev]);
+        setInstalledApps((prev) => [newApp, ...prev]);
         setSelectedIds((prev) => [...prev, newId]);
         setCustomAppName('');
     };
 
-    const filteredExtraApps = useMemo(() => {
+    const filteredInstalledApps = useMemo(() => {
         const q = searchQuery.toLowerCase().trim();
-        if (!q) return extraAppsList;
-        return extraAppsList.filter((a) => a.name.toLowerCase().includes(q));
-    }, [extraAppsList, searchQuery]);
-
-    const displayMainApps = useMemo(() => {
-        const extraSelected = extraAppsList.filter(
-            (a) => selectedIds.includes(a.id) && !DEFAULT_APPS.some((d) => d.id === a.id)
-        );
-        return [...DEFAULT_APPS, ...extraSelected];
-    }, [extraAppsList, selectedIds]);
+        if (!q) return installedApps;
+        return installedApps.filter((a) => a.name.toLowerCase().includes(q) || a.packageName?.toLowerCase().includes(q));
+    }, [installedApps, searchQuery]);
 
     const handleContinue = () => {
         if (selectedIds.length === 0) {
@@ -559,7 +650,7 @@ export default function SelectAppsScreen() {
                                     key={item.id}
                                     item={item}
                                     isSelected={isSelected}
-                                    onPress={() => toggleApp(item.id)}
+                                    onPress={() => toggleApp(item.id, item.isInstalled)}
                                     s={s}
                                 />
                             );
@@ -579,9 +670,9 @@ export default function SelectAppsScreen() {
                                 className="items-center justify-center bg-[#e1ebe2]"
                                 style={{ width: 38 * s, height: 38 * s, borderRadius: 10 * s }}
                             >
-                                <Ionicons name="add-circle-outline" size={22 * s} color="#2e6b4e" />
+                                <Ionicons name="apps-outline" size={22 * s} color="#2e6b4e" />
                             </View>
-                            <View style={{ marginLeft: 12 * s }}>
+                            <View style={{ marginLeft: 12 * s, flex: 1 }}>
                                 <Text
                                     className="text-[#1f2923]"
                                     style={{ fontFamily: 'Outfit_800ExtraBold', fontSize: 14.5 * s }}
@@ -591,9 +682,12 @@ export default function SelectAppsScreen() {
                                 <Text
                                     className="text-[#6c7f73]"
                                     style={{ fontFamily: 'Outfit_500Medium', fontSize: 11.5 * s, marginTop: 1 }}
+                                    numberOfLines={1}
                                 >
-                                    {extraAppsList.length > 0
-                                        ? `${extraAppsList.length} aplikasi terinstall (Tampilan Grid 2-2)`
+                                    {isLoadingApps
+                                        ? 'Sedang memuat aplikasi HP...'
+                                        : installedApps.length > 0
+                                        ? `${installedApps.length} aplikasi terinstall di HP`
                                         : 'Buka daftar aplikasi terinstall'}
                                 </Text>
                             </View>
@@ -657,7 +751,7 @@ export default function SelectAppsScreen() {
                 <View className="flex-1 bg-black/50 justify-end">
                     <View
                         className="bg-[#fbfbf9] rounded-t-[28px]"
-                        style={{ height: '84%', paddingBottom: Math.max(insets.bottom, 20) }}
+                        style={{ height: '86%', paddingBottom: Math.max(insets.bottom, 20) }}
                     >
                         <View className="flex-row items-start justify-between px-5 pt-5 pb-3">
                             <View className="flex-1 pr-2.5">
@@ -671,7 +765,9 @@ export default function SelectAppsScreen() {
                                     className="text-[#64748b] text-[12.5px] mt-0.5"
                                     style={{ fontFamily: 'Outfit_500Medium' }}
                                 >
-                                    Pilih dalam format grid (2 per baris) dari HP kamu
+                                    {installedApps.length > 0
+                                        ? `${installedApps.length} aplikasi terdeteksi di HP kamu`
+                                        : 'Daftar semua aplikasi di HP kamu'}
                                 </Text>
                             </View>
                             <TouchableOpacity
@@ -726,8 +822,18 @@ export default function SelectAppsScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        {filteredExtraApps.length === 0 ? (
-                            <View className="items-center justify-center py-10 px-5">
+                        {isLoadingApps ? (
+                            <View className="flex-1 items-center justify-center py-10">
+                                <ActivityIndicator size="large" color="#2e6b4e" />
+                                <Text
+                                    className="text-[#64748b] text-sm mt-3"
+                                    style={{ fontFamily: 'Outfit_500Medium' }}
+                                >
+                                    Membaca aplikasi terinstall...
+                                </Text>
+                            </View>
+                        ) : filteredInstalledApps.length === 0 ? (
+                            <View className="flex-1 items-center justify-center py-10 px-5">
                                 <Ionicons name="search-outline" size={36} color="#9ca3af" />
                                 <Text
                                     className="text-[#374151] text-base mt-2.5"
@@ -744,7 +850,7 @@ export default function SelectAppsScreen() {
                             </View>
                         ) : (
                             <FlatList
-                                data={filteredExtraApps}
+                                data={filteredInstalledApps}
                                 keyExtractor={(item) => item.id}
                                 numColumns={2}
                                 columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 10 }}
@@ -756,7 +862,7 @@ export default function SelectAppsScreen() {
                                         <AppGridCard
                                             item={item}
                                             isSelected={isSelected}
-                                            onPress={() => toggleApp(item.id)}
+                                            onPress={() => toggleApp(item.id, item.isInstalled)}
                                             s={s}
                                         />
                                     );

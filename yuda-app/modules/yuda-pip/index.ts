@@ -4,6 +4,7 @@ import { EventEmitter, Subscription, requireNativeModule } from 'expo-modules-co
 export interface InstalledAppInfo {
   packageName: string;
   appName: string;
+  iconUri?: string;
 }
 
 interface YudaPipNativeModule {
@@ -17,7 +18,8 @@ interface YudaPipNativeModule {
   requestNotificationWithPip(): boolean;
   bringToFront(): boolean;
   stopWatching(): void;
-  getInstalledApps(): InstalledAppInfo[];
+  getInstalledApps(includeIcons?: boolean): Promise<InstalledAppInfo[]>;
+  getAppIcon(packageName: string): Promise<string | null>;
   isPackageInstalled(packageName: string): boolean;
 }
 
@@ -84,8 +86,22 @@ export function stopWatching(): void {
   safe(() => NativeModule?.stopWatching(), undefined);
 }
 
-export function getInstalledApps(): InstalledAppInfo[] {
-  return safe(() => NativeModule?.getInstalledApps() ?? [], []);
+export async function getInstalledApps(includeIcons = true): Promise<InstalledAppInfo[]> {
+  if (!NativeModule?.getInstalledApps) return [];
+  try {
+    return await NativeModule.getInstalledApps(includeIcons);
+  } catch {
+    return [];
+  }
+}
+
+export async function getAppIcon(packageName: string): Promise<string | null> {
+  if (!NativeModule?.getAppIcon) return null;
+  try {
+    return await NativeModule.getAppIcon(packageName);
+  } catch {
+    return null;
+  }
 }
 
 export function isPackageInstalled(packageName: string): boolean {
@@ -117,6 +133,7 @@ export default {
   bringToFront,
   stopWatching,
   getInstalledApps,
+  getAppIcon,
   isPackageInstalled,
   addPipModeListener,
   addPermissionGrantedListener,
