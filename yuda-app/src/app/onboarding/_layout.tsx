@@ -10,6 +10,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="select-apps" />
       <Stack.Screen name="welcome" />
       <Stack.Screen name="quiz-intro" />
+      <Stack.Screen name="quiz" />
     </Stack>
   );
 }
