@@ -11,6 +11,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="welcome" />
       <Stack.Screen name="quiz-intro" />
       <Stack.Screen name="quiz" />
+      <Stack.Screen name="quiz-result-insight" />
     </Stack>
   );
 }

@@ -30,6 +30,7 @@ import { QuizOptionCard } from '../components/QuizOptionCard';
 import { QuizProgressHeader } from '../components/QuizProgressHeader';
 import { useQuiz } from '../hooks/useQuiz';
 import { submitQuestionnaireApi } from '../services/quizService';
+import { useQuizResultStore } from '../stores/useQuizResultStore';
 
 export default function QuestionnaireScreen() {
     const router = useRouter();
@@ -39,6 +40,7 @@ export default function QuestionnaireScreen() {
     const reducedMotion = useReducedMotion();
 
     const { user, userName, userToken, completeOnboarding } = useAuthStore();
+    const { setAnalysisResult } = useQuizResultStore();
     const displayName = userName || user?.name || user?.full_name || 'Kamu';
 
     const [fontsLoaded] = useFonts({
@@ -107,24 +109,41 @@ export default function QuestionnaireScreen() {
         setSubmitting(true);
 
         try {
-            await submitQuestionnaireApi(answers, userToken);
-            await completeOnboarding();
-            router.replace('/');
+            const result = await submitQuestionnaireApi(answers, userToken);
+            setAnalysisResult(result);
+            router.push('/onboarding/quiz-result-insight');
         } catch (error) {
             console.error('Error submit questionnaire:', error);
-            Alert.alert(
-                'Selesai',
-                'Jawaban kuis kamu tersimpan. Selamat datang di Yuda!',
-                [
+            const mockFallback = {
+                layar_1_insight_waktu: {
+                    headline: 'Kamu Menghabiskan 3-5 Jam Menjelang Tidur Setiap Hari?',
+                    subteks: 'Waw, itu waktu yang cukup banyak untuk dihabiskan dengan scrolling sebelum tidur.',
+                },
+                layar_2_alternatif_aktivitas: [
                     {
-                        text: 'Lanjut',
-                        onPress: async () => {
-                            await completeOnboarding();
-                            router.replace('/');
-                        },
+                        judul: 'Membaca Buku',
+                        deskripsi: 'Dengan kecepatan 50 halaman per jam, kamu bisa menamatkan 1 buku penuh setiap minggu.',
                     },
-                ]
-            );
+                    {
+                        judul: 'Eksplorasi Hobi & Musik',
+                        deskripsi: 'Meluangkan waktu untuk mendengarkan podcast inspiratif atau belajar skill baru selama 30 menit.',
+                    },
+                    {
+                        judul: 'Peregangan Tubuh',
+                        deskripsi: 'Melakukan peregangan ringan dan minum air hangat untuk melemaskan otot setelah lelah seharian.',
+                    },
+                ],
+                layar_3_tipe_doomscrolling: {
+                    nama_tipe: 'Night Owl',
+                    subtipe_note: 'Sering menunda waktu tidur (bedtime procrastination)',
+                    deskripsi_kecenderungan: 'Saat rasa bosan dan lelah melanda, kamu sering terseret arus algoritma media sosial di tempat tidur.',
+                    afirmasi_jeda: 'Ketika jam 21.00 tangan mulai meraih HP di tempat tidur, letakkan HP di meja dan tarik napas dalam tiga kali.',
+                    waktu_tayang: '20.45',
+                },
+                jawaban: 'Halo! Aku YUDA, siap mendampingimu membangun kebiasaan digital yang lebih tenang dan bermakna.',
+            };
+            setAnalysisResult(mockFallback);
+            router.push('/onboarding/quiz-result-insight');
         } finally {
             setSubmitting(false);
         }
