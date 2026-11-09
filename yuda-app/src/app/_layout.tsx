@@ -1,4 +1,11 @@
 import { useAuthStore } from "@/stores/useAuthStore";
+import {
+  Outfit_500Medium,
+  Outfit_600SemiBold,
+  Outfit_700Bold,
+  Outfit_800ExtraBold,
+  useFonts,
+} from "@expo-google-fonts/outfit";
 import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -10,6 +17,13 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
+  const [fontsLoaded] = useFonts({
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+    Outfit_800ExtraBold,
+  });
+
   const { isHydrated, hasCompletedOnboarding, userToken, hydrateAuth } = useAuthStore();
 
   useEffect(() => {
@@ -19,15 +33,19 @@ export default function RootLayout() {
       } catch (e) {
         console.warn("Gagal inisialisasi sesi autentikasi:", e);
       } finally {
-        await SplashScreen.hideAsync().catch(() => {});
+        if (fontsLoaded) {
+          await SplashScreen.hideAsync().catch(() => {});
+        }
       }
     }
 
-    prepareApp();
-  }, []);
+    if (fontsLoaded) {
+      prepareApp();
+    }
+  }, [fontsLoaded]);
 
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || !fontsLoaded) return;
 
     const isCallback = segments[0] === "auth" && segments[1] === "callback";
     if (isCallback) return;
@@ -51,7 +69,7 @@ export default function RootLayout() {
     }
   }, [isHydrated, hasCompletedOnboarding, userToken, segments]);
 
-  if (!isHydrated) {
+  if (!isHydrated || !fontsLoaded) {
     return null;
   }
 

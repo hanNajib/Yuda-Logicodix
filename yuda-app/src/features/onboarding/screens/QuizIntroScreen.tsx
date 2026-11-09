@@ -36,10 +36,11 @@ import Svg, {
 } from 'react-native-svg';
 import { useAuthStore } from '@/stores/useAuthStore';
 
+const BG = '#f5f3ec';
 const REF_W = 420;
+
 const yudaQuestioningSource = require('../../../../assets/images/yuda/yuda-questioning.png');
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 export default function QuizIntroScreen() {
@@ -89,7 +90,7 @@ export default function QuizIntroScreen() {
         charFade.value = withDelay(140, withTiming(1, { duration: 450 }));
         charY.value = withDelay(140, withSpring(0, { duration: 550, dampingRatio: 0.78 }));
 
-        setTimeout(() => {
+        const rotateTimer = setTimeout(() => {
             charRotate.value = withRepeat(
                 withSequence(
                     withTiming(-3, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
@@ -101,6 +102,8 @@ export default function QuizIntroScreen() {
         }, 600);
 
         btnFade.value = withDelay(240, withTiming(1, { duration: 400 }));
+
+        return () => clearTimeout(rotateTimer);
     }, [fontsLoaded, reducedMotion]);
 
     const titleAnimatedStyle = useAnimatedStyle(() => ({
@@ -159,7 +162,12 @@ export default function QuizIntroScreen() {
         <View className="flex-1 bg-[#f5f3ec]">
             <StatusBar style="dark" />
 
-            <Svg width={W} height={H} className="absolute inset-0" pointerEvents="none">
+            <Svg
+                width={W}
+                height={H}
+                style={{ position: 'absolute', top: 0, left: 0 }}
+                pointerEvents="none"
+            >
                 <Defs>
                     <RadialGradient
                         id="bottomSageGlow"
@@ -171,7 +179,7 @@ export default function QuizIntroScreen() {
                     >
                         <Stop offset="0" stopColor="#b6cbb9" stopOpacity="0.85" />
                         <Stop offset="0.65" stopColor="#d2dfd4" stopOpacity="0.45" />
-                        <Stop offset="1" stopColor="#f5f3ec" stopOpacity="0" />
+                        <Stop offset="1" stopColor={BG} stopOpacity="0" />
                     </RadialGradient>
                 </Defs>
 
@@ -192,23 +200,24 @@ export default function QuizIntroScreen() {
             </Svg>
 
             <View
-                className="flex-1 justify-between px-[22px]"
+                className="flex-1 justify-between"
                 style={{
                     paddingTop: Math.max(insets.top, 24) + 24 * s,
                     paddingBottom: Math.max(insets.bottom, 20) + 12 * s,
+                    paddingHorizontal: 22 * s,
                 }}
             >
                 <Animated.View className="items-center" style={titleAnimatedStyle}>
                     <Text
-                        className="font-[Outfit_800ExtraBold] text-[#1f2923] text-center"
-                        style={{ fontSize: 27 * s, lineHeight: 36 * s }}
+                        className="font-outfit-extrabold text-[#1f2923] text-center"
+                        style={{ fontFamily: 'Outfit_800ExtraBold', fontSize: 27 * s, lineHeight: 36 * s }}
                     >
                         Tapi Sebelum Mulai,{'\n'}Yuk Bantu Yuda Buat{'\n'}Lebih Mengenali{'\n'}Kamu
                     </Text>
 
                     <Text
-                        className="font-[Outfit_500Medium] text-[#3d4f42] text-center px-3"
-                        style={{ fontSize: 13.5 * s, lineHeight: 20 * s, marginTop: 12 * s }}
+                        className="font-outfit-medium text-[#3d4f42] text-center px-3"
+                        style={{ fontFamily: 'Outfit_500Medium', fontSize: 13.5 * s, lineHeight: 20 * s, marginTop: 12 * s }}
                     >
                         Jawab kuis yang dikasih Yuda sesuai dengan{'\n'}personal kamu ya!
                     </Text>
@@ -228,28 +237,27 @@ export default function QuizIntroScreen() {
                 </View>
 
                 <View className="w-full">
-                    <AnimatedPressable
-                        className="w-full items-center justify-center bg-[#2e6b4e] border-b-[#204d37]"
-                        style={[
-                            {
+                    <Animated.View className="w-full" style={btnAnimatedStyle}>
+                        <Pressable
+                            className="w-full items-center justify-center bg-[#2e6b4e] border-b-[#204d37]"
+                            style={{
                                 height: 62 * s,
                                 borderRadius: 16 * s,
                                 borderBottomWidth: 5 * s,
-                            },
-                            btnAnimatedStyle,
-                        ]}
-                        onPressIn={handleBtnPressIn}
-                        onPressOut={handleBtnPressOut}
-                        onPress={handleStartQuiz}
-                        accessibilityRole="button"
-                    >
-                        <Text
-                            className="font-[Outfit_700Bold] text-white"
-                            style={{ fontSize: 19 * s }}
+                            }}
+                            onPressIn={handleBtnPressIn}
+                            onPressOut={handleBtnPressOut}
+                            onPress={handleStartQuiz}
+                            accessibilityRole="button"
                         >
-                            Yuk Mulai
-                        </Text>
-                    </AnimatedPressable>
+                            <Text
+                                className="font-outfit-bold text-white"
+                                style={{ fontFamily: 'Outfit_700Bold', fontSize: 19 * s }}
+                            >
+                                Yuk Mulai
+                            </Text>
+                        </Pressable>
+                    </Animated.View>
                 </View>
             </View>
         </View>

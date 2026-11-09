@@ -272,6 +272,36 @@ class YudaPipModule : Module() {
         activity.runOnUiThread {
             val app = activity.applicationContext
 
+            fun openSettings() {
+                for (intent in intents) {
+                    try {
+                        if (usePip) {
+                            // Lewat application context + NEW_TASK: halaman pengaturan jadi task baru
+                            // layar penuh, tidak ikut task/windowing mode Yuda yang sedang jadi PiP
+                            intent.addFlags(
+                                Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                            )
+                            app.startActivity(intent)
+                        } else {
+                            // Mode dialog: tanpa NEW_TASK supaya dialog tampil di atas app
+                            activity.startActivity(intent)
+                        }
+                        return
+                    } catch (e: Exception) {
+                        try {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            activity.startActivity(intent)
+                            return
+                        } catch (e2: Exception) {
+                            Log.w(TAG, "Intent gagal (${intent.action}): ${e2.message}")
+                        }
+                    }
+                }
+            }
+
+            var pipRequested = false
             if (usePip &&
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                 activity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
@@ -281,37 +311,33 @@ class YudaPipModule : Module() {
                         .setAspectRatio(Rational(16, 9))
                         .build()
                     activity.setPictureInPictureParams(params)
-                    val entered = activity.enterPictureInPictureMode(params)
-                    Log.d(TAG, "enterPiP result: $entered")
+                    pipRequested = activity.enterPictureInPictureMode(params)
+                    Log.d(TAG, "enterPiP result: $pipRequested")
                 } catch (e: Exception) {
                     Log.e(TAG, "enterPiP gagal: ${e.message}")
                 }
             }
 
-            handler.postDelayed({
-                for (intent in intents) {
-                    try {
-                        if (usePip) {
-                            intent.addFlags(
-                                Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_NO_HISTORY or
-                                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                            )
-                        }
-                        // Mode dialog: tanpa NEW_TASK supaya dialog tampil di atas app, bukan pindah task
-                        activity.startActivity(intent)
-                        return@postDelayed
-                    } catch (e: Exception) {
-                        try {
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            app.startActivity(intent)
-                            return@postDelayed
-                        } catch (e2: Exception) {
-                            Log.w(TAG, "Intent gagal (${intent.action}): ${e2.message}")
+            if (pipRequested) {
+                // Tunggu Yuda benar-benar sudah masuk PiP (maks 1,5 dtk) baru buka pengaturan,
+                // supaya tidak balapan dengan transisi PiP.
+                val startAt = SystemClock.elapsedRealtime()
+                val poll = object : Runnable {
+                    override fun run() {
+                        val inPip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+                            activity.isInPictureInPictureMode
+                        if (inPip || SystemClock.elapsedRealtime() - startAt > 1500L) {
+                            Log.d(TAG, "Buka pengaturan, inPip=$inPip")
+                            handler.postDelayed({ openSettings() }, 250L)
+                        } else {
+                            handler.postDelayed(this, 50L)
                         }
                     }
                 }
-            }, if (usePip) 300L else 0L)
+                handler.postDelayed(poll, 50L)
+            } else {
+                openSettings()
+            }
 
             startWatching(type)
         }

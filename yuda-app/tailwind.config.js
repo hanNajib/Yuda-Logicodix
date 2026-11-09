@@ -18,6 +18,12 @@ module.exports = {
           subtext: '#555555',
         },
       },
+      fontFamily: {
+        'outfit-medium': ['Outfit_500Medium'],
+        'outfit-semibold': ['Outfit_600SemiBold'],
+        'outfit-bold': ['Outfit_700Bold'],
+        'outfit-extrabold': ['Outfit_800ExtraBold'],
+      },
     },
   },
   plugins: [],
