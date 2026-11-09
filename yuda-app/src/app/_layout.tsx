@@ -32,23 +32,16 @@ export default function RootLayout() {
     const isCallback = segments[0] === "auth" && segments[1] === "callback";
     if (isCallback) return;
 
+    const inAuthGroup = (segments[0] as string) === "auth";
     const inOnboarding = (segments[0] as string) === "onboarding";
-    const inSetupProfile =
-      inOnboarding && (segments[1] as string) === "profile";
-    if (inSetupProfile) return;
-    if (inOnboarding) return;
 
-    const inAuthGroup =
-      (segments[0] as string) === "auth";
-
-    if (userToken) {
-      if (!hasCompletedOnboarding && !inSetupProfile) {
-        router.replace("/onboarding/profile" as any);
-      } else if (inAuthGroup || (inOnboarding && !inSetupProfile)) {
-        router.replace("/" as any);
+    if (!hasCompletedOnboarding) {
+      if (inOnboarding || inAuthGroup) {
+        return;
       }
-    } else if (!hasCompletedOnboarding) {
-      if (!inAuthGroup && !inOnboarding) {
+      if (userToken) {
+        router.replace("/onboarding/profile" as any);
+      } else {
         router.replace("/auth" as any);
       }
     } else {

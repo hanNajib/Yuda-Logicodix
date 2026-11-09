@@ -1,0 +1,8 @@
+{
+  "name": "yuda-pip",
+  "platforms": ["android"],
+  "android": {
+    "modules": ["com.mieayamproject.yuda.pip.YudaPipModule"]
+  }
+}
+

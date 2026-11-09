@@ -79,9 +79,7 @@ export default function SetupProfileScreen() {
 
     const { user, userName, userToken, setUserName, completeOnboarding } = useAuthStore();
     const [name, setName] = useState(() => {
-        if (user?.name || userName) return user.name || userName || '';
-
-        return user?.full_name?.trim().split(/\s+/)[0]?.slice(0, 12) || '';
+        return user?.name || userName || user?.full_name?.trim().split(/\s+/)[0]?.slice(0, 12) || '';
     });
     const inputRef = useRef<any>(null);
     const submitting = useRef(false);
@@ -226,16 +224,6 @@ export default function SetupProfileScreen() {
         };
     }, [fontsLoaded, reducedMotion]);
 
-    useEffect(() => {
-        if (fontsLoaded && user?.name?.trim()) {
-            completeOnboarding()
-                .then(() => router.replace('/'))
-                .catch((error) => {
-                    console.error('Gagal melewati setup profil:', error);
-                });
-        }
-    }, [fontsLoaded, user?.name, completeOnboarding, router]);
-
     const bgStyle = useAnimatedStyle(() => ({
         opacity: bgFade.value,
     }));
@@ -332,8 +320,7 @@ export default function SetupProfileScreen() {
             }
 
             await setUserName(trimmed);
-            await completeOnboarding();
-            router.replace('/');
+            router.replace('/onboarding/permissions');
         } catch (error) {
             console.error('Gagal menyimpan nama panggilan:', error);
             submitting.current = false;
@@ -438,7 +425,6 @@ export default function SetupProfileScreen() {
                     </Svg>
                 </Animated.View>
 
-                {/* ── HEADER JUDUL ── */}
                 <Animated.View
                     accessible
                     accessibilityRole="header"
@@ -490,7 +476,6 @@ export default function SetupProfileScreen() {
                         cardStyle,
                     ]}
                 >
-                    {/* Cakar Kapibara di bibir kartu */}
                     <Animated.Image
                         source={pawsSource}
                         style={[
@@ -507,7 +492,6 @@ export default function SetupProfileScreen() {
                         resizeMode="contain"
                     />
 
-                    {/* Kotak Input Nama */}
                     <Animated.View
                         className="flex-row items-center px-4"
                         style={[
