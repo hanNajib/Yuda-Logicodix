@@ -10,11 +10,12 @@
 
 ## 2. Anggota Tim
 
-| No | Nama | Peran |
-|----|------|-------|
-| 1 | [ISI: nama] | [ISI: peran, mis. Project Manager / Frontend Developer / Backend Developer / UI/UX Designer] |
-| 2 | [ISI: nama] | [ISI: peran] |
-| 3 | [ISI: nama] | [ISI: peran] |
+| No | Nama |
+|----|------|
+| 1 | Asyam Rafif Aubin Fawwaz |
+| 2 | Gathan Fairuz Izzuddin |
+| 3 | Ahmad Royhan Najib |
+| 4 | Shevadzikra Ihsan Aimanullah |
 
 ## 3. Kategori Lomba
 
@@ -33,10 +34,31 @@ YUDA adalah aplikasi yang membantu pengguna keluar dari kebiasaan doomscrolling,
 3. **Memberi umpan balik dan motivasi.** Dasbor harian menampilkan analitik dan ringkasan perilaku, sementara teks afirmasi dipersonalisasi berdasarkan hasil kuisioner.
 
 ## 6. Masalah yang Diangkat
-
-Doomscrolling adalah kebiasaan menggulir konten media sosial secara kompulsif, terutama konten negatif yang bersifat tidak produktif, sehingga memakan waktu, mengganggu tidur, dan menurunkan produktivitas serta kondisi emosional. Banyak pengguna menyadari kebiasaan ini tetapi tidak tahu **kapan** mereka paling rawan, **seberapa sering** terjadi, dan **bagaimana** cara menghentikannya secara konsisten.
-
-[ISI: tambahkan data/statistik atau referensi jurnal pendukung jika ada, lengkap dengan sumbernya]
+ 
+Doomscrolling adalah kebiasaan menggulir berita atau media sosial secara kompulsif, terutama konten negatif, tanpa mampu berhenti meskipun sudah merasa lelah atau tertekan. Kebiasaan ini diperkuat oleh desain platform, seperti *infinite scroll* dan konten yang disajikan oleh algoritma [2]. Peluang terbentuknya kebiasaan ini besar di Indonesia: pengguna di Indonesia rata-rata menghabiskan 21 jam 50 menit per minggu (lebih dari tiga jam per hari) di media sosial, termasuk untuk menonton video online [5]. Tidak semua waktu tersebut adalah doomscrolling, tetapi angka ini menunjukkan besarnya paparan yang dihadapi pengguna setiap hari.
+ 
+### Dampak pada kesehatan mental
+ 
+- Meta-analisis terbaru pada remaja dan dewasa menemukan bahwa doomscrolling berhubungan dengan kecemasan (r = 0,35), depresi (r = 0,35), distres psikologis (r = 0,51), dan kesejahteraan psikologis yang lebih rendah (r = −0,29) [1].
+- Tinjauan *scoping* atas 17 studi empiris menemukan asosiasi yang konsisten dengan kecemasan, depresi, stres, dan menurunnya resiliensi. Penjelasan teoretis yang banyak diajukan adalah ruminasi, kelelahan emosional, dan ketidakmampuan menoleransi ketidakpastian [2].
+- Survei terhadap 800 mahasiswa di Iran dan Amerika Serikat menemukan bahwa doomscrolling berhubungan dengan kecemasan eksistensial, yaitu kekhawatiran tentang hidup, kematian, dan makna keberadaan [3].
+### Dampak pada produktivitas
+ 
+Bukti yang secara khusus menghubungkan doomscrolling dengan produktivitas masih terbatas. Namun penelitian pada perilaku yang berdekatan, yaitu penggunaan *smartphone* yang bermasalah, menunjukkan pola yang sejalan: meta-analisis atas 29 studi dengan 48.490 partisipan menemukan hubungan negatif dengan prestasi akademik (r = −0,11, efek kecil) [4]. Kelelahan emosional dan menurunnya resiliensi yang dikaitkan dengan doomscrolling [2] juga berpotensi mempersulit seseorang untuk kembali fokus pada tugas. Selain itu, waktu yang terserap untuk menggulir otomatis mengurangi waktu untuk belajar, bekerja, dan beristirahat.
+ 
+### Celah yang dijawab YUDA
+ 
+Banyak pengguna menyadari kebiasaan ini tetapi tidak tahu **kapan** mereka paling rawan, **seberapa sering** terjadi, dan **bagaimana** cara menghentikannya secara konsisten. YUDA hadir untuk mengisi celah tersebut dengan memetakan jam rawan pengguna, mengatur jeda istirahat, dan memberikan umpan balik harian.
+ 
+> **Catatan:** sebagian besar bukti di atas bersifat korelasional (*cross-sectional*), sehingga menunjukkan adanya hubungan, bukan sebab-akibat [1][2]. YUDA tidak mengklaim mengobati gangguan kesehatan mental; YUDA membantu pengguna mengenali dan mengatur kebiasaan menggulir mereka.
+ 
+### Referensi
+ 
+1. Li, Q., & Yin, X. (2026). Doomscrolling, mental health, and psychological well-being in adolescents and adults: a systematic review and meta-analysis. *Frontiers in Psychology*. https://doi.org/10.3389/fpsyg.2026.1893800
+2. Sharpe, A. T. R., Tyndall, I., Poulus, D. R., Obine, E. A. C., & Sharpe, B. T. (2026). The influence of doomscrolling on mental health: a scoping review. *Mental Health and Digital Technologies, 3*(3), 290–342. https://doi.org/10.1108/MHDT-10-2025-0068
+3. Shabahang, R., Hwang, H., Thomas, E. F., Aruguete, M. S., McCutcheon, L. E., Orosz, G., Khanzadeh, A. A. H., Chirani, B. M., & Zsila, Á. (2024). Doomscrolling evokes existential anxiety and fosters pessimism about human nature? Evidence from Iran and the United States. *Computers in Human Behavior Reports, 15*, 100438. https://doi.org/10.1016/j.chbr.2024.100438
+4. Paterna, A., Alcaraz-Ibáñez, M., Aguilar-Parra, J. M., Salavera, C., Demetrovics, Z., & Griffiths, M. D. (2024). Problematic smartphone use and academic achievement: A systematic review and meta-analysis. *Journal of Behavioral Addictions, 13*(2), 313–326. https://doi.org/10.1556/2006.2024.00014
+5. We Are Social & Meltwater. (2025). *Digital 2026: Top digital and social media trends in Indonesia*. https://wearesocial.com/id/blog/2025/11/digital-2026-top-digital-and-social-media-trends-in-indonesia/
 
 ## 7. Target Pengguna
 
@@ -53,15 +75,15 @@ Doomscrolling adalah kebiasaan menggulir konten media sosial secara kompulsif, t
 | No | Fitur | Deskripsi |
 |----|-------|-----------|
 | 1 | **Login Page** | Masuk menggunakan akun Google, atau akun lokal dengan hanya memasukkan nama. |
-| 2 | **Personalization Page** | Pengguna menyesuaikan pengalaman aplikasi. [ISI: sebutkan apa saja yang bisa dipersonalisasi] |
-| 3 | **App Permission Page** | Meminta dan menjelaskan izin yang dibutuhkan aplikasi. [ISI: sebutkan izin, mis. akses data penggunaan aplikasi, notifikasi, overlay] |
-| 4 | **App Preferences Page** | Pengguna memilih aplikasi yang ingin dipantau/dibatasi. [ISI: sesuaikan] |
-| 5 | **Break Interval Configuration Page** | Pengguna mengatur durasi dan interval istirahat dari layar. [ISI: sesuaikan] |
-| 6 | **Kuisioner Page** | Kuisioner onboarding 10 pertanyaan untuk menentukan jam rawan doomscrolling, tipe doomscrolling berdasarkan jam rawan, dan personalisasi teks afirmasi. |
-| 7 | **Profile Page** | Menampilkan dan mengelola data profil serta hasil kuisioner pengguna. [ISI: sesuaikan] |
-| 8 | **Daily Planner Page** | Perencanaan aktivitas harian sebagai alternatif dari scrolling. [ISI: sesuaikan] |
+| 2 | **Personalization Page** | Pengguna menyesuaikan pengalaman aplikasi. Pada halaman ini, aplikasi meminta pengguna untuk mengisi nama panggilan. |
+| 3 | **App Permission Page** | Meminta dan menjelaskan izin yang dibutuhkan aplikasi. Izin aplikasi yang diminta antara lain: <br>- Tampil di atas aplikasi lain.<br>- Berjalan di latar belakang.<br>- Mengirimkan notifikasi. |
+| 4 | **App Preferences Page** | Pengguna memilih aplikasi yang ingin dipantau/dibatasi. |
+| 5 | **Break Interval Configuration Page** | Pengguna mengatur durasi atau interval istirahat dari aktivitas menggulir (scrolling) konten media sosial. |
+| 6 | **Kuisioner Page** | Kuisioner onboarding berisi 9 pertanyaan untuk menentukan jam rawan doomscrolling, tipe doomscrolling berdasarkan jam rawan, dan personalisasi teks afirmasi. |
+| 7 | **Profile Page** | Menampilkan dan mengelola data profil pengguna. |
+| 8 | **Daily Planner Page** | Perencanaan aktivitas harian sebagai alternatif dari scrolling. |
 | 9 | **Daily Analytics Dashboard Page** | Visualisasi data penggunaan harian. [ISI: sebutkan metrik, mis. durasi, frekuensi, jam puncak] |
-| 10 | **Daily Overview Dashboard Page** | Ringkasan kondisi dan progres pengguna hari itu. [ISI: sesuaikan] |
+| 10 | **Daily Overview Dashboard Page** | Ringkasan kondisi dan progres pengguna hari itu. Panel emosi pengguna yang dirasakan, card informasi jam rawan doomscrolling, metrik penggunaan aplikasi dengan screentime terbanyak, daftar aktivitas harian berdasarkan halaman **Daily Planner Page** |
 
 > Tambahkan tangkapan layar tiap halaman di folder `docs/screenshots/` lalu tautkan di sini, contoh: `![Login](docs/screenshots/login.png)`.
 
@@ -74,34 +96,66 @@ Doomscrolling adalah kebiasaan menggulir konten media sosial secara kompulsif, t
 | Library utama | Expo Router, Expo Secure Store, Zustand, Google Sign-in|
 | Database | MySQL |
 | Autentikasi | Google Sign-In ( @react-native-google-signin/google-signin: ^17.0.0 ) |
-| API | [ISI: API internal / eksternal yang dipakai] |
+| API Internal | REST API Laravel dengan autentikasi token Laravel Sanctum (daftar endpoint di bawah) |
+| API Eksternal | Google Sign-In (autentikasi)<br>Google Gemini API: <br>- analisis kuisioner; model: `gemini-3.5-flash-lite` <br>- fallback; model: `gemini-3.5-flash` |
 | Layanan pihak ketiga | [ISI: hosting, notifikasi, analitik, dll. Tulis "tidak ada" jika memang tidak ada] |
 
+**Penyimpanan data hybrid**
+ 
+| Mode login | Lokasi penyimpanan data | Catatan |
+|------------|-------------------------|---------|
+| Google | Database MySQL di server (via Laravel API) | Data tetap tersimpan meski aplikasi dihapus, selama pengguna login dengan akun yang sama. |
+| Nama (akun lokal) | Hanya di perangkat | Tidak ada data yang dikirim ke server. Jika data aplikasi dihapus, seluruh data pengguna ikut hilang. |
+
+**Daftar endpoint API internal** (Laravel, prefix `/api`)
+ 
+| Metode | Endpoint | Autentikasi | Fungsi |
+|--------|----------|-------------|--------|
+| POST | `/auth/google/exchange` | Tidak ada (*throttle* 10 request/menit) | Menukar data autentikasi Google menjadi token akses Sanctum. |
+| POST | `/auth/google/native` | Tidak ada (*throttle* 10 request/menit) | Login dari aplikasi mobile menggunakan hasil Google Sign-In native, mengembalikan token Sanctum. |
+| GET | `/user` | Bearer token (Sanctum) | Mengambil data pengguna yang sedang login. |
+| POST | `/auth/logout` | Bearer token (Sanctum) | Menghapus token akses saat ini (logout). |
+| POST | `/ai/questionnaire` | Bearer token (Sanctum) | Menganalisis jawaban kuisioner menggunakan Google Gemini API. |
+
 ### c. Diagram Arsitektur Sistem dan Alur Data
-
-> Diagram di bawah adalah kerangka awal. Sesuaikan komponen dengan arsitektur sebenarnya.
-
+ 
+**Arsitektur sistem**
+ 
 ```mermaid
 flowchart LR
-    U[Pengguna] --> A[Aplikasi YUDA<br/>Frontend]
-    A -->|Login Google| G[Google OAuth]
-    A -->|Login lokal: input nama| A
-    A <-->|Request / Response| B[Backend / API<br/>[ISI]]
-    B <--> D[(Database<br/>[ISI])]
-    A -->|Data penggunaan aplikasi| P[Modul Pemantauan<br/>& Break Interval]
-    P --> N[Pengingat / Notifikasi]
-    B --> AN[Analitik Harian]
-    AN --> DB1[Daily Analytics<br/>& Overview Dashboard]
+    subgraph Perangkat["Perangkat pengguna"]
+        A["App YUDA<br/>React Native + Expo Router<br/>NativeWind, Zustand"]
+        L[("Penyimpanan lokal<br/>akun nama saja")]
+    end
+    G["Google Sign-In"]
+    B["Laravel API<br/>Backend PHP"]
+    D[("MySQL")]
+    GM["Google Gemini API"]
+ 
+    A <-->|Login nama| L
+    A <-->|Login Google| G
+    A <-->|REST API| B
+    B <--> D
+    B <-->|Analisis kuisioner| GM
 ```
+ 
+**Alur data**
+ 
+*Mode Google (data tersimpan di server)*
+ 
+1. Pengguna menekan login Google. Aplikasi meminta autentikasi ke Google Sign-In dan menerima token.
+2. Aplikasi mengirim token ke Laravel API. Backend memverifikasinya, lalu membuat atau mengambil data pengguna di MySQL.
+3. Pengguna menyelesaikan personalisasi, izin aplikasi, preferensi aplikasi, interval istirahat, dan kuisioner onboarding. Seluruh data dikirim ke backend dan disimpan di MySQL.
+4. Jawaban kuisioner dikirim ke endpoint `/api/ai/questionnaire`. Backend meneruskannya ke Google Gemini API untuk dianalisis, lalu hasilnya (jam rawan, tipe, afirmasi) dikembalikan ke aplikasi dan menjadi dasar pengingat serta teks afirmasi. [ISI: konfirmasi apakah hasil analisis juga disimpan di MySQL]
+5. Data penggunaan harian diolah dan ditampilkan pada dasbor analitik dan ringkasan harian.
 
-**Alur data singkat**
+*Mode lokal (data hanya di perangkat)*
+ 
+1. Pengguna memasukkan nama, tanpa autentikasi dan tanpa request ke server.
+2. Seluruh data (hasil kuisioner, preferensi, rencana harian) disimpan di penyimpanan lokal perangkat dan dibaca langsung oleh aplikasi. [ISI: jelaskan bagaimana hasil kuisioner ditentukan di mode ini, karena endpoint `/ai/questionnaire` memerlukan login]
+3. Jika data aplikasi dihapus, seluruh data pengguna ikut hilang.
 
-1. Pengguna login (Google atau akun lokal dengan nama).
-2. Pengguna menyelesaikan personalisasi, izin aplikasi, preferensi aplikasi, interval istirahat, dan kuisioner onboarding.
-3. Hasil kuisioner (jam rawan, tipe, afirmasi) disimpan dan menjadi dasar pengingat serta teks afirmasi.
-4. Data penggunaan harian dikumpulkan, diolah, lalu ditampilkan pada dasbor analitik dan ringkasan harian.
-
-[ISI: perbarui alur ini sesuai implementasi sebenarnya]
+[ISI: sesuaikan jika ada alur lain, mis. sinkronisasi, notifikasi, atau layanan latar belakang]
 
 ### d. Panduan Instalasi, Konfigurasi, dan Menjalankan Aplikasi
 
@@ -141,23 +195,19 @@ cp .env.example .env
 
 ### e. Daftar Variabel `.env` Movile APP
 
-> Jangan pernah mengisi nilai asli rahasia di README. Cantumkan hanya nama dan fungsinya.
-
 | Variabel | Deskripsi | Contoh nilai |
 |----------|-----------|--------------|
-| `EXPO_PUBLIC_API_URL` | Client ID OAuth Google untuk autentikasi | `xxxxxxxx.apps.googleusercontent.com` |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Client secret OAuth Google (jika dipakai) | `xxxxxxxx` |
-| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | [ISI: koneksi database] | `[ISI]` |
+| `EXPO_PUBLIC_API_URL` | Client ID OAuth Google untuk autentikasi | `http://192.xxx.x.x:8000` |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Client secret OAuth Google | `xxxxxxxx.apps.googleusercontent.com` |
+| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | [ISI: koneksi database] | `xxxxxxxx.apps.googleusercontent.com` |
 
 ### f. Daftar Variabel `.env` Backend API
-
-> Jangan pernah mengisi nilai asli rahasia di README. Cantumkan hanya nama dan fungsinya.
 
 | Variabel | Deskripsi | Contoh nilai |
 |----------|-----------|--------------|
 | `APP_NAME` | Nama aplikasi backend. | `YUDA` |
 | `APP_ENV` | Lingkungan tempat aplikasi dijalankan. | `local` |
-| `APP_KEY` | Kunci enkripsi aplikasi Laravel. | `[ISI]` |
+| `APP_KEY` | Kunci enkripsi aplikasi Laravel. | `base64:xxxxxxxxxxx` |
 | `APP_DEBUG` | Mengaktifkan atau menonaktifkan mode debugging. | `true` |
 | `APP_URL` | URL utama backend Laravel. | `http://localhost:8000` |
 | `DB_CONNECTION` | Driver database yang digunakan. | `mysql` |
@@ -165,12 +215,12 @@ cp .env.example .env
 | `DB_PORT` | Port koneksi database. | `3306` |
 | `DB_DATABASE` | Nama database aplikasi. | `yudabackend` |
 | `DB_USERNAME` | Username untuk autentikasi database. | `root` |
-| `DB_PASSWORD` | Password untuk autentikasi database. | `[ISI]` |
+| `DB_PASSWORD` | Password untuk autentikasi database. | `-` |
 | `GOOGLE_CLIENT_ID` | Client ID untuk integrasi Google Sign-In. | `[ISI]` |
 | `GOOGLE_CLIENT_SECRET` | Client Secret untuk autentikasi Google pada backend. | `[ISI]` |
 | `GOOGLE_REDIRECT_URI` | URL callback setelah proses autentikasi Google. | `http://localhost:8000/auth/google/callback` |
 | `MOBILE_APP_SCHEME` | Skema URL untuk mengarahkan kembali pengguna ke aplikasi mobile. | `yuda` |
-| `EXPO_PUBLIC_API_URL` | URL API backend yang diakses oleh aplikasi mobile Expo. | `http://10.0.2.2:8000` |
+| `EXPO_PUBLIC_API_URL` | URL API backend yang diakses oleh aplikasi mobile Expo. | `http://10.x.x.x:8000` |
 
 ### g. Akun Demonstrasi
 
