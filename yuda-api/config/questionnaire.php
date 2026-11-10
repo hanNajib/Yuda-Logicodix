@@ -10,7 +10,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Definisi Pertanyaan Onboarding (Q1 s/d Q9 Aktif)
+    | Definisi Pertanyaan Onboarding (Q1 s/d Q10 Aktif - Update 2)
     |--------------------------------------------------------------------------
     | Setiap butir pertanyaan memiliki semantic role agar perubahan teks/redaksi
     | tidak mempengaruhi logika AI engine dan Fallback generator.
@@ -25,24 +25,24 @@ return [
             'max_choices' => 1,
             'options' => [
                 'A' => [
-                    'label' => '05.00–08.59 (pagi, baru bangun/bersiap)',
+                    'label' => '05.00–08.59 (pagi: baru bangun/bersiap berangkat)',
                     'time_range' => '05.00–08.59',
                 ],
                 'B' => [
-                    'label' => '09.00–11.59 (jam kuliah/kerja)',
-                    'time_range' => '09.00–11.59',
+                    'label' => '09.00–13.59 (pagi-siang: jam kuliah/kerja)',
+                    'time_range' => '09.00–13.59',
                 ],
                 'C' => [
-                    'label' => '15.00–17.59 (pulang/perjalanan)',
-                    'time_range' => '15.00–17.59',
+                    'label' => '14.00–17.59 (sore: pulang/di perjalanan)',
+                    'time_range' => '14.00–17.59',
                 ],
                 'D' => [
-                    'label' => '21.00–23.59 (menjelang tidur)',
-                    'time_range' => '21.00–23.59',
+                    'label' => '18.00–22.59 (malam: hingga menjelang tidur)',
+                    'time_range' => '18.00–22.59',
                 ],
                 'E' => [
-                    'label' => '00.00–04.59 (dinihari)',
-                    'time_range' => '00.00–04.59',
+                    'label' => '23.00–04.59 (tengah malam/dinihari: sudah lewat tengah malam)',
+                    'time_range' => '23.00–04.59',
                 ],
             ],
         ],
@@ -57,24 +57,24 @@ return [
             'exclusive_option' => 'tidak_ada',
             'options' => [
                 'A' => [
-                    'label' => '05.00–08.59 (pagi, baru bangun/bersiap)',
+                    'label' => '05.00–08.59 (pagi: baru bangun/bersiap berangkat)',
                     'time_range' => '05.00–08.59',
                 ],
                 'B' => [
-                    'label' => '09.00–11.59 (jam kuliah/kerja)',
-                    'time_range' => '09.00–11.59',
+                    'label' => '09.00–13.59 (pagi-siang: jam kuliah/kerja)',
+                    'time_range' => '09.00–13.59',
                 ],
                 'C' => [
-                    'label' => '15.00–17.59 (pulang/perjalanan)',
-                    'time_range' => '15.00–17.59',
+                    'label' => '14.00–17.59 (sore: pulang/di perjalanan)',
+                    'time_range' => '14.00–17.59',
                 ],
                 'D' => [
-                    'label' => '21.00–23.59 (menjelang tidur)',
-                    'time_range' => '21.00–23.59',
+                    'label' => '18.00–22.59 (malam: hingga menjelang tidur)',
+                    'time_range' => '18.00–22.59',
                 ],
                 'E' => [
-                    'label' => '00.00–04.59 (dinihari)',
-                    'time_range' => '00.00–04.59',
+                    'label' => '23.00–04.59 (tengah malam/dinihari: sudah lewat tengah malam)',
+                    'time_range' => '23.00–04.59',
                 ],
                 'tidak_ada' => [
                     'label' => 'Tidak ada waktu lain',
@@ -101,17 +101,17 @@ return [
 
         'q4' => [
             'role' => 'kronotipe',
-            'title' => 'Kronotipe swalaporan',
+            'title' => 'Jika kamu bebas menentukan jam tidur dan bangun tanpa dibatasi aktivitas/kewajiban, kapan kamu merasa paling berenergi dan produktif?',
             'type' => 'single',
             'required' => true,
             'min_choices' => 1,
             'max_choices' => 1,
             'options' => [
-                'A' => ['label' => 'Jelas tipe pagi'],
-                'B' => ['label' => 'Lebih ke pagi'],
-                'C' => ['label' => 'Netral'],
-                'D' => ['label' => 'Lebih ke malam'],
-                'E' => ['label' => 'Jelas tipe malam'],
+                'A' => ['label' => 'Sangat pagi (≈05.00–08.59)'],
+                'B' => ['label' => 'Pagi hingga menjelang siang (≈09.00–13.59)'],
+                'C' => ['label' => 'Sore hingga awal malam (≈14.00–19.00)'],
+                'D' => ['label' => 'Malam hingga larut malam (≈19.00–00.00)'],
+                'E' => ['label' => 'Tidak ada waktu tertentu — energi relatif merata sepanjang hari'],
             ],
         ],
 
@@ -148,6 +148,22 @@ return [
         ],
 
         'q7' => [
+            'role' => 'motif_scrolling',
+            'title' => 'Alasan utama terus menggulir konten di medsos',
+            'type' => 'multi',
+            'required' => true,
+            'min_choices' => 1,
+            'max_choices' => 2,
+            'options' => [
+                'A' => ['label' => 'Ingin selalu mengikuti informasi/berita terbaru'],
+                'B' => ['label' => 'Takut tertinggal tren atau info yang sedang ramai dibicarakan'],
+                'C' => ['label' => 'Tertarik pada konten mengejutkan, kontroversial, atau mengundang penasaran'],
+                'D' => ['label' => 'Terus menemukan konten menarik lewat FYP/rekomendasi medsos'],
+                'E' => ['label' => 'Tertarik baca komentar atau ikut berinteraksi dalam diskusi'],
+            ],
+        ],
+
+        'q8' => [
             'role' => 'nilai_inti',
             'title' => 'Hal terpenting dalam hidup saat ini',
             'type' => 'multi',
@@ -155,17 +171,15 @@ return [
             'min_choices' => 1,
             'max_choices' => 2,
             'options' => [
-                'A' => ['label' => 'Keluarga/orang terdekat'],
-                'B' => ['label' => 'Belajar/karier'],
-                'C' => ['label' => 'Kesehatan fisik-mental'],
-                'D' => ['label' => 'Iman/spiritualitas'],
-                'E' => ['label' => 'Kreativitas/hobi'],
-                'F' => ['label' => 'Kebebasan finansial'],
-                'G' => ['label' => 'Pertemanan/komunitas'],
+                'A' => ['label' => 'Keluarga dan pertemanan'],
+                'B' => ['label' => 'Karier dan kebebasan finansial'],
+                'C' => ['label' => 'Kesehatan fisik dan mental'],
+                'D' => ['label' => 'Iman dan spiritualitas'],
+                'E' => ['label' => 'Kreativitas dan hobi'],
             ],
         ],
 
-        'q8' => [
+        'q9' => [
             'role' => 'gaya_pesan',
             'title' => 'Gaya pesan yang paling ampuh berhenti scrolling',
             'type' => 'single',
@@ -181,7 +195,7 @@ return [
             ],
         ],
 
-        'q9' => [
+        'q10' => [
             'role' => 'respons_pengganti',
             'title' => 'Pengganti saat dorongan scrolling muncul',
             'type' => 'multi',
@@ -191,7 +205,7 @@ return [
             'options' => [
                 'A' => ['label' => 'Bergerak (jalan/peregangan/minum)'],
                 'B' => ['label' => 'Mengobrol dgn seseorang'],
-                'C' => ['label' => 'Menangkan diri (napas/doa/meditasi)'],
+                'C' => ['label' => 'Menenangkan diri (napas/doa/meditasi)'],
                 'D' => ['label' => 'Kerjakan hal kecil'],
                 'E' => ['label' => 'Jauhkan HP'],
                 'F' => ['label' => 'Dengarkan musik/podcast'],
@@ -200,4 +214,3 @@ return [
         ],
     ],
 ];
-

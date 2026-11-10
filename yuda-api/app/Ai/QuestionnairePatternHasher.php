@@ -24,7 +24,7 @@ final class QuestionnairePatternHasher
     {
         $keys = array_keys(QuestionnaireDefinition::getQuestions());
         if (empty($keys)) {
-            $keys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9'];
+            $keys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10'];
         }
 
         $clean = [];

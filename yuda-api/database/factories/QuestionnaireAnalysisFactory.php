@@ -27,8 +27,9 @@ class QuestionnaireAnalysisFactory extends Factory
                 'q5' => 'D',
                 'q6' => ['A'],
                 'q7' => ['A'],
-                'q8' => 'A',
-                'q9' => ['A'],
+                'q8' => ['A'],
+                'q9' => 'A',
+                'q10' => ['A'],
             ],
             'analysis' => [
                 'layar_1_insight_waktu' => [

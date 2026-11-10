@@ -41,8 +41,9 @@ class YudaAiService
      *     q5: string,
      *     q6: array<int, string>,
      *     q7: array<int, string>,
-     *     q8: string,
-     *     q9: array<int, string>,
+     *     q8: array<int, string>,
+     *     q9: string,
+     *     q10: array<int, string>,
      *     conversation_id?: string|null
      * }|array<string, mixed>  $answers
      * @return array<string, mixed>
