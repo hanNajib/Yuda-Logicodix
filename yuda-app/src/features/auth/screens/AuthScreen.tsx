@@ -99,6 +99,12 @@ export default function AuthScreen() {
             if (nativeResult.isCancelled || !nativeResult.idToken) return;
 
             const authData = await loginWithGoogleNative(nativeResult.idToken);
+            console.log('================ SANCTUM AUTH TOKEN ================');
+            console.log('Token:', authData.token);
+            console.log('Bearer:', `Bearer ${authData.token}`);
+            console.log('User:', authData.user);
+            console.log('====================================================');
+
             await setAuthSession(authData.token, authData.user);
             if (authData.needs_profile_setup) {
                 router.replace('/onboarding/profile');

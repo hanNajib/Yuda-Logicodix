@@ -137,16 +137,8 @@ export default function QuizIntroScreen() {
         btnY.value = withSpring(0, { duration: 220, dampingRatio: 0.8 });
     };
 
-    const handleStartQuiz = async () => {
-        if (submitting.current) return;
-        submitting.current = true;
-
-        try {
-            await completeOnboarding();
-            router.replace('/');
-        } catch {
-            submitting.current = false;
-        }
+    const handleStartQuiz = () => {
+        router.push('/onboarding/quiz');
     };
 
     if (!fontsLoaded) return null;
