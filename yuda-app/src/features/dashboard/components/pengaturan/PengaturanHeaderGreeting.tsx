@@ -33,7 +33,7 @@ export function PengaturanHeaderGreeting({
                 paddingLeft: 14 * s,
                 paddingRight: 14 * s,
                 paddingTop: 16 * s,
-                paddingBottom: 15 * s,
+                paddingBottom: 14.5 * s,
                 shadowColor: '#000',
                 shadowOffset: {
                     width: 0,
