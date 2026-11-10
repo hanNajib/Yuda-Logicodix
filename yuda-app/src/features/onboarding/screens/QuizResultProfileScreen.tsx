@@ -170,9 +170,8 @@ export default function QuizResultProfileScreen() {
         opacity: tapOpacity.get(),
     }));
 
-    const handleFinish = async () => {
-        await completeOnboarding();
-        router.replace('/');
+    const handleFinish = () => {
+        router.push('/onboarding/commitment');
     };
 
     if (!fontsLoaded) return null;

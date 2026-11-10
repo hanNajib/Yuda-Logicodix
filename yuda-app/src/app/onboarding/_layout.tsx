@@ -14,6 +14,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="quiz-result-insight" />
       <Stack.Screen name="quiz-result-activities" />
       <Stack.Screen name="quiz-result-profile" />
+      <Stack.Screen name="commitment" />
     </Stack>
   );
 }
