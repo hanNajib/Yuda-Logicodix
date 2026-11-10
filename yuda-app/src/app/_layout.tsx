@@ -11,7 +11,6 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "../../global.css";
 
-
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {

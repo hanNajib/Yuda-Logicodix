@@ -18,9 +18,9 @@ export default function TabsLayout() {
     const activeTab: DashboardTab =
         pathname === '/pola'
             ? 'stats'
-            : pathname === '/tasks'
+            : pathname === '/aktivitas'
                 ? 'tasks'
-                : pathname === '/settings'
+                : pathname === '/pengaturan'
                     ? 'settings'
                     : 'home';
 
