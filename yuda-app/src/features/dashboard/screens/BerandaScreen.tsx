@@ -1,4 +1,4 @@
-
+import { useRouter } from 'expo-router';
 import {
     Outfit_500Medium,
     Outfit_600SemiBold,
@@ -36,6 +36,8 @@ const SHEET_BG = '#F6F3EC';
 const REF_W = 420;
 
 export default function HomeScreen() {
+    const router = useRouter();
+
     const insets = useSafeAreaInsets();
     const { width: W } = useWindowDimensions();
     const s = Math.min(W / REF_W, 1.15);
@@ -203,6 +205,7 @@ export default function HomeScreen() {
                         pausesCount={3}
                         topApp="Instagram"
                         topAppTime="43 Jam 15 Menit"
+                        onViewMore={() => router.push('/dashboard/detail-jam-aplikasi')}
                     />
 
                     <View style={{ height: 14 * s }} />
