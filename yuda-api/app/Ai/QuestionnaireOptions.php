@@ -4,10 +4,10 @@ namespace App\Ai;
 
 final class QuestionnaireOptions
 {
-    public const NO_OTHER_TIME_KEY = 'tidak_ada';
+    public const NO_OTHER_TIME_KEY = QuestionnaireDefinition::EXCLUSIVE_NO_OTHER_TIME;
 
     /**
-     * Q1: Jam paling sering scrolling konten negatif (single)
+     * Q1: Jam paling sering scrolling (single)
      */
     public const Q1_OPTIONS = [
         'A' => '05.00–08.59 (pagi, baru bangun/bersiap)',
@@ -70,21 +70,9 @@ final class QuestionnaireOptions
     ];
 
     /**
-     * Q7: Alasan utama lanjut mengikuti konten negatif (multi, maks 2)
+     * Q7: Hal terpenting dalam hidup saat ini / Nilai Inti (multi, maks 2)
      */
     public const Q7_OPTIONS = [
-        'A' => 'Ingin tahu kabar terbaru',
-        'B' => 'Merasa lebih siap/terkendali',
-        'C' => 'Takut ketinggalan (FOMO)',
-        'D' => 'Tertarik hal mengejutkan/dramatis',
-        'E' => 'Terseret algoritma/beranda',
-        'F' => 'Ikut diskusi di kolom komentar',
-    ];
-
-    /**
-     * Q8: Hal terpenting dalam hidup saat ini (multi, maks 2)
-     */
-    public const Q8_OPTIONS = [
         'A' => 'Keluarga/orang terdekat',
         'B' => 'Belajar/karier',
         'C' => 'Kesehatan fisik-mental',
@@ -95,9 +83,9 @@ final class QuestionnaireOptions
     ];
 
     /**
-     * Q9: Gaya pesan yang paling ampuh berhenti scrolling (single)
+     * Q8: Gaya pesan yang paling ampuh berhenti scrolling (single)
      */
-    public const Q9_OPTIONS = [
+    public const Q8_OPTIONS = [
         'A' => 'Lembut & menenangkan',
         'B' => 'Tegas & memotivasi',
         'C' => 'Ringan & humoris',
@@ -106,12 +94,12 @@ final class QuestionnaireOptions
     ];
 
     /**
-     * Q10: Pengganti saat dorongan scrolling muncul (multi, maks 2)
+     * Q9: Pengganti saat dorongan scrolling muncul (multi, maks 2)
      */
-    public const Q10_OPTIONS = [
+    public const Q9_OPTIONS = [
         'A' => 'Bergerak (jalan/peregangan/minum)',
         'B' => 'Mengobrol dgn seseorang',
-        'C' => 'Menenangkan diri (napas/doa/meditasi)',
+        'C' => 'Menangkan diri (napas/doa/meditasi)',
         'D' => 'Kerjakan hal kecil',
         'E' => 'Jauhkan HP',
         'F' => 'Dengarkan musik/podcast',
@@ -126,4 +114,6 @@ final class QuestionnaireOptions
     public const TRIGGER_CONTEXTS = self::Q3_OPTIONS;
 
     public const CHRONOTYPES = self::Q4_OPTIONS;
+
+    public const Q10_OPTIONS = self::Q9_OPTIONS;
 }

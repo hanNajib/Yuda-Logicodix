@@ -7,18 +7,7 @@ final class QuestionnaireFallbackGenerator
     /**
      * Hasilkan analisis 3 layar secara deterministik saat API AI sedang mengalami rate limit atau timeout.
      *
-     * @param  array{
-     *     q1: string,
-     *     q2?: array<int, string>|null,
-     *     q3: array<int, string>,
-     *     q4: string,
-     *     q5: string,
-     *     q6: array<int, string>,
-     *     q7: array<int, string>,
-     *     q8: array<int, string>,
-     *     q9: string,
-     *     q10: array<int, string>
-     * }  $answers
+     * @param  array<string, mixed>  $answers
      * @return array{
      *     layar_1_insight_waktu: array{headline: string, subteks: string},
      *     layar_2_alternatif_aktivitas: list<array{judul: string, deskripsi: string}>,
@@ -28,18 +17,18 @@ final class QuestionnaireFallbackGenerator
      */
     public static function generate(array $answers): array
     {
-        $q1 = $answers['q1'];
+        $q1 = (string) ($answers['q1'] ?? 'D');
         $q2 = array_filter(
-            $answers['q2'] ?? [],
-            static fn (string $k): bool => $k !== QuestionnaireOptions::NO_OTHER_TIME_KEY && isset(QuestionnaireOptions::Q1_OPTIONS[$k]),
+            (array) ($answers['q2'] ?? []),
+            static fn (mixed $k): bool => is_string($k) && $k !== QuestionnaireDefinition::EXCLUSIVE_NO_OTHER_TIME,
         );
-        $q3 = $answers['q3'];
-        $q4 = $answers['q4'];
-        $q5 = $answers['q5'];
-        $q6 = $answers['q6'];
-        $q7 = $answers['q7'];
-        $q8 = $answers['q8'];
-        $q10 = $answers['q10'];
+        $q3 = (array) ($answers['q3'] ?? []);
+        $q4 = (string) ($answers['q4'] ?? 'C');
+        $q5 = (string) ($answers['q5'] ?? 'C');
+        $q6 = (array) ($answers['q6'] ?? []);
+        $q7 = (array) ($answers['q7'] ?? []);
+        $q8 = (string) ($answers['q8'] ?? 'A');
+        $q9 = (array) ($answers['q9'] ?? []);
 
         // 1. Layar 1: Insight Waktu
         $hasExtraTime = count($q2) > 0;
@@ -60,93 +49,107 @@ final class QuestionnaireFallbackGenerator
             'deskripsi' => 'Dengan kecepatan baca sekitar 50–100 halaman per jam, kamu bisa menyelesaikan 2–3 buku berkualitas dalam sebulan.',
         ];
 
+        // Kartu 2 menyesuaikan Nilai Inti (Q7)
         $kartu2 = match (true) {
-            in_array('B', $q8, true) => [
-                'judul' => 'Eksplorasi Skill & Karier',
-                'deskripsi' => 'Waktu tersebut cukup untuk mempelajari keahlian profesional baru, belajar bahasa asing, atau membaca materi industri.',
+            in_array('A', $q7, true) => [
+                'judul' => 'Quality Time Keluarga',
+                'deskripsi' => 'Waktu ini bisa dipakai untuk mengobrol hangat atau makan bersama orang terdekat tanpa distraksi layar.',
             ],
-            in_array('C', $q8, true) => [
-                'judul' => 'Waktu Berkualitas Bersama Orang Terdekat',
-                'deskripsi' => 'Kamu bisa bercengkerama santai bersama orang-orang tercinta tanpa terganggu oleh distraksi layar ponsel.',
+            in_array('B', $q7, true) => [
+                'judul' => 'Upgrade Keterampilan Baru',
+                'deskripsi' => 'Dalam sebulan, kamu bisa menguasai 1 modul kursus online atau skill baru yang relevan dengan masa depanmu.',
             ],
-            in_array('D', $q8, true) => [
-                'judul' => 'Eksplorasi Hobi Kreatif',
-                'deskripsi' => 'Cukup waktu untuk mencoba memainkan alat musik, fotografi, menulis cerita, atau mencoba resep memasak baru.',
+            in_array('C', $q7, true) => [
+                'judul' => 'Istirahat & Pemulihan Diri',
+                'deskripsi' => 'Menambah jam tidur berkualitas terbukti memulihkan fokus mental dan imunitas fisik tubuhmu secara optimal.',
+            ],
+            in_array('D', $q7, true) => [
+                'judul' => 'Refleksi & Ibadah Tenang',
+                'deskripsi' => 'Menghadirkan ketenangan batin lewat doa, tadarus, atau perenungan tanpa kebisingan notifikasi.',
+            ],
+            in_array('E', $q7, true) => [
+                'judul' => 'Menyalurkan Kreativitas',
+                'deskripsi' => 'Kamu bisa membuat karya tulisan, sketsa, memainkan instrumen musik, atau hobi yang selama ini tertunda.',
+            ],
+            in_array('F', $q7, true) => [
+                'judul' => 'Perencanaan Finansial',
+                'deskripsi' => 'Waktu luang bisa dipakai mencatat arus kas bulanan atau mempelajari strategi investasi yang bijak.',
             ],
             default => [
-                'judul' => 'Pemulihan Energi & Relaksasi',
-                'deskripsi' => 'Waktu ekstra ini sangat ideal untuk memulihkan kebugaran tubuh dan meredakan kepenatan pikiranmu secara utuh.',
+                'judul' => 'Bercengkerama dengan Sahabat',
+                'deskripsi' => 'Terhubung langsung dengan sahabat atau komunitas untuk saling bertukar cerita positif.',
             ],
         };
 
+        // Kartu 3 menyesuaikan Respons Pengganti (Q9)
         $kartu3 = match (true) {
-            in_array('C', $q10, true) => [
-                'judul' => 'Aktivitas Fisik & Jalan Santai',
-                'deskripsi' => 'Dengan kecepatan berjalan santai 3–5 km/jam, secara matematis kamu bisa menempuh 15–20 Km dan menyegarkan peredaran darah.',
+            in_array('A', $q9, true) => [
+                'judul' => 'Jalan Santai & Peregangan',
+                'deskripsi' => 'Jalan kaki ringan 30 menit membakar kalori, merilekskan otot kaku, dan menyegarkan sirkulasi darah.',
             ],
-            in_array('A', $q10, true) => [
-                'judul' => 'Latihan Napas & Mindful Pause',
-                'deskripsi' => 'Latihan pernapasan ritmis selama beberapa menit terbukti menurunkan detak jantung serta meredakan hormon stres secara instan.',
+            in_array('B', $q9, true) => [
+                'judul' => 'Ngobrol Santai',
+                'deskripsi' => 'Menelepon atau mengobrol sejenak dengan teman untuk mengalihkan pikiran dari dorongan scrolling.',
             ],
-            in_array('D', $q10, true) => [
-                'judul' => 'Jurnal Refleksi Pikiran',
-                'deskripsi' => 'Menuliskan pikiran di secarik kertas membantu menjernihkan fokus dan melepaskan beban emosi tanpa stimulasi cahaya layar.',
+            in_array('C', $q9, true) => [
+                'judul' => 'Latihan Pernapasan',
+                'deskripsi' => 'Latihan pernapasan 4-7-8 selama 5 menit langsung menurunkan hormon stres dan menenangkan denyut nadi.',
+            ],
+            in_array('D', $q9, true) => [
+                'judul' => 'Merapikan Meja atau Kamar',
+                'deskripsi' => 'Melakukan pekerjaan fisik kecil memberikan kepuasan instan dan membuat lingkungan sekitarmu nyaman.',
+            ],
+            in_array('F', $q9, true) => [
+                'judul' => 'Mendengarkan Musik Relaksasi',
+                'deskripsi' => 'Mendengarkan lagu akustik atau podcast inspiratif membantu transisi santai menuju waktu istirahat.',
             ],
             default => [
-                'judul' => 'Peregangan Tubuh Ringan',
-                'deskripsi' => 'Gerakan peregangan otot leher dan pundak melepaskan ketegangan setelah berjam-jam menatap layar gawai.',
+                'judul' => 'Simpan HP di Meja',
+                'deskripsi' => 'Menaruh HP di luar jangkauan tangan memberi jeda alami bagi otak untuk kembali rileks.',
             ],
         };
 
-        // 3. Layar 3: Tipe Doomscrolling
+        // 3. Layar 3: Tipe Doomscrolling & Afirmasi
         $isNightOwlValid = in_array($q4, ['D', 'E'], true);
+
         $namaTipe = match ($q1) {
             'D' => $isNightOwlValid ? 'Night Owl' : 'Night Scroller',
             'E' => 'Midnight Wanderer',
             'A' => 'Early Bird Scroller',
             'B' => 'Office-Hour Scroller',
             'C' => 'Commuter Scroller',
-            default => 'Mindful Scroller',
+            default => 'Night Scroller',
         };
 
+        $isBedtimeProcrastinating = in_array($q5, ['D', 'E'], true);
         $subtipeNote = match (true) {
-            in_array($q5, ['D', 'E'], true) => 'Sering menunda waktu tidur (bedtime procrastination)',
-            in_array('A', $q3, true) => 'Scrolling setelah berbaring di tempat tidur',
-            in_array('B', $q3, true) => 'Scrolling sebelum beranjak dari tempat tidur',
-            in_array('D', $q3, true) => 'Scrolling sebagai pelarian saat menunda pekerjaan',
-            default => 'Kecenderungan scrolling saat waktu senggang',
+            $isBedtimeProcrastinating => 'Sering menunda waktu tidur (bedtime procrastination).',
+            in_array('B', $q3, true) => 'Kecenderungan scrolling sebelum beranjak dari tempat tidur.',
+            in_array('A', $q3, true) => 'Kecenderungan scrolling saat berbaring sebelum tidur.',
+            in_array('D', $q3, true) => 'Kecenderungan scrolling sebagai pelarian dari tugas.',
+            default => 'Kecenderungan scrolling sebagai pengisi waktu jeda aktivitas.',
         };
 
-        $emosi = in_array('A', $q6, true) ? 'lelah' : (in_array('B', $q6, true) ? 'bosan' : 'cemas');
-        $deskripsiKecenderungan = "Kamu cenderung membuka media sosial saat merasa {$emosi} untuk mencari stimulus instan dan hiburan cepat.";
+        $namaEmosi = in_array('B', $q6, true) ? 'lelah' : (in_array('A', $q6, true) ? 'bosan' : 'penat');
+        $namaNilai = in_array('A', $q7, true) ? 'keluarga' : (in_array('C', $q7, true) ? 'kesehatanmu' : 'masa depanmu');
 
-        $jamWaktu = match ($q1) {
-            'A' => '06.00',
-            'B' => '09.30',
-            'C' => '16.00',
-            'D' => '21.00',
-            'E' => '00.30',
-            default => '20.00',
+        $deskripsiKecenderungan = "Saat merasa {$namaEmosi}, scrolling sering jadi pelarian instan. Mengingat kembali pentingnya {$namaNilai} akan membantumu kembali memegang kendali waktu.";
+
+        $afirmasiJeda = match ($q1) {
+            'D' => 'Saat jam 21.00 tangan mulai meraih HP di tempat tidur, letakkan HP di meja dan tarik napas panjang tiga kali.',
+            'E' => 'Saat tengah malam dorongan scrolling muncul, minum segelas air putih dan pejamkan mata untuk istirahat.',
+            'A' => 'Ketika baru bangun pagi dan ingin scrolling, langsung duduk tegak dan regangkan tubuh sebelum menyentuh HP.',
+            'B' => 'Saat jam kerja ingin scrolling tanpa tujuan, selesaikan 1 tugas kecil selama 5 menit terlebih dahulu.',
+            default => 'Saat jeda perjalanan atau pulang, letakkan HP di dalam tas dan nikmati pemandangan sejenak.',
         };
 
         $waktuTayang = match ($q1) {
-            'A' => '05.30',
-            'B' => '09.00',
-            'C' => '15.30',
             'D' => '20.45',
-            'E' => '23.45',
-            default => '19.45',
+            'E' => '23.30',
+            'A' => '05.30',
+            'B' => '09.15',
+            default => '15.30',
         };
-
-        $aksiPengganti = match (true) {
-            in_array('A', $q10, true) => 'tarik napas dalam tiga kali dan rasakan ketenangan',
-            in_array('B', $q10, true) => 'minum segelas air putih hangat dan letakkan ponsel di meja',
-            in_array('C', $q10, true) => 'beranjak sejenak untuk jalan santai atau peregangan tubuh',
-            in_array('D', $q10, true) => 'tulis satu hal yang kamu syukuri hari ini di buku catatan',
-            default => 'letakkan ponsel menghadap ke bawah dan istirahatkan matamu sejenak',
-        };
-
-        $afirmasiJeda = "Ketika jam {$jamWaktu} tangan mulai meraih ponsel, {$aksiPengganti}.";
 
         return [
             'layar_1_insight_waktu' => [
@@ -165,7 +168,7 @@ final class QuestionnaireFallbackGenerator
                 'afirmasi_jeda' => $afirmasiJeda,
                 'waktu_tayang' => $waktuTayang,
             ],
-            'jawaban' => 'Halo! YUDA sudah menganalisis pola kuesionermu dan menyusun rekomendasi jeda terbaik untukmu.',
+            'jawaban' => 'Halo! Analisis kebiasaan scrolling kamu sudah siap. Mari pelajari polanya bersama YUDA.',
         ];
     }
 }

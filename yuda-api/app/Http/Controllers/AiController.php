@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Ai\QuestionnaireDefinition;
 use App\Http\Requests\Ai\AnalyzeQuestionnaireRequest;
 use App\Http\Requests\Ai\SendAiMessageRequest;
 use App\Models\User;
@@ -35,30 +36,49 @@ class AiController extends Controller
         ));
     }
 
+    public function questionnaire(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'success',
+            'data' => QuestionnaireDefinition::getSchemaForFrontend(),
+        ]);
+    }
+
     public function analyze(AnalyzeQuestionnaireRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
 
-        /** @var array{
-         *     q1: string,
-         *     q2?: array<int, string>|null,
-         *     q3: array<int, string>,
-         *     q4: string,
-         *     q5: string,
-         *     q6: array<int, string>,
-         *     q7: array<int, string>,
-         *     q8: array<int, string>,
-         *     q9: string,
-         *     q10: array<int, string>,
-         *     conversation_id?: string|null
-         * } $answers
-         */
+        /** @var array<string, mixed> $answers */
         $answers = $request->validated();
 
         return $this->respond(fn (): array => $this->yudaAi->analyzeQuestionnaire(
             $user,
             $answers,
         ));
+    }
+
+    public function feedback(Request $request): JsonResponse
+    {
+        $this->authenticatedUser($request);
+
+        $validated = $request->validate([
+            'pattern_hash' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'conversation_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'is_suitable' => ['required', 'boolean'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:500'],
+        ]);
+
+        \Illuminate\Support\Facades\Log::info('ai.questionnaire.feedback', [
+            'user_id' => $request->user()?->id,
+            'is_suitable' => $validated['is_suitable'],
+            'pattern_hash' => $validated['pattern_hash'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Feedback berhasil disimpan.',
+        ]);
     }
 
     private function authenticatedUser(Request $request): User
