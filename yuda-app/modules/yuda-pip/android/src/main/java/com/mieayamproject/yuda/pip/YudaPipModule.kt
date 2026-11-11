@@ -27,35 +27,48 @@ import java.io.ByteArrayOutputStream
 
 class YudaPipModule : Module() {
 
+    companion object {
+        const val PREFS_NAME = "yuda_overlay_prefs"
+        const val KEY_TARGET_PACKAGES = "target_packages"
+        val DEFAULT_TARGET_PACKAGES = setOf(
+            "com.instagram.android",
+            "com.zhiliaoapp.musically",
+            "com.ss.android.ugc.trill",
+            "com.facebook.katana",
+            "com.facebook.lite",
+            "com.google.android.youtube"
+        )
+
+        fun getTargetPackages(context: Context): Set<String> {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val saved = prefs.getStringSet(KEY_TARGET_PACKAGES, null)
+            return if (saved.isNullOrEmpty()) DEFAULT_TARGET_PACKAGES else saved
+        }
+
+        fun setTargetPackages(context: Context, packages: List<String>) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putStringSet(KEY_TARGET_PACKAGES, packages.toSet()).apply()
+        }
+    }
+
     private val TAG = "YudaPipModule"
     private val ICON_SIZE = 96
 
     private val handler = Handler(Looper.getMainLooper())
     private var watcher: Runnable? = null
 
-    // Cache icon (packageName -> data URI) supaya tidak render ulang tiap dipanggil
     private val iconCache = LruCache<String, String>(300)
 
-    // Xiaomi / Redmi / POCO (cukup dihitung sekali)
     private val isXiaomi: Boolean by lazy {
         val m = Build.MANUFACTURER.lowercase()
         val b = Build.BRAND.lowercase()
         listOf("xiaomi", "redmi", "poco").any { m.contains(it) || b.contains(it) }
     }
 
-    // =========================================================
-    // CONTEXT
-    // =========================================================
-
     private fun ctx(): Context? = appContext.reactContext ?: appContext.currentActivity
-
-    // =========================================================
-    // ICON
-    // =========================================================
 
     private fun drawableToBase64(drawable: android.graphics.drawable.Drawable): String? {
         return try {
-            // Gambar langsung ke bitmap kecil (tidak membuat bitmap besar dulu)
             val bitmap = Bitmap.createBitmap(ICON_SIZE, ICON_SIZE, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             drawable.setBounds(0, 0, ICON_SIZE, ICON_SIZE)
@@ -80,10 +93,6 @@ class YudaPipModule : Module() {
         if (encoded != null) iconCache.put(pkg, encoded)
         return encoded
     }
-
-    // =========================================================
-    // BACKGROUND / BATTERY CHECK
-    // =========================================================
 
     private fun isIgnoringBatteryOpt(): Boolean {
         val c = ctx() ?: return false
@@ -127,11 +136,6 @@ class YudaPipModule : Module() {
         }
     }
 
-    /**
-     * Xiaomi: cukup cek background activity (opsi "No restrictions" di PowerKeeper
-     * tidak selalu masuk whitelist battery-optimization AOSP).
-     * Lainnya: harus masuk whitelist battery-optimization DAN tidak dibatasi background.
-     */
     private fun isBatteryGranted(): Boolean =
         if (isXiaomi) isBackgroundAllowed() else isIgnoringBatteryOpt() && isBackgroundAllowed()
 
@@ -145,23 +149,11 @@ class YudaPipModule : Module() {
         }
     }
 
-    // =========================================================
-    // WATCHER
-    // =========================================================
-
     private fun stopWatching() {
         watcher?.let { handler.removeCallbacks(it) }
         watcher = null
     }
 
-    /**
-     * Mengembalikan app ke layar penuh (keluar dari PiP).
-     *
-     * Tiap strategi dibungkus try sendiri: sebelumnya moveTaskToFront ada di try yang sama
-     * dengan startActivity, jadi kalau moveTaskToFront melempar SecurityException
-     * (izin REORDER_TASKS belum ada di manifest), startActivity tidak pernah dijalankan.
-     * Kalau setelah dicoba app masih PiP, diulang beberapa kali.
-     */
     private fun returnToFront(attempt: Int = 0) {
         val activity = appContext.currentActivity
         if (activity == null) {
@@ -170,7 +162,6 @@ class YudaPipModule : Module() {
         }
 
         handler.post {
-            // 1) AppTask.moveToFront: tidak butuh izin REORDER_TASKS
             try {
                 val am = activity.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
                 am?.appTasks?.firstOrNull()?.moveToFront()
@@ -178,7 +169,6 @@ class YudaPipModule : Module() {
                 Log.w(TAG, "appTask.moveToFront gagal: ${e.message}")
             }
 
-            // 2) moveTaskToFront: butuh REORDER_TASKS di manifest
             try {
                 val am = activity.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
                 am?.moveTaskToFront(activity.taskId, ActivityManager.MOVE_TASK_NO_USER_ACTION)
@@ -186,7 +176,6 @@ class YudaPipModule : Module() {
                 Log.w(TAG, "moveTaskToFront gagal: ${e.message}")
             }
 
-            // 3) startActivity ke activity yang sama -> ini yang memperbesar PiP jadi layar penuh
             try {
                 val i = Intent(activity, activity.javaClass).apply {
                     addFlags(
@@ -200,7 +189,6 @@ class YudaPipModule : Module() {
                 Log.w(TAG, "startActivity(activity) gagal: ${e.message}")
             }
 
-            // 4) Cadangan: launch intent app (NEW_TASK dari application context)
             try {
                 activity.packageManager.getLaunchIntentForPackage(activity.packageName)?.let {
                     it.addFlags(
@@ -215,7 +203,6 @@ class YudaPipModule : Module() {
             }
         }
 
-        // Kalau masih PiP, ulangi (maks 3x) -- transisi dari halaman pengaturan kadang butuh waktu
         if (attempt < 3) {
             handler.postDelayed({
                 val a = appContext.currentActivity
@@ -256,13 +243,6 @@ class YudaPipModule : Module() {
         handler.postDelayed(r, 500)
     }
 
-    /**
-     * Membuka halaman/dialog izin.
-     *
-     * usePip = true  -> masuk mode PiP dulu (floating panduan), lalu buka halaman pengaturan.
-     * usePip = false -> langsung buka dialog sistem tanpa PiP (cukup untuk izin yang
-     *                   hanya butuh dialog "Izinkan/Tolak").
-     */
     private fun launchSettingWithPip(
         type: String,
         intents: List<Intent>,
@@ -276,8 +256,6 @@ class YudaPipModule : Module() {
                 for (intent in intents) {
                     try {
                         if (usePip) {
-                            // Lewat application context + NEW_TASK: halaman pengaturan jadi task baru
-                            // layar penuh, tidak ikut task/windowing mode Yuda yang sedang jadi PiP
                             intent.addFlags(
                                 Intent.FLAG_ACTIVITY_NEW_TASK or
                                     Intent.FLAG_ACTIVITY_NO_HISTORY or
@@ -285,7 +263,6 @@ class YudaPipModule : Module() {
                             )
                             app.startActivity(intent)
                         } else {
-                            // Mode dialog: tanpa NEW_TASK supaya dialog tampil di atas app
                             activity.startActivity(intent)
                         }
                         return
@@ -319,8 +296,6 @@ class YudaPipModule : Module() {
             }
 
             if (pipRequested) {
-                // Tunggu Yuda benar-benar sudah masuk PiP (maks 1,5 dtk) baru buka pengaturan,
-                // supaya tidak balapan dengan transisi PiP.
                 val startAt = SystemClock.elapsedRealtime()
                 val poll = object : Runnable {
                     override fun run() {
@@ -346,10 +321,6 @@ class YudaPipModule : Module() {
     private fun appDetailsIntent(pkg: String) =
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg"))
 
-    // =========================================================
-    // MODULE
-    // =========================================================
-
     override fun definition() = ModuleDefinition {
 
         Name("YudaPip")
@@ -362,8 +333,6 @@ class YudaPipModule : Module() {
         }
 
         Function("stopWatching") { stopWatching() }
-
-        // ── PiP ──
 
         Function("isPipSupported") {
             val activity = appContext.currentActivity ?: return@Function false
@@ -399,11 +368,8 @@ class YudaPipModule : Module() {
             true
         }
 
-        // ── STATUS IZIN ──
-
         Function("canDrawOverlays") { isGranted("overlay") }
 
-        // Nama dipertahankan untuk kompatibilitas JS
         Function("isIgnoringBatteryOptimizations") { isGranted("battery") }
 
         Function("isBackgroundActivityAllowed") { isBackgroundAllowed() }
@@ -426,7 +392,6 @@ class YudaPipModule : Module() {
             }
         }
 
-        // Overlay: selalu butuh halaman pengaturan -> pakai PiP
         Function("requestOverlayWithPip") {
             val activity = appContext.currentActivity ?: return@Function false
             val pkg = activity.packageName
@@ -449,7 +414,6 @@ class YudaPipModule : Module() {
             true
         }
 
-        // Baterai: PiP hanya kalau memang harus ke halaman pengaturan
         Function("requestBatteryWithPip") {
             val activity = appContext.currentActivity ?: return@Function false
             val pkg = activity.packageName
@@ -470,7 +434,6 @@ class YudaPipModule : Module() {
                     add(Intent("miui.intent.action.OP_AUTO_START").addCategory(Intent.CATEGORY_DEFAULT))
                     add(appDetailsIntent(pkg))
                 } else {
-                    // Belum masuk whitelist -> dialog langsung; sudah masuk -> cek pembatasan di detail app
                     if (!isIgnoringBatteryOpt()) {
                         add(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$pkg")))
                         add(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
@@ -479,14 +442,11 @@ class YudaPipModule : Module() {
                 }
             }
 
-            // Dialog sistem cukup untuk non-Xiaomi yang belum whitelist -> tanpa PiP.
-            // Selain itu (Xiaomi / perlu cek pembatasan di detail app) -> pakai PiP.
             val needsSettingsPage = isXiaomi || isIgnoringBatteryOpt()
             launchSettingWithPip("battery", intents, usePip = needsSettingsPage)
             true
         }
 
-        // Notifikasi: hanya dipanggil sebagai fallback (sudah "jangan tanya lagi" / Android < 13)
         Function("requestNotificationWithPip") {
             val activity = appContext.currentActivity ?: return@Function false
             val pkg = activity.packageName
@@ -501,10 +461,6 @@ class YudaPipModule : Module() {
             launchSettingWithPip("notification", intents, usePip = true)
             true
         }
-
-        // ── APLIKASI TERINSTALL ──
-        // AsyncFunction: jalan di background thread, tidak memblokir JS thread.
-        // includeIcons default true (kompatibel dengan versi lama); icon di-cache.
 
         AsyncFunction("getInstalledApps") { includeIcons: Boolean? ->
             val context = ctx() ?: return@AsyncFunction emptyList<Map<String, String>>()
@@ -565,6 +521,89 @@ class YudaPipModule : Module() {
             } catch (_: Exception) {
                 false
             }
+        }
+
+        Function("setTargetPackages") { packages: List<String> ->
+            val context = ctx() ?: return@Function false
+            setTargetPackages(context, packages)
+            true
+        }
+
+        Function("getTargetPackages") {
+            val context = ctx() ?: return@Function DEFAULT_TARGET_PACKAGES.toList()
+            getTargetPackages(context).toList()
+        }
+
+        Function("startOverlayMonitor") { userName: String?, targetPackages: List<String>?, testMode: Boolean?, intervalSeconds: Int? ->
+            val context = ctx() ?: return@Function false
+
+            if (!isGranted("overlay")) {
+                Log.w(TAG, "startOverlayMonitor dibatalkan: izin overlay belum diberikan")
+                return@Function false
+            }
+
+            if (!targetPackages.isNullOrEmpty()) {
+                setTargetPackages(context, targetPackages)
+            }
+
+            try {
+                val intent = Intent(context, YudaOverlayService::class.java).apply {
+                    action = YudaOverlayService.ACTION_START
+                    putExtra(YudaOverlayService.EXTRA_USER_NAME, userName ?: "Gathan")
+                    putExtra(YudaOverlayService.EXTRA_TEST_MODE, testMode ?: true)
+                    putExtra(YudaOverlayService.EXTRA_INTERVAL_SECONDS, intervalSeconds ?: 30)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                true
+            } catch (e: Throwable) {
+                Log.e(TAG, "Gagal startOverlayMonitor: ${e.message}")
+                false
+            }
+        }
+
+        Function("stopOverlayMonitor") {
+            val context = ctx() ?: return@Function false
+            try {
+                val intent = Intent(context, YudaOverlayService::class.java).apply {
+                    action = YudaOverlayService.ACTION_STOP
+                }
+                context.startService(intent)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        Function("isOverlayMonitorRunning") {
+            YudaOverlayService.isRunning
+        }
+
+        Function("isAccessibilityServiceEnabled") {
+            YudaAccessibilityService.isServiceConnected
+        }
+
+        Function("openAccessibilitySettings") {
+            val context = ctx() ?: return@Function false
+            try {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        Function("getTotalReelsDurationSeconds") {
+            val context = ctx() ?: return@Function 0L
+            val prefs = context.getSharedPreferences("yuda_overlay_prefs", Context.MODE_PRIVATE)
+            val ms = prefs.getLong("total_reels_duration_ms", 0L)
+            ms / 1000L
         }
     }
 }

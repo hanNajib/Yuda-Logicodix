@@ -7,7 +7,7 @@ import {
     useFonts,
 } from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
     NativeScrollEvent,
     NativeSyntheticEvent,
@@ -30,6 +30,9 @@ import { MoodSelectCard } from '../components/beranda/MoodSelectCard';
 import { ScreenTimeCard } from '../components/beranda/ScreenTimeCard';
 import { TipsCard } from '../components/beranda/TipsCard';
 import { ToDoListCard } from '../components/beranda/ToDoListCard';
+import { OverlayQuickControlCard } from '../components/beranda/OverlayQuickControlCard';
+import { YudaScrollAlertSimulator } from '@/features/overlay/components/YudaScrollAlertSimulator';
+import YudaPip from '@/modules/yuda-pip';
 
 const SAGE_BG = '#bccdc0';
 const SHEET_BG = '#F6F3EC';
@@ -44,6 +47,7 @@ export default function HomeScreen() {
     const displayName = userName || user?.name || 'Gathan';
 
     const [activeTab, setActiveTab] = useState<DashboardTab>('home');
+    const [simulatorVisible, setSimulatorVisible] = useState(true);
 
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
@@ -164,7 +168,7 @@ export default function HomeScreen() {
                 ref={scrollRef}
                 className="z-[2] flex-1 bg-transparent"
                 onScroll={scrollHandler}
-                onScrollToTop={() => {}}
+                onScrollToTop={() => { }}
                 onNativeScroll={handleScroll}
                 scrollEventThrottle={16}
                 decelerationRate="fast"
@@ -192,6 +196,10 @@ export default function HomeScreen() {
                     ]}
                 >
                     <MoodSelectCard userName={displayName} scale={s} />
+
+                    <View style={{ height: 14 * s }} />
+
+                    <OverlayQuickControlCard scale={s} userName={displayName} />
 
                     <View style={{ height: 14 * s }} />
 
@@ -223,6 +231,15 @@ export default function HomeScreen() {
                     scale={s}
                 />
             </View>
+
+            <YudaScrollAlertSimulator
+                visible={simulatorVisible}
+                userName={displayName}
+                durationMinutes={15}
+                initialSeconds={30}
+                showTimerDisplay={true}
+                onDismiss={() => { }}
+            />
         </View>
     );
 }

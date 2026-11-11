@@ -1,11 +1,21 @@
 import { AuthUser, signOutNativeGoogle } from '@/features/auth/services/authService';
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import YudaPip from '@/modules/yuda-pip';
 
 const TOKEN_KEY = 'user_token';
 const USER_KEY = 'user_data';
 const ONBOARDING_KEY = 'onboarding_completed';
 const USER_NAME_KEY = 'user_name';
+const TARGET_PACKAGES_KEY = 'selected_target_packages';
+
+export const DEFAULT_TARGET_PACKAGES = [
+    'com.instagram.android',
+    'com.zhiliaoapp.musically',
+    'com.ss.android.ugc.trill',
+    'com.facebook.katana',
+    'com.google.android.youtube',
+];
 
 interface AuthState {
     isHydrated: boolean;
@@ -13,6 +23,7 @@ interface AuthState {
     userToken: string | null;
     user: AuthUser | null;
     userName: string | null;
+    selectedTargetPackages: string[];
 
     hydrateAuth: () => Promise<void>;
     setAuthSession: (token: string, user: AuthUser) => Promise<void>;
@@ -22,6 +33,7 @@ interface AuthState {
     setCompletedOnboarding: (status: boolean) => void;
     setUserToken: (token: string | null) => void;
     setUserName: (name: string | null) => Promise<void>;
+    setSelectedTargetPackages: (packages: string[]) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -30,14 +42,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     userToken: null,
     user: null,
     userName: null,
+    selectedTargetPackages: DEFAULT_TARGET_PACKAGES,
 
     hydrateAuth: async () => {
         try {
-            const [token, userJson, onboarding, savedName] = await Promise.all([
+            const [token, userJson, onboarding, savedName, savedPackagesJson] = await Promise.all([
                 SecureStore.getItemAsync(TOKEN_KEY),
                 SecureStore.getItemAsync(USER_KEY),
                 SecureStore.getItemAsync(ONBOARDING_KEY),
                 SecureStore.getItemAsync(USER_NAME_KEY),
+                SecureStore.getItemAsync(TARGET_PACKAGES_KEY),
             ]);
 
             let parsedUser: AuthUser | null = null;
@@ -49,10 +63,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 }
             }
 
+            let packages: string[] = DEFAULT_TARGET_PACKAGES;
+            if (savedPackagesJson) {
+                try {
+                    const parsed = JSON.parse(savedPackagesJson);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        packages = parsed;
+                    }
+                } catch {
+                    packages = DEFAULT_TARGET_PACKAGES;
+                }
+            }
+
+            YudaPip.setTargetPackages(packages);
+
             set({
                 userToken: token || null,
                 user: parsedUser,
                 userName: savedName || parsedUser?.name || null,
+                selectedTargetPackages: packages,
                 hasCompletedOnboarding: onboarding === 'true',
                 isHydrated: true,
             });
@@ -136,5 +165,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } else {
             set({ userName: name });
         }
+    },
+
+    setSelectedTargetPackages: async (packages: string[]) => {
+        try {
+            await SecureStore.setItemAsync(TARGET_PACKAGES_KEY, JSON.stringify(packages));
+            YudaPip.setTargetPackages(packages);
+        } catch (e) {
+            console.warn("Gagal menyimpan target packages:", e);
+        }
+        set({ selectedTargetPackages: packages });
     },
 }));
