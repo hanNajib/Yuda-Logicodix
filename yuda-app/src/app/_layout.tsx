@@ -81,6 +81,9 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="auth" />
         <Stack.Screen name="auth/callback" />
+        <Stack.Screen name="dashboard/detail-jam-aplikasi" />
+        <Stack.Screen name="dashboard/detail-waktu-scroll" />
+        <Stack.Screen name="dashboard/edit-profile" />
       </Stack>
     </>
   );

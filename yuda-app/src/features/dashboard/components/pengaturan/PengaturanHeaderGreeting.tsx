@@ -1,5 +1,6 @@
+
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useRef } from 'react';
 import {
     Image,
     Text,
@@ -7,12 +8,20 @@ import {
     View,
 } from 'react-native';
 
+interface EditButtonLayout {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 interface PengaturanHeaderGreetingProps {
     userName?: string;
     userEmail?: string;
     avatarUrl?: string | null;
     scale?: number;
-    onEditProfile?: () => void;
+    onEditProfile: () => void;
+    onEditProfileLayout?: (layout: EditButtonLayout) => void;
 }
 
 export function PengaturanHeaderGreeting({
@@ -21,9 +30,27 @@ export function PengaturanHeaderGreeting({
     avatarUrl,
     scale = 1,
     onEditProfile,
+    onEditProfileLayout,
 }: PengaturanHeaderGreetingProps) {
     const s = scale;
     const avatarSize = 98 * s;
+
+    const editButtonRef = useRef<TouchableOpacity>(null);
+
+    const handleEditButtonLayout = () => {
+        requestAnimationFrame(() => {
+            editButtonRef.current?.measureInWindow(
+                (x, y, width, height) => {
+                    onEditProfileLayout?.({
+                        x,
+                        y,
+                        width,
+                        height,
+                    });
+                }
+            );
+        });
+    };
 
     return (
         <View
@@ -122,12 +149,15 @@ export function PengaturanHeaderGreeting({
                 </View>
 
                 <TouchableOpacity
+                    ref={editButtonRef}
                     className="flex-row items-center"
                     style={{
                         marginTop: 8 * s,
                         marginLeft: 4 * s,
                     }}
+                    onLayout={handleEditButtonLayout}
                     onPress={onEditProfile}
+                    pointerEvents="none"
                     activeOpacity={0.7}
                 >
                     <Text

@@ -294,7 +294,7 @@ export function PengaturanDasarCard({
                 </View>
 
                 <View
-                    className="mt-3 bg-[#e6ede6]"
+                    className="mt-3 bg-[#E6EDE6]/65"
                     style={{
                         borderRadius: 16 * s,
                         padding: 14 * s,
@@ -402,7 +402,7 @@ export function PengaturanDasarCard({
                     {apps.map((item, index) => (
                         <View
                             key={item.id}
-                            className="flex-row items-center bg-[#e6ede6]"
+                            className="flex-row items-center bg-[#E6EDE6]/65"
                             style={{
                                 borderRadius: 15 * s,
                                 paddingVertical: 10 * s,

@@ -1,3 +1,6 @@
+
+import { useRouter } from 'expo-router';
+
 import {
     Outfit_500Medium,
     Outfit_600SemiBold,
@@ -42,9 +45,23 @@ interface PengaturanScreenProps {
     onTabChange?: (tab: DashboardTab) => void;
 }
 
+interface EditButtonLayout {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+interface ScreenOrigin {
+    x: number;
+    y: number;
+}
+
 export default function PengaturanScreen({
     onTabChange,
 }: PengaturanScreenProps) {
+    const router = useRouter();
+
     const insets = useSafeAreaInsets();
     const { width: W } = useWindowDimensions();
     const s = Math.min(W / REF_W, 1.15);
@@ -59,12 +76,20 @@ export default function PengaturanScreen({
     const [intervalMinutes, setIntervalMinutes] = useState(15);
     const [isIntervalModalOpen, setIsIntervalModalOpen] = useState(false);
 
+    const [editButtonLayout, setEditButtonLayout] =
+        useState<EditButtonLayout | null>(null);
+
+    const [rootOrigin, setRootOrigin] =
+        useState<ScreenOrigin | null>(null);
+
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
         Outfit_600SemiBold,
         Outfit_700Bold,
         Outfit_800ExtraBold,
     });
+
+    const rootViewRef = useRef<View>(null);
 
     const scrollRef = useRef<Animated.ScrollView>(null);
 
@@ -75,6 +100,12 @@ export default function PengaturanScreen({
     const headerFixedSpacer = 165 * s;
     const snapDistance =
         topGreetingPadding + headerFixedSpacer - insets.top;
+
+    const handleRootLayout = () => {
+        rootViewRef.current?.measureInWindow((x, y) => {
+            setRootOrigin({ x, y });
+        });
+    };
 
     const snapTo = (targetY: number) => {
         scrollRef.current?.scrollTo({
@@ -184,7 +215,11 @@ export default function PengaturanScreen({
     if (!fontsLoaded) return null;
 
     return (
-        <View className="flex-1 bg-[#F6F3EC]">
+        <View
+            ref={rootViewRef}
+            className="flex-1 bg-[#F6F3EC]"
+            onLayout={handleRootLayout}
+        >
             <StatusBar style="dark" />
 
             <View
@@ -204,11 +239,9 @@ export default function PengaturanScreen({
                     avatarUrl={user?.avatar}
                     scale={s}
                     onEditProfile={() =>
-                        Alert.alert(
-                            'Edit Profil',
-                            'Halaman edit profil'
-                        )
+                        router.push('/dashboard/edit-profile')
                     }
+                    onEditProfileLayout={setEditButtonLayout}
                 />
             </View>
 
@@ -269,6 +302,23 @@ export default function PengaturanScreen({
                     />
                 </Animated.View>
             </Animated.ScrollView>
+
+            {editButtonLayout && rootOrigin && (
+                <Pressable
+                    onPress={() =>
+                        router.push('/dashboard/edit-profile')
+                    }
+                    style={{
+                        position: 'absolute',
+                        left: editButtonLayout.x - rootOrigin.x,
+                        top: editButtonLayout.y - rootOrigin.y,
+                        width: editButtonLayout.width,
+                        height: editButtonLayout.height,
+                        zIndex: 4,
+                        elevation: 4,
+                    }}
+                />
+            )}
 
             <View
                 className="absolute bottom-0 left-0 right-0 z-[10]"
