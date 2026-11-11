@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import {
     Outfit_500Medium,
     Outfit_600SemiBold,
@@ -46,6 +47,8 @@ interface PolaScreenProps {
 export default function PolaScreen({
     onTabChange,
 }: PolaScreenProps) {
+    const router = useRouter();
+
     const insets = useSafeAreaInsets();
 
     const { width: W } = useWindowDimensions();
@@ -247,6 +250,7 @@ export default function PolaScreen({
                         scale={s}
                         hours={3}
                         minutes={15}
+                        onViewMore={() => router.push('/dashboard/detail-waktu-scroll')}
                     />
 
                     <View
