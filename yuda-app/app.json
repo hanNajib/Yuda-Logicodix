@@ -17,7 +17,8 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.QUERY_ALL_PACKAGES"
+        "android.permission.QUERY_ALL_PACKAGES",
+        "android.permission.REORDER_TASKS"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -44,7 +45,8 @@
       ],
       "expo-font",
       "expo-secure-store",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "./plugins/withPip"
     ],
     "experiments": {
       "typedRoutes": true,

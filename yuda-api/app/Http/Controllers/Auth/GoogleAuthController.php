@@ -10,7 +10,6 @@ use App\Services\Auth\GoogleTokenVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -53,8 +52,10 @@ class GoogleAuthController extends Controller
 
             return [
                 'token' => $token,
+                'needs_profile_setup' => empty($user->name),
                 'user' => $user->only([
                     'id',
+                    'full_name',
                     'name',
                     'email',
                     'avatar',

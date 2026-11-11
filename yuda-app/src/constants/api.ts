@@ -5,6 +5,8 @@ export const API_ENDPOINTS = {
     googleNative: `${API_BASE_URL}/api/auth/google/native`,
     googleRedirect: `${API_BASE_URL}/auth/google/redirect`,
     googleExchange: `${API_BASE_URL}/api/auth/google/exchange`,
+    profile: `${API_BASE_URL}/api/user/profile`,
+    aiQuestionnaire: `${API_BASE_URL}/api/ai/questionnaire`,
 };
 
 export const GOOGLE_AUTH_CONFIG = {

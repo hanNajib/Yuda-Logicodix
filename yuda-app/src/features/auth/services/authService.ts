@@ -8,7 +8,8 @@ import {
 
 export interface AuthUser {
     id: number;
-    name: string;
+    full_name: string | null;
+    name: string | null;
     email: string;
     avatar: string | null;
 }
@@ -17,6 +18,7 @@ interface NativeAuthResponse {
     message: string;
     data: {
         token: string;
+        needs_profile_setup?: boolean;
         user: AuthUser;
     };
 }
@@ -139,6 +141,28 @@ export async function loginWithGoogleNative(idToken: string) {
     }
 
     return payload.data;
+}
+
+export async function updateProfileName(token: string, name: string) {
+    const response = await fetch(API_ENDPOINTS.profile, {
+        method: "PATCH",
+        headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+    });
+
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        throw new Error(
+            result?.message || `Gagal menyimpan nama (${response.status}).`
+        );
+    }
+
+    return result?.data?.user as AuthUser;
 }
 
 export async function signOutNativeGoogle() {

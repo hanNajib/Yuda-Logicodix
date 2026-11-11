@@ -56,6 +56,7 @@ export default function AuthScreen() {
     const { width: W, height: H } = useWindowDimensions();
     const [isLoading, setIsLoading] = useState(false);
     const setAuthSession = useAuthStore((state) => state.setAuthSession);
+    const completeOnboarding = useAuthStore((state) => state.completeOnboarding);
 
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
@@ -98,8 +99,19 @@ export default function AuthScreen() {
             if (nativeResult.isCancelled || !nativeResult.idToken) return;
 
             const authData = await loginWithGoogleNative(nativeResult.idToken);
+            console.log('================ SANCTUM AUTH TOKEN ================');
+            console.log('Token:', authData.token);
+            console.log('Bearer:', `Bearer ${authData.token}`);
+            console.log('User:', authData.user);
+            console.log('====================================================');
+
             await setAuthSession(authData.token, authData.user);
-            router.replace('/');
+            if (authData.needs_profile_setup) {
+                router.replace('/onboarding/profile');
+            } else {
+                await completeOnboarding();
+                router.replace('/');
+            }
         } catch (error) {
             console.error('Kesalahan login Google Native:', error);
             Alert.alert(
@@ -250,7 +262,7 @@ export default function AuthScreen() {
                         marginTop: 15 * s,
                         opacity: isLoading ? 0.6 : 1,
                     }}
-                    onPress={() => router.replace('/')}
+                    onPress={() => router.replace('/onboarding/profile')}
                     disabled={isLoading}
                 >
                     <Text

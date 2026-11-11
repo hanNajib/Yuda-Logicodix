@@ -22,11 +22,19 @@ export default function AuthCallbackScreen() {
         async function authenticate() {
             try {
                 const result = await exchangeGoogleCode(code!);
+                console.log('================ SANCTUM AUTH TOKEN (WEB/REDIRECT) ================');
+                console.log('Token:', result.token);
+                console.log('Bearer:', `Bearer ${result.token}`);
+                console.log('User:', result.user);
+                console.log('====================================================================');
 
                 await setAuthSession(result.token, result.user);
-                await completeOnboarding();
-
-                router.replace("/");
+                if (result.needs_profile_setup) {
+                    router.replace("/onboarding/profile");
+                } else {
+                    await completeOnboarding();
+                    router.replace("/");
+                }
             } catch (err) {
                 console.error("Google authentication error:", err);
 

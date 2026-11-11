@@ -18,6 +18,11 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Local Expo modules build artifacts
+modules/**/build/
+modules/**/.cxx/
+modules/**/.gradle/
+
 # Metro
 .metro-health-check*
 
