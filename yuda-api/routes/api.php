@@ -39,6 +39,9 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
+Route::get('/questionnaire', [AiController::class, 'questionnaire'])->name('api.questionnaire.index');
+
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/ai/questionnaire', [AiController::class, 'analyze'])->name('api.ai.questionnaire');
+    Route::post('/ai/questionnaire/feedback', [AiController::class, 'feedback'])->name('api.ai.questionnaire.feedback');
 });
