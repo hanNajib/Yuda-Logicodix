@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 
-const iconTenang = require('@/assets/images/yuda/yuda_xD.png');
-const iconCemas = require('@/assets/images/yuda/yuda_xD.png');
-const iconBosan = require('@/assets/images/yuda/yuda_xD.png');
-const iconLelah = require('@/assets/images/yuda/yuda_xD.png');
+const iconTenang = require('@/assets/images/yuda/yuda-tenang.png');
+const iconCemas = require('@/assets/images/yuda/yuda-cemas.png');
+const iconBosan = require('@/assets/images/yuda/yuda-bosan.png');
+const iconLelah = require('@/assets/images/yuda/yuda-lelah.png');
 
 const MOOD_ITEMS = [
     { id: 'tenang', label: 'Tenang', icon: iconTenang },
@@ -73,8 +73,8 @@ export function MoodSelectCard({
                                 source={item.icon}
                                 resizeMode="contain"
                                 style={{
-                                    width: 48 * s,
-                                    height: 48 * s,
+                                    width: 52 * s,
+                                    height: 52 * s,
                                     marginBottom: 8 * s,
                                 }}
                             />
