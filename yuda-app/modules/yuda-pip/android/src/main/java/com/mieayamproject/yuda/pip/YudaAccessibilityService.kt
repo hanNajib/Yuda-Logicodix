@@ -295,14 +295,15 @@ class YudaAccessibilityService : AccessibilityService() {
                 (lowerTarget.contains("youtube") && lowerPkg.contains("youtube")) ||
                 (lowerTarget.contains("barcelona") && lowerPkg.contains("barcelona")) ||
                 (lowerTarget.contains("twitter") && lowerPkg.contains("twitter"))
-        }
+        } || lowerPkg.contains("barcelona") || lowerPkg.contains("twitter")
     }
 
     private fun isReelsOrShortsContext(pkgName: String, event: AccessibilityEvent?): Boolean {
         val pkg = pkgName.lowercase()
 
-        // TikTok dan Threads didesain murni sebagai feed scrolling video / timeline berpotensi doomscroll
-        if (pkg.contains("musically") || pkg.contains("trill") || pkg.contains("tiktok") || pkg.contains("barcelona")) {
+        // TikTok, Threads, dan X (Twitter) secara menyeluruh berpotensi doomscroll di timeline/FYP
+        if (pkg.contains("musically") || pkg.contains("trill") || pkg.contains("tiktok") || 
+            pkg.contains("barcelona") || pkg.contains("twitter")) {
             return true
         }
 

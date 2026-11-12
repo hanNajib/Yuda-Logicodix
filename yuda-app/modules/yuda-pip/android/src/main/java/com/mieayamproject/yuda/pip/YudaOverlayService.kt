@@ -301,9 +301,14 @@ class YudaOverlayService : Service() {
                 val topApp = stats?.maxByOrNull { it.lastTimeUsed }?.packageName
 
                 if (topApp != null) {
-                    isTargetAppInForeground = topApp.contains("instagram") ||
-                        topApp.contains("musically") ||
-                        topApp.contains("youtube")
+                    val lower = topApp.lowercase()
+                    isTargetAppInForeground = lower.contains("instagram") ||
+                        lower.contains("musically") ||
+                        lower.contains("youtube") ||
+                        lower.contains("barcelona") ||
+                        lower.contains("twitter") ||
+                        lower.contains("facebook") ||
+                        lower.contains("katana")
                 }
             }
         } catch (_: Exception) {
@@ -415,6 +420,8 @@ class YudaOverlayService : Service() {
     private fun getAppShortLabel(pkg: String): String {
         val lower = pkg.lowercase()
         return when {
+            lower.contains("barcelona") -> "Threads"
+            lower.contains("twitter") -> "X"
             lower.contains("instagram") -> "IG"
             lower.contains("tiktok") || lower.contains("musically") || lower.contains("trill") -> "TikTok"
             lower.contains("youtube") -> "Shorts"
@@ -436,7 +443,7 @@ class YudaOverlayService : Service() {
     private fun resetCountdown() {
         timerRunnable?.let { handler.removeCallbacks(it) }
         remainingSeconds = intervalSeconds
-        updateTimerBubbleText("⏳ Yuda: ${remainingSeconds}s")
+        updateTimerBubbleText("⏳ Yuda: Menyiapkan...")
 
         val run = object : Runnable {
             override fun run() {
@@ -460,8 +467,12 @@ class YudaOverlayService : Service() {
 
                 if (shouldCount) {
                     remainingSeconds--
+                    lastAccessibilityElapsedSeconds++
+                    val totalMins = lastAccessibilityElapsedSeconds / 60
+                    val totalSecs = lastAccessibilityElapsedSeconds % 60
+                    val timeStr = if (totalMins > 0) "${totalMins}m ${totalSecs}s" else "${totalSecs}s"
                     val tag = if (isCurrentlyInReels) "🔥 $appLabel Reels" else "🔥 $appLabel"
-                    updateTimerBubbleText("$tag: ${remainingSeconds}s")
+                    updateTimerBubbleText("$tag: $timeStr")
 
                     if (remainingSeconds <= 0) {
                         triggerPeekingYuda()
@@ -471,11 +482,14 @@ class YudaOverlayService : Service() {
                     val statusDesc = if (!YudaAccessibilityService.isServiceConnected) {
                         "Aktifkan Aksesibilitas"
                     } else if (isTargetAppInForeground) {
-                        if (isCurrentlyInReels) "Reels Diam" else "Bukan Reels"
+                        if (isCurrentlyInReels) "Diam" else "Bukan Feed"
                     } else {
                         "Standby"
                     }
-                    updateTimerBubbleText("⏸️ Yuda: ${remainingSeconds}s ($statusDesc)")
+                    val totalMins = lastAccessibilityElapsedSeconds / 60
+                    val totalSecs = lastAccessibilityElapsedSeconds % 60
+                    val timeStr = if (totalMins > 0) "${totalMins}m ${totalSecs}s" else "${totalSecs}s"
+                    updateTimerBubbleText("⏸️ Yuda: $timeStr ($statusDesc)")
                 }
 
                 handler.postDelayed(this, 1000L)
