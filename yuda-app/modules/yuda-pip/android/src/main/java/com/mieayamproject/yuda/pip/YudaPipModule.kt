@@ -30,13 +30,19 @@ class YudaPipModule : Module() {
     companion object {
         const val PREFS_NAME = "yuda_overlay_prefs"
         const val KEY_TARGET_PACKAGES = "target_packages"
+        const val KEY_INTERVAL_MINUTES = "interval_minutes"
+        const val DEFAULT_INTERVAL_MINUTES = 15
+
         val DEFAULT_TARGET_PACKAGES = setOf(
             "com.instagram.android",
             "com.zhiliaoapp.musically",
             "com.ss.android.ugc.trill",
             "com.facebook.katana",
             "com.facebook.lite",
-            "com.google.android.youtube"
+            "com.google.android.youtube",
+            "com.instagram.barcelona",
+            "com.twitter.android",
+            "com.twitter.android.lite"
         )
 
         fun getTargetPackages(context: Context): Set<String> {
@@ -48,6 +54,16 @@ class YudaPipModule : Module() {
         fun setTargetPackages(context: Context, packages: List<String>) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().putStringSet(KEY_TARGET_PACKAGES, packages.toSet()).apply()
+        }
+
+        fun getIntervalMinutes(context: Context): Int {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getInt(KEY_INTERVAL_MINUTES, DEFAULT_INTERVAL_MINUTES)
+        }
+
+        fun setIntervalMinutes(context: Context, minutes: Int) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putInt(KEY_INTERVAL_MINUTES, minutes).apply()
         }
     }
 
@@ -145,6 +161,7 @@ class YudaPipModule : Module() {
             "overlay" -> Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(c)
             "battery", "background" -> isBatteryGranted()
             "notification" -> NotificationManagerCompat.from(c).areNotificationsEnabled()
+            "accessibility" -> YudaAccessibilityService.isServiceConnected
             else -> false
         }
     }
@@ -462,6 +479,14 @@ class YudaPipModule : Module() {
             true
         }
 
+        Function("requestAccessibilityWithPip") {
+            val intents = listOf(
+                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            )
+            launchSettingWithPip("accessibility", intents, usePip = true)
+            true
+        }
+
         AsyncFunction("getInstalledApps") { includeIcons: Boolean? ->
             val context = ctx() ?: return@AsyncFunction emptyList<Map<String, String>>()
             val pm = context.packageManager
@@ -532,6 +557,17 @@ class YudaPipModule : Module() {
         Function("getTargetPackages") {
             val context = ctx() ?: return@Function DEFAULT_TARGET_PACKAGES.toList()
             getTargetPackages(context).toList()
+        }
+
+        Function("setIntervalMinutes") { minutes: Int ->
+            val context = ctx() ?: return@Function false
+            setIntervalMinutes(context, minutes)
+            true
+        }
+
+        Function("getIntervalMinutes") {
+            val context = ctx() ?: return@Function DEFAULT_INTERVAL_MINUTES
+            getIntervalMinutes(context)
         }
 
         Function("startOverlayMonitor") { userName: String?, targetPackages: List<String>?, testMode: Boolean?, intervalSeconds: Int? ->

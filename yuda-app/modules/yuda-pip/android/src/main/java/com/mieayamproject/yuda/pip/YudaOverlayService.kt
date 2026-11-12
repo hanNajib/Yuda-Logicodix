@@ -166,28 +166,29 @@ class YudaOverlayService : Service() {
                 val safeInterval = intervalSeconds.coerceAtLeast(1)
                 val rawSecondsElapsed = (accumulatedMs / 1000L).toInt()
                 lastAccessibilityElapsedSeconds = rawSecondsElapsed
-                if (rawSecondsElapsed < accessibilityOffsetSeconds) {
-                    accessibilityOffsetSeconds = 0
-                }
-                val effectiveElapsed = (rawSecondsElapsed - accessibilityOffsetSeconds).coerceAtLeast(0)
-                val bucket = effectiveElapsed / safeInterval
-                val remaining = if (effectiveElapsed > 0 && effectiveElapsed % safeInterval == 0) {
+                
+                val bucket = rawSecondsElapsed / safeInterval
+                val remaining = if (rawSecondsElapsed > 0 && rawSecondsElapsed % safeInterval == 0) {
                     0
                 } else {
-                    safeInterval - (effectiveElapsed % safeInterval)
+                    safeInterval - (rawSecondsElapsed % safeInterval)
                 }
                 if (!isPeeking && !isFullModal) {
                     remainingSeconds = remaining
                 }
 
                 val appLabel = getAppShortLabel(currentForegroundPackage)
+                val totalMins = rawSecondsElapsed / 60
+                val totalSecs = rawSecondsElapsed % 60
+                val timeStr = if (totalMins > 0) "${totalMins}m ${totalSecs}s" else "${totalSecs}s"
+
                 if (isTimerRunning) {
-                    updateTimerBubbleText("🔥 $appLabel Reels: ${remainingSeconds}s")
+                    updateTimerBubbleText("🔥 $appLabel: $timeStr")
                 } else {
-                    updateTimerBubbleText("⏸️ Yuda: ${remainingSeconds}s (Idle / Diam)")
+                    updateTimerBubbleText("⏸️ Yuda: $timeStr (Diam/Idle)")
                 }
 
-                if (bucket > lastAccessibilityTriggeredBucket && effectiveElapsed > 0 && !isPeeking && !isFullModal) {
+                if (bucket > lastAccessibilityTriggeredBucket && rawSecondsElapsed > 0 && !isPeeking && !isFullModal) {
                     lastAccessibilityTriggeredBucket = bucket
                     triggerPeekingYuda()
                 }
@@ -206,8 +207,7 @@ class YudaOverlayService : Service() {
                 } else {
                     pauseStageLevel = 1
                 }
-                accessibilityOffsetSeconds = lastAccessibilityElapsedSeconds
-                lastAccessibilityTriggeredBucket = 0
+                lastAccessibilityTriggeredBucket = lastAccessibilityElapsedSeconds / intervalSeconds.coerceAtLeast(1)
                 remainingSeconds = intervalSeconds
                 dismissOverlay()
                 return START_STICKY
@@ -217,10 +217,11 @@ class YudaOverlayService : Service() {
         userName = intent.getStringExtra(EXTRA_USER_NAME) ?: "Gathan"
         targetPackage = intent.getStringExtra(EXTRA_TARGET_PACKAGE) ?: "com.instagram.android"
         testMode = intent.getBooleanExtra(EXTRA_TEST_MODE, true)
-        intervalSeconds = intent.getIntExtra(EXTRA_INTERVAL_SECONDS, 30)
+        val prefInterval = YudaPipModule.getIntervalMinutes(this) * 60
+        val requestedInterval = intent.getIntExtra(EXTRA_INTERVAL_SECONDS, 0)
+        intervalSeconds = if (requestedInterval > 0) requestedInterval else prefInterval
         pauseStageLevel = 1
-        lastAccessibilityTriggeredBucket = 0
-        accessibilityOffsetSeconds = lastAccessibilityElapsedSeconds
+        lastAccessibilityTriggeredBucket = lastAccessibilityElapsedSeconds / intervalSeconds.coerceAtLeast(1)
 
         resetCountdown()
         showTimerBubble()
@@ -663,8 +664,8 @@ class YudaOverlayService : Service() {
                 }
                 val themedContext = ContextThemeWrapper(this, themeResId)
                 val density = resources.displayMetrics.density.coerceAtLeast(1f)
-                val reminderMinutes = 15
-                val elapsedMinutes = reminderMinutes * pauseStageLevel
+                val reminderMinutes = (intervalSeconds / 60).coerceAtLeast(1)
+                val elapsedMinutes = (lastAccessibilityElapsedSeconds / 60).coerceAtLeast(reminderMinutes)
                 val initialProps = Bundle().apply {
                     putString("userName", userName)
                     putInt("durationMinutes", elapsedMinutes)

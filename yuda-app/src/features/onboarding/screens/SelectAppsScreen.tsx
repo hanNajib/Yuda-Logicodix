@@ -59,6 +59,8 @@ const DEFAULT_APPS: AppItem[] = [
     { id: 'instagram', name: 'Instagram', type: 'instagram', packageName: 'com.instagram.android' },
     { id: 'facebook', name: 'FaceBook', type: 'facebook', packageName: 'com.facebook.katana' },
     { id: 'youtube', name: 'YouTube', type: 'youtube', packageName: 'com.google.android.youtube' },
+    { id: 'threads', name: 'Threads', type: 'other', packageName: 'com.instagram.barcelona' },
+    { id: 'twitter', name: 'X', type: 'twitter', packageName: 'com.twitter.android' },
 ];
 
 function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
@@ -489,6 +491,10 @@ export default function SelectAppsScreen() {
                     packages.push('com.facebook.katana', 'com.facebook.lite');
                 } else if (id === 'youtube') {
                     packages.push('com.google.android.youtube');
+                } else if (id === 'threads') {
+                    packages.push('com.instagram.barcelona');
+                } else if (id === 'twitter') {
+                    packages.push('com.twitter.android', 'com.twitter.android.lite');
                 } else {
                     const found = installedApps.find((a) => a.id === id);
                     if (found?.packageName) {

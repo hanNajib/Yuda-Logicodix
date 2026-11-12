@@ -16,6 +16,7 @@ interface YudaPipNativeModule {
   requestOverlayWithPip(): boolean;
   requestBatteryWithPip(): boolean;
   requestNotificationWithPip(): boolean;
+  requestAccessibilityWithPip(): boolean;
   bringToFront(): boolean;
   stopWatching(): void;
   getInstalledApps(includeIcons?: boolean): Promise<InstalledAppInfo[]>;
@@ -25,6 +26,8 @@ interface YudaPipNativeModule {
   getTargetPackages(): string[];
   startOverlayMonitor(userName?: string, targetPackages?: string[], testMode?: boolean, intervalSeconds?: number): boolean;
   stopOverlayMonitor(): boolean;
+  setIntervalMinutes(minutes: number): boolean;
+  getIntervalMinutes(): number;
   isOverlayMonitorRunning(): boolean;
   isAccessibilityServiceEnabled(): boolean;
   openAccessibilitySettings(): boolean;
@@ -87,6 +90,10 @@ export function requestNotificationWithPip(): boolean {
   return safe(() => NativeModule?.requestNotificationWithPip() ?? false, false);
 }
 
+export function requestAccessibilityWithPip(): boolean {
+  return safe(() => NativeModule?.requestAccessibilityWithPip() ?? false, false);
+}
+
 export function bringToFront(): boolean {
   return safe(() => NativeModule?.bringToFront() ?? false, false);
 }
@@ -123,6 +130,14 @@ export function setTargetPackages(packages: string[]): boolean {
 
 export function getTargetPackages(): string[] {
   return safe(() => NativeModule?.getTargetPackages() ?? [], []);
+}
+
+export function setIntervalMinutes(minutes: number): boolean {
+  return safe(() => NativeModule?.setIntervalMinutes(minutes) ?? false, false);
+}
+
+export function getIntervalMinutes(): number {
+  return safe(() => NativeModule?.getIntervalMinutes() ?? 15, 15);
 }
 
 export function startOverlayMonitor(
@@ -189,6 +204,7 @@ export default {
   requestOverlayWithPip,
   requestBatteryWithPip,
   requestNotificationWithPip,
+  requestAccessibilityWithPip,
   bringToFront,
   stopWatching,
   getInstalledApps,

@@ -431,9 +431,11 @@ export function PauseBiasaFlow({
                         <View
                             pointerEvents="none"
                             style={{
+                                position: 'absolute',
+                                bottom: '100%',
                                 width: halfBodyWidth,
                                 height: halfBodyHeight,
-                                marginBottom: -Math.round(halfBodyHeight * 0.25),
+                                marginBottom: 0,
                                 zIndex: 1,
                             }}
                         >

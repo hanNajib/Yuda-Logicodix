@@ -8,13 +8,18 @@ const USER_KEY = 'user_data';
 const ONBOARDING_KEY = 'onboarding_completed';
 const USER_NAME_KEY = 'user_name';
 const TARGET_PACKAGES_KEY = 'selected_target_packages';
+const INTERVAL_MINUTES_KEY = 'selected_interval_minutes';
 
 export const DEFAULT_TARGET_PACKAGES = [
     'com.instagram.android',
     'com.zhiliaoapp.musically',
     'com.ss.android.ugc.trill',
     'com.facebook.katana',
+    'com.facebook.lite',
     'com.google.android.youtube',
+    'com.instagram.barcelona',
+    'com.twitter.android',
+    'com.twitter.android.lite',
 ];
 
 interface AuthState {
@@ -24,6 +29,7 @@ interface AuthState {
     user: AuthUser | null;
     userName: string | null;
     selectedTargetPackages: string[];
+    intervalMinutes: number;
 
     hydrateAuth: () => Promise<void>;
     setAuthSession: (token: string, user: AuthUser) => Promise<void>;
@@ -34,6 +40,7 @@ interface AuthState {
     setUserToken: (token: string | null) => void;
     setUserName: (name: string | null) => Promise<void>;
     setSelectedTargetPackages: (packages: string[]) => Promise<void>;
+    setIntervalMinutes: (minutes: number) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -43,15 +50,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
     userName: null,
     selectedTargetPackages: DEFAULT_TARGET_PACKAGES,
+    intervalMinutes: 15,
 
     hydrateAuth: async () => {
         try {
-            const [token, userJson, onboarding, savedName, savedPackagesJson] = await Promise.all([
+            const [token, userJson, onboarding, savedName, savedPackagesJson, savedInterval] = await Promise.all([
                 SecureStore.getItemAsync(TOKEN_KEY),
                 SecureStore.getItemAsync(USER_KEY),
                 SecureStore.getItemAsync(ONBOARDING_KEY),
                 SecureStore.getItemAsync(USER_NAME_KEY),
                 SecureStore.getItemAsync(TARGET_PACKAGES_KEY),
+                SecureStore.getItemAsync(INTERVAL_MINUTES_KEY),
             ]);
 
             let parsedUser: AuthUser | null = null;
@@ -77,11 +86,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             YudaPip.setTargetPackages(packages);
 
+            let intervalVal = 15;
+            if (savedInterval) {
+                const parsedInt = parseInt(savedInterval, 10);
+                if (!isNaN(parsedInt) && parsedInt > 0) {
+                    intervalVal = parsedInt;
+                }
+            }
+            YudaPip.setIntervalMinutes(intervalVal);
+
             set({
                 userToken: token || null,
                 user: parsedUser,
                 userName: savedName || parsedUser?.name || null,
                 selectedTargetPackages: packages,
+                intervalMinutes: intervalVal,
                 hasCompletedOnboarding: onboarding === 'true',
                 isHydrated: true,
             });
@@ -175,5 +194,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             console.warn("Gagal menyimpan target packages:", e);
         }
         set({ selectedTargetPackages: packages });
+    },
+
+    setIntervalMinutes: async (minutes: number) => {
+        try {
+            await SecureStore.setItemAsync(INTERVAL_MINUTES_KEY, minutes.toString());
+            YudaPip.setIntervalMinutes(minutes);
+        } catch (e) {
+            console.warn("Gagal menyimpan interval jeda:", e);
+        }
+        set({ intervalMinutes: minutes });
     },
 }));

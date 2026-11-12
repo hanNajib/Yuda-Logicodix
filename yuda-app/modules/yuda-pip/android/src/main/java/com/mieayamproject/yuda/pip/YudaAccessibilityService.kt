@@ -26,6 +26,9 @@ class YudaAccessibilityService : AccessibilityService() {
         const val YOUTUBE_PACKAGE = "com.google.android.youtube"
         const val FACEBOOK_PACKAGE = "com.facebook.katana"
         const val FACEBOOK_LITE_PACKAGE = "com.facebook.lite"
+        const val THREADS_PACKAGE = "com.instagram.barcelona"
+        const val TWITTER_PACKAGE = "com.twitter.android"
+        const val TWITTER_LITE_PACKAGE = "com.twitter.android.lite"
 
         var currentForegroundPackage: String? = null
             private set
@@ -43,7 +46,7 @@ class YudaAccessibilityService : AccessibilityService() {
     private var isReelsTimerRunning = false
 
     private var lastScrollOrActivityTime = 0L
-    private val IDLE_TIMEOUT_MS = 15_000L
+    private val IDLE_TIMEOUT_MS = 5 * 60 * 1000L
 
     private val idleCheckRunnable = object : Runnable {
         override fun run() {
@@ -61,6 +64,7 @@ class YudaAccessibilityService : AccessibilityService() {
     private val timerTicker = object : Runnable {
         override fun run() {
             if (isReelsTimerRunning && isCurrentScreenReels) {
+                checkAndResetIfNewDay()
                 val now = System.currentTimeMillis()
                 val sessionDuration = now - reelsSessionStartTime
                 val totalMs = accumulatedReelsDurationMs + sessionDuration
@@ -74,6 +78,34 @@ class YudaAccessibilityService : AccessibilityService() {
 
                 handler.postDelayed(this, 1000L)
             }
+        }
+    }
+
+    private fun getTodayDateString(): String {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        return sdf.format(java.util.Date())
+    }
+
+    private fun checkAndResetIfNewDay() {
+        try {
+            val prefs = getSharedPreferences("yuda_overlay_prefs", Context.MODE_PRIVATE)
+            val savedDate = prefs.getString("last_accumulated_date", "") ?: ""
+            val today = getTodayDateString()
+
+            if (savedDate.isNotEmpty() && savedDate != today) {
+                // Berganti hari -> reset total akumulasi
+                accumulatedReelsDurationMs = 0L
+                reelsSessionStartTime = System.currentTimeMillis()
+                prefs.edit()
+                    .putString("last_accumulated_date", today)
+                    .putLong("total_reels_duration_ms", 0L)
+                    .apply()
+                Log.d(TAG, "Berganti tanggal ($savedDate -> $today): reset total akumulasi ke 0")
+            } else if (savedDate.isEmpty()) {
+                prefs.edit().putString("last_accumulated_date", today).apply()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "checkAndResetIfNewDay error: ${e.message}")
         }
     }
 
@@ -148,8 +180,19 @@ class YudaAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun getSavedAccumulatedMs(): Long {
+        return try {
+            val prefs = getSharedPreferences("yuda_overlay_prefs", Context.MODE_PRIVATE)
+            prefs.getLong("total_reels_duration_ms", 0L)
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
     private fun startReelsTimer(now: Long) {
         if (!isReelsTimerRunning) {
+            checkAndResetIfNewDay()
+            accumulatedReelsDurationMs = getSavedAccumulatedMs()
             reelsSessionStartTime = now
             lastScrollOrActivityTime = now
             isReelsTimerRunning = true
@@ -164,7 +207,9 @@ class YudaAccessibilityService : AccessibilityService() {
 
     private fun resumeReelsTimer(now: Long) {
         if (!isReelsTimerRunning) {
-            reelsSessionStartTime = now - accumulatedReelsDurationMs
+            checkAndResetIfNewDay()
+            accumulatedReelsDurationMs = getSavedAccumulatedMs()
+            reelsSessionStartTime = now
             lastScrollOrActivityTime = now
             isReelsTimerRunning = true
 
@@ -179,8 +224,9 @@ class YudaAccessibilityService : AccessibilityService() {
     private fun pauseReelsTimer(reason: String) {
         if (isReelsTimerRunning) {
             val now = System.currentTimeMillis()
-            val sessionDuration = now - reelsSessionStartTime
-            accumulatedReelsDurationMs = sessionDuration
+            val sessionDuration = (now - reelsSessionStartTime).coerceAtLeast(0L)
+            accumulatedReelsDurationMs += sessionDuration
+            saveReelsDurationToStorage(accumulatedReelsDurationMs)
 
             isReelsTimerRunning = false
             idleHandler.removeCallbacks(idleCheckRunnable)
@@ -196,21 +242,17 @@ class YudaAccessibilityService : AccessibilityService() {
     }
 
     private fun stopAndSaveReelsTimer() {
-        pauseReelsTimer("Keluar dari feed Reels")
-        if (accumulatedReelsDurationMs > 0) {
-            saveReelsDurationToStorage(accumulatedReelsDurationMs)
-            accumulatedReelsDurationMs = 0L
-        }
+        pauseReelsTimer("Keluar dari feed Reels / pindah aplikasi")
         isReelsTimerRunning = false
         idleHandler.removeCallbacks(idleCheckRunnable)
         handler.removeCallbacks(timerTicker)
     }
 
-    private fun saveReelsDurationToStorage(durationMs: Long) {
+    private fun saveReelsDurationToStorage(totalMs: Long) {
         try {
+            checkAndResetIfNewDay()
             val prefs = getSharedPreferences("yuda_overlay_prefs", Context.MODE_PRIVATE)
-            val currentTotal = prefs.getLong("total_reels_duration_ms", 0L)
-            prefs.edit().putLong("total_reels_duration_ms", currentTotal + durationMs).apply()
+            prefs.edit().putLong("total_reels_duration_ms", totalMs).apply()
         } catch (e: Exception) {
             Log.w(TAG, "Gagal menyimpan durasi: ${e.message}")
         }
@@ -250,14 +292,17 @@ class YudaAccessibilityService : AccessibilityService() {
                 (lowerTarget.contains("instagram") && lowerPkg.contains("instagram")) ||
                 (lowerTarget.contains("tiktok") && (lowerPkg.contains("musically") || lowerPkg.contains("trill") || lowerPkg.contains("tiktok"))) ||
                 (lowerTarget.contains("facebook") && (lowerPkg.contains("katana") || lowerPkg.contains("facebook"))) ||
-                (lowerTarget.contains("youtube") && lowerPkg.contains("youtube"))
+                (lowerTarget.contains("youtube") && lowerPkg.contains("youtube")) ||
+                (lowerTarget.contains("barcelona") && lowerPkg.contains("barcelona")) ||
+                (lowerTarget.contains("twitter") && lowerPkg.contains("twitter"))
         }
     }
 
     private fun isReelsOrShortsContext(pkgName: String, event: AccessibilityEvent?): Boolean {
         val pkg = pkgName.lowercase()
 
-        if (pkg.contains("musically") || pkg.contains("trill") || pkg.contains("tiktok")) {
+        // TikTok dan Threads didesain murni sebagai feed scrolling video / timeline berpotensi doomscroll
+        if (pkg.contains("musically") || pkg.contains("trill") || pkg.contains("tiktok") || pkg.contains("barcelona")) {
             return true
         }
 
@@ -268,7 +313,7 @@ class YudaAccessibilityService : AccessibilityService() {
         }
 
         for (t in eventTexts) {
-            if (t.contains("reel") || t.contains("short") || t.contains("clip") || t.contains("fb_shorts")) {
+            if (t.contains("reel") || t.contains("short") || t.contains("clip") || t.contains("fb_shorts") || t.contains("timeline") || t.contains("explore") || t.contains("fyp") || t.contains("for you")) {
                 return true
             }
         }
@@ -289,8 +334,9 @@ class YudaAccessibilityService : AccessibilityService() {
                 val resId = node.viewIdResourceName?.lowercase() ?: ""
 
                 if (pkg.contains("instagram")) {
-                    if (resId.contains("clips") || resId.contains("reel") ||
-                        text == "reels" || desc.contains("reels") || desc.contains("audio reels")) {
+                    if (resId.contains("clips") || resId.contains("reel") || resId.contains("feed") ||
+                        text == "reels" || desc.contains("reels") || desc.contains("audio reels") ||
+                        desc.contains("explore") || text.contains("explore") || desc.contains("beranda")) {
                         found = true
                         break
                     }
@@ -301,8 +347,14 @@ class YudaAccessibilityService : AccessibilityService() {
                         break
                     }
                 } else if (pkg.contains("facebook") || pkg.contains("katana")) {
-                    if (resId.contains("fb_shorts") || resId.contains("reel") ||
-                        text.contains("reels") || desc.contains("reels")) {
+                    if (resId.contains("fb_shorts") || resId.contains("reel") || resId.contains("feed") ||
+                        text.contains("reels") || desc.contains("reels") || desc.contains("kabar beranda")) {
+                        found = true
+                        break
+                    }
+                } else if (pkg.contains("twitter")) {
+                    if (resId.contains("timeline") || resId.contains("tweet") || resId.contains("explore") ||
+                        desc.contains("timeline") || text.contains("for you") || text.contains("untuk anda")) {
                         found = true
                         break
                     }

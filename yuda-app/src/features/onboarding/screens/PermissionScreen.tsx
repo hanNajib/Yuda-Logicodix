@@ -43,7 +43,7 @@ const yudaHeadSource = require('../../../../assets/images/yuda/yudahalfbody.png'
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
-type WaitingFor = 'overlay' | 'battery' | 'notification' | null;
+type WaitingFor = 'overlay' | 'battery' | 'notification' | 'accessibility' | null;
 
 function CustomToggle({
     value,
@@ -119,6 +119,11 @@ const PIP_STEPS: Record<NonNullable<WaitingFor>, PipStep> = {
         badge: 'Langkah 3: Notifikasi',
         step1: 'Ketuk menu "Notifikasi"',
         step2: 'Aktifkan sakelar izin',
+    },
+    accessibility: {
+        badge: 'Langkah 4: Aksesibilitas',
+        step1: 'Cari "Yuda" / Layanan terdownload',
+        step2: 'Aktifkan izin aksesibilitas',
     },
 };
 
@@ -262,7 +267,7 @@ export default function PermissionsScreen() {
     const [nativeInPip, setNativeInPip] = useState(() => YudaPip.isInPipMode());
     const isInPipMode = nativeInPip || H < 360 || W < 320;
 
-    const { user, userName } = useAuthStore();
+    const { user, userName, hasCompletedOnboarding } = useAuthStore();
     const displayName = userName || user?.name || 'Gathan';
     const initialLetter = (displayName[0] || 'G').toUpperCase();
 
@@ -273,13 +278,15 @@ export default function PermissionsScreen() {
     const [overlayGranted, setOverlayGranted] = useState(false);
     const [batteryGranted, setBatteryGranted] = useState(false);
     const [notifGranted, setNotifGranted] = useState(false);
+    const [accessibilityGranted, setAccessibilityGranted] = useState(false);
 
     const batteryLocked = !overlayGranted;
     const notifLocked = !overlayGranted || !batteryGranted;
-    const grantedCount = (overlayGranted ? 1 : 0) + (batteryGranted ? 1 : 0) + (notifGranted ? 1 : 0);
-    const progressPercent = grantedCount === 0 ? 0 : grantedCount === 1 ? 33 : grantedCount === 2 ? 66 : 100;
+    const accessibilityLocked = !overlayGranted || !batteryGranted || !notifGranted;
+    const grantedCount = (overlayGranted ? 1 : 0) + (batteryGranted ? 1 : 0) + (notifGranted ? 1 : 0) + (accessibilityGranted ? 1 : 0);
+    const progressPercent = Math.round((grantedCount / 4) * 100);
 
-    const allGranted = overlayGranted && batteryGranted && notifGranted;
+    const allGranted = overlayGranted && batteryGranted && notifGranted && accessibilityGranted;
     const nativeAvailable = YudaPip.isNativeModuleAvailable();
     const pipSupported = nativeAvailable && YudaPip.isPipSupported();
 
@@ -315,6 +322,7 @@ export default function PermissionsScreen() {
 
         const overlay = nativeAvailable ? YudaPip.canDrawOverlays() : false;
         const battery = nativeAvailable ? YudaPip.isIgnoringBatteryOptimizations() : false;
+        const accessibility = nativeAvailable ? YudaPip.isAccessibilityServiceEnabled() : false;
         let notif = false;
         if (Platform.Version >= 33) {
             try {
@@ -329,8 +337,9 @@ export default function PermissionsScreen() {
         setOverlayGranted(overlay);
         setBatteryGranted(battery);
         setNotifGranted(notif);
+        setAccessibilityGranted(accessibility);
 
-        return { overlay, battery, notif };
+        return { overlay, battery, notif, accessibility };
     }, [nativeAvailable]);
 
     useEffect(() => {
@@ -407,7 +416,7 @@ export default function PermissionsScreen() {
 
     useEffect(() => {
         if (!fontsLoaded) return;
-        const target = grantedCount === 0 ? 0.08 : grantedCount / 3;
+        const target = grantedCount === 0 ? 0.06 : grantedCount / 4;
         barFill.value = withSpring(target, { duration: 600, dampingRatio: 0.78 });
     }, [grantedCount, fontsLoaded]);
 
@@ -599,6 +608,50 @@ export default function PermissionsScreen() {
         }
     }, [notifLocked, notifGranted, nativeAvailable, readSystemPermissions]);
 
+    const handlePressAccessibility = useCallback(async () => {
+        if (accessibilityLocked) {
+            lockedShakeX.value = withSequence(
+                withTiming(-8, { duration: 45 }),
+                withRepeat(withTiming(8, { duration: 75 }), 4, true),
+                withTiming(0, { duration: 45 })
+            );
+            return;
+        }
+
+        if (accessibilityGranted) {
+            if (Platform.OS === 'android') {
+                try {
+                    await Linking.sendIntent('android.settings.ACCESSIBILITY_SETTINGS');
+                } catch {
+                    await Linking.openSettings();
+                }
+            } else {
+                setAccessibilityGranted(false);
+            }
+            return;
+        }
+
+        waitingForRef.current = 'accessibility';
+        setWaitingFor('accessibility');
+
+        if (Platform.OS !== 'android') {
+            setAccessibilityGranted(true);
+            return;
+        }
+
+        if (nativeAvailable && typeof YudaPip.requestAccessibilityWithPip === 'function') {
+            YudaPip.requestAccessibilityWithPip();
+        } else if (nativeAvailable && typeof YudaPip.openAccessibilitySettings === 'function') {
+            YudaPip.openAccessibilitySettings();
+        } else {
+            try {
+                await Linking.sendIntent('android.settings.ACCESSIBILITY_SETTINGS');
+            } catch {
+                await Linking.openSettings();
+            }
+        }
+    }, [accessibilityLocked, accessibilityGranted, nativeAvailable]);
+
     const handleBtnPressIn = () => {
         btnScale.value = withTiming(0.96, { duration: 90, easing: EASE_OUT });
         btnY.value = withTiming(2.5, { duration: 90, easing: EASE_OUT });
@@ -620,7 +673,11 @@ export default function PermissionsScreen() {
         if (submitting.current) return;
         submitting.current = true;
         try {
-            router.push('/onboarding/timer');
+            if (hasCompletedOnboarding) {
+                router.replace('/' as any);
+            } else {
+                router.push('/onboarding/timer');
+            }
         } finally {
             submitting.current = false;
         }
@@ -769,8 +826,10 @@ export default function PermissionsScreen() {
                                     : !batteryGranted
                                         ? 'Keren! Lanjut ke Langkah 2 (Latar belakang) agar Yuda bisa tetap aktif memantau.'
                                         : !notifGranted
-                                            ? 'Satu langkah lagi! Aktifkan Langkah 3 (Notifikasi) untuk pengingat santai.'
-                                            : 'Yey! Semua izin lengkap. Kamu siap memulai detoks santai bersama Yuda!'}
+                                            ? 'Lanjut ke Langkah 3 (Notifikasi) untuk pengingat santai.'
+                                            : !accessibilityGranted
+                                                ? 'Langkah Terakhir: Aktifkan Aksesibilitas agar Yuda bisa mendeteksi scrolling Reels/Shorts!'
+                                                : 'Yey! Semua 4 izin lengkap. Kamu siap memulai detoks santai bersama Yuda!'}
                             </Text>
                         </View>
                     </View>
@@ -824,6 +883,21 @@ export default function PermissionsScreen() {
                             s={s}
                             onPress={handlePressNotif}
                         />
+                        <PermissionRow
+                            icon={accessibilityGranted ? 'hand-left-outline' : 'lock-closed-outline'}
+                            label="4. Aksesibilitas deteksi Reels & doomscroll"
+                            sublabel={
+                                accessibilityLocked
+                                    ? 'Terkunci: Selesaikan izin sebelumnya dahulu'
+                                    : accessibilityGranted
+                                        ? 'Izin aktif ✓ (Ketuk untuk matikan)'
+                                        : 'Langkah 4: Ketuk → buka Pengaturan Aksesibilitas'
+                            }
+                            granted={accessibilityGranted}
+                            locked={accessibilityLocked}
+                            s={s}
+                            onPress={handlePressAccessibility}
+                        />
                     </Animated.View>
                 </Animated.View>
             </ScrollView>
@@ -855,7 +929,7 @@ export default function PermissionsScreen() {
                         className={allGranted ? 'text-white' : 'text-[#e2ede5]'}
                         style={{ fontFamily: 'Outfit_700Bold', fontSize: 19 * s }}
                     >
-                        {allGranted ? 'Selanjutnya' : `Selesaikan Izin (${grantedCount}/3)`}
+                        {allGranted ? 'Selanjutnya' : `Selesaikan Izin (${grantedCount}/4)`}
                     </Text>
                 </AnimatedPressable>
                 {!allGranted && (
@@ -867,7 +941,9 @@ export default function PermissionsScreen() {
                             ? 'Aktifkan izin ke-1 (Tampil di atas aplikasi) terlebih dahulu'
                             : !batteryGranted
                                 ? 'Aktifkan izin ke-2 (Berjalan di latar belakang) terlebih dahulu'
-                                : 'Aktifkan izin ke-3 (Mengirimkan notifikasi) untuk melanjutkan'}
+                                : !notifGranted
+                                    ? 'Aktifkan izin ke-3 (Mengirimkan notifikasi) terlebih dahulu'
+                                    : 'Aktifkan izin ke-4 (Aksesibilitas deteksi) untuk melanjutkan'}
                     </Text>
                 )}
             </View>
