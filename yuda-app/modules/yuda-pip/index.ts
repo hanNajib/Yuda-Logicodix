@@ -29,6 +29,7 @@ interface YudaPipNativeModule {
   isAccessibilityServiceEnabled(): boolean;
   openAccessibilitySettings(): boolean;
   getTotalReelsDurationSeconds(): number;
+  dismissActiveAlert(reason?: string): boolean;
 }
 
 let NativeModule: any = null;
@@ -162,6 +163,10 @@ export function getTotalReelsDurationSeconds(): number {
   return safe(() => NativeModule?.getTotalReelsDurationSeconds() ?? 0, 0);
 }
 
+export function dismissActiveAlert(reason = 'dismiss'): boolean {
+  return safe(() => NativeModule?.dismissActiveAlert(reason) ?? false, false);
+}
+
 export function addPipModeListener(
   listener: (event: { isInPip: boolean }) => void
 ): Subscription | undefined {
@@ -197,6 +202,7 @@ export default {
   isAccessibilityServiceEnabled,
   openAccessibilitySettings,
   getTotalReelsDurationSeconds,
+  dismissActiveAlert,
   addPipModeListener,
   addPermissionGrantedListener,
 };

@@ -1,7 +1,5 @@
 package com.mieayamproject.yuda.pip
 
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -17,27 +15,33 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
+import android.graphics.Point
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.util.TypedValue
+import android.view.ContextThemeWrapper
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import com.facebook.react.ReactApplication
+import com.facebook.react.common.LifecycleState
+import com.facebook.react.interfaces.fabric.ReactSurface
 
 class YudaOverlayService : Service() {
 
@@ -51,6 +55,7 @@ class YudaOverlayService : Service() {
         const val ACTION_APP_BACKGROUND = "com.mieayamproject.yuda.pip.APP_BACKGROUND"
         const val ACTION_SCROLL_TICK = "com.mieayamproject.yuda.pip.SCROLL_TICK"
         const val ACTION_REELS_TIMER_UPDATE = "com.mieayamproject.yuda.pip.REELS_TIMER_UPDATE"
+        const val ACTION_DISMISS_ALERT = "com.mieayamproject.yuda.pip.DISMISS_ALERT"
 
         const val EXTRA_USER_NAME = "extra_user_name"
         const val EXTRA_TARGET_PACKAGE = "extra_target_package"
@@ -60,6 +65,7 @@ class YudaOverlayService : Service() {
         const val EXTRA_IS_REELS = "extra_is_reels"
         const val EXTRA_ACCUMULATED_MS = "extra_accumulated_ms"
         const val EXTRA_IS_TIMER_RUNNING = "extra_is_timer_running"
+        const val EXTRA_DISMISS_REASON = "extra_dismiss_reason"
 
         private const val NOTIFICATION_ID = 9911
 
@@ -69,12 +75,21 @@ class YudaOverlayService : Service() {
 
     private var windowManager: WindowManager? = null
     private var overlayView: FrameLayout? = null
+    private var pendingRemovalView: FrameLayout? = null
+    private var fadingPeekView: FrameLayout? = null
     private var timerBubbleView: FrameLayout? = null
+    private var activeSurface: ReactSurface? = null
+    private var didResumeHostForOverlay = false
 
     private var userName: String = "Gathan"
     private var targetPackage: String = "com.instagram.android"
     private var testMode: Boolean = true
     private var intervalSeconds: Int = 30
+    private var pauseStageLevel: Int = 1
+    private var lastAccessibilityTriggeredBucket: Int = 0
+    private var lastAccessibilityUpdateAt: Long = 0L
+    private var lastAccessibilityElapsedSeconds: Int = 0
+    private var accessibilityOffsetSeconds: Int = 0
 
     private val handler = Handler(Looper.getMainLooper())
     private var remainingSeconds: Int = 30
@@ -146,19 +161,34 @@ class YudaOverlayService : Service() {
                 currentForegroundPackage = intent.getStringExtra(EXTRA_CURRENT_APP) ?: currentForegroundPackage
                 val accumulatedMs = intent.getLongExtra(EXTRA_ACCUMULATED_MS, 0L)
                 val isTimerRunning = intent.getBooleanExtra(EXTRA_IS_TIMER_RUNNING, false)
+                lastAccessibilityUpdateAt = SystemClock.elapsedRealtime()
 
-                val secondsElapsed = (accumulatedMs / 1000L).toInt()
-                val remaining = Math.max(0, intervalSeconds - (secondsElapsed % intervalSeconds))
-                remainingSeconds = remaining
+                val safeInterval = intervalSeconds.coerceAtLeast(1)
+                val rawSecondsElapsed = (accumulatedMs / 1000L).toInt()
+                lastAccessibilityElapsedSeconds = rawSecondsElapsed
+                if (rawSecondsElapsed < accessibilityOffsetSeconds) {
+                    accessibilityOffsetSeconds = 0
+                }
+                val effectiveElapsed = (rawSecondsElapsed - accessibilityOffsetSeconds).coerceAtLeast(0)
+                val bucket = effectiveElapsed / safeInterval
+                val remaining = if (effectiveElapsed > 0 && effectiveElapsed % safeInterval == 0) {
+                    0
+                } else {
+                    safeInterval - (effectiveElapsed % safeInterval)
+                }
+                if (!isPeeking && !isFullModal) {
+                    remainingSeconds = remaining
+                }
 
                 val appLabel = getAppShortLabel(currentForegroundPackage)
                 if (isTimerRunning) {
-                    updateTimerBubbleText("🔥 $appLabel Reels: ${remaining}s")
+                    updateTimerBubbleText("🔥 $appLabel Reels: ${remainingSeconds}s")
                 } else {
-                    updateTimerBubbleText("⏸️ Yuda: ${remaining}s (Idle / Diam)")
+                    updateTimerBubbleText("⏸️ Yuda: ${remainingSeconds}s (Idle / Diam)")
                 }
 
-                if (remaining <= 0 && secondsElapsed > 0 && !isPeeking && !isFullModal) {
+                if (bucket > lastAccessibilityTriggeredBucket && effectiveElapsed > 0 && !isPeeking && !isFullModal) {
+                    lastAccessibilityTriggeredBucket = bucket
                     triggerPeekingYuda()
                 }
                 return START_STICKY
@@ -167,12 +197,30 @@ class YudaOverlayService : Service() {
                 triggerPeekingYuda()
                 return START_STICKY
             }
+            ACTION_DISMISS_ALERT -> {
+                val reason = intent.getStringExtra(EXTRA_DISMISS_REASON) ?: "dismiss"
+                if (reason == "continue") {
+                    if (pauseStageLevel < 2) {
+                        pauseStageLevel++
+                    }
+                } else {
+                    pauseStageLevel = 1
+                }
+                accessibilityOffsetSeconds = lastAccessibilityElapsedSeconds
+                lastAccessibilityTriggeredBucket = 0
+                remainingSeconds = intervalSeconds
+                dismissOverlay()
+                return START_STICKY
+            }
         }
 
         userName = intent.getStringExtra(EXTRA_USER_NAME) ?: "Gathan"
         targetPackage = intent.getStringExtra(EXTRA_TARGET_PACKAGE) ?: "com.instagram.android"
         testMode = intent.getBooleanExtra(EXTRA_TEST_MODE, true)
         intervalSeconds = intent.getIntExtra(EXTRA_INTERVAL_SECONDS, 30)
+        pauseStageLevel = 1
+        lastAccessibilityTriggeredBucket = 0
+        accessibilityOffsetSeconds = lastAccessibilityElapsedSeconds
 
         resetCountdown()
         showTimerBubble()
@@ -393,10 +441,16 @@ class YudaOverlayService : Service() {
             override fun run() {
                 val now = SystemClock.elapsedRealtime()
 
+                if (isPeeking || isFullModal) {
+                    handler.postDelayed(this, 1000L)
+                    return
+                }
+
+                val hasRecentAccessibilityTick = (now - lastAccessibilityUpdateAt) < 2500L
                 val isActivelyScrolling = (now - lastScrollTime < 6000L) && isTargetAppInForeground && isCurrentlyInReels
 
                 val shouldCount = if (YudaAccessibilityService.isServiceConnected) {
-                    isActivelyScrolling
+                    isActivelyScrolling && !hasRecentAccessibilityTick
                 } else {
                     isTargetAppInForeground
                 }
@@ -412,7 +466,7 @@ class YudaOverlayService : Service() {
                         triggerPeekingYuda()
                         remainingSeconds = intervalSeconds
                     }
-                } else {
+                } else if (!hasRecentAccessibilityTick) {
                     val statusDesc = if (!YudaAccessibilityService.isServiceConnected) {
                         "Aktifkan Aksesibilitas"
                     } else if (isTargetAppInForeground) {
@@ -430,63 +484,119 @@ class YudaOverlayService : Service() {
         handler.postDelayed(run, 1000L)
     }
 
+    private class OverlayContainerLayout(
+        context: Context,
+        private val onBackPress: () -> Boolean
+    ) : FrameLayout(context) {
+        override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+            if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    return true
+                }
+                if (event.action == KeyEvent.ACTION_UP) {
+                    return onBackPress()
+                }
+            }
+            return super.dispatchKeyEvent(event)
+        }
+    }
+
+    private fun getRealScreenSize(): Pair<Int, Int> {
+        val wm = windowManager ?: return Pair(
+            resources.displayMetrics.widthPixels,
+            resources.displayMetrics.heightPixels
+        )
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = wm.currentWindowMetrics.bounds
+            Pair(bounds.width(), bounds.height())
+        } else {
+            val pt = Point()
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getRealSize(pt)
+            Pair(pt.x, pt.y)
+        }
+    }
+
     private fun triggerPeekingYuda() {
-        if (overlayView != null) return
+        if (overlayView != null || pendingRemovalView != null || fadingPeekView != null) return
 
         val wm = windowManager ?: return
 
-        val root = FrameLayout(this)
+        val bmp = loadHandHalfBitmap()
+        val targetWidth = dpToPx(132)
+        val targetHeight = if (bmp.width > 0 && bmp.height > 0) {
+            (targetWidth * (bmp.height.toFloat() / bmp.width.toFloat())).toInt()
+        } else {
+            dpToPx(182)
+        }
+        val sunkPx = (targetHeight * 0.25f).toInt()
+        val visibleHeight = (targetHeight - sunkPx).coerceAtLeast(1)
+        val leftMarginPx = dpToPx(18)
+
+        val root = FrameLayout(this).apply {
+            clipChildren = true
+            clipToPadding = true
+        }
 
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            leftMarginPx + targetWidth,
+            visibleHeight,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = 0
             y = 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                } else {
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                fitInsetsTypes = 0
+            }
         }
 
         val peekCapybara = ImageView(this).apply {
-            val bmp = loadHandHalfBitmap()
             setImageBitmap(bmp)
-            val size = dpToPx(86)
-            layoutParams = FrameLayout.LayoutParams(size, size).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = FrameLayout.LayoutParams(targetWidth, targetHeight).apply {
                 gravity = Gravity.TOP or Gravity.START
-                leftMargin = dpToPx(18)
+                leftMargin = leftMarginPx
                 topMargin = 0
             }
         }
         root.addView(peekCapybara)
+
+        peekCapybara.setOnClickListener {
+            if (isPeeking && overlayView === root) {
+                transitionToFullModal(root)
+            }
+        }
 
         try {
             wm.addView(root, params)
             overlayView = root
             isPeeking = true
 
-            peekCapybara.translationY = -dpToPx(90).toFloat()
+            peekCapybara.translationY = -targetHeight.toFloat()
             peekCapybara.animate()
-                .translationY(0f)
-                .setDuration(600)
-                .setInterpolator(OvershootInterpolator(1.2f))
+                .translationY(-sunkPx.toFloat())
+                .setDuration(500)
+                .setInterpolator(DecelerateInterpolator(1.5f))
                 .start()
-
-            val rockAnim = ObjectAnimator.ofFloat(peekCapybara, "rotation", -6f, 6f).apply {
-                duration = 850
-                repeatMode = ValueAnimator.REVERSE
-                repeatCount = ValueAnimator.INFINITE
-            }
-            rockAnim.start()
 
             handler.postDelayed({
                 if (isPeeking && overlayView === root) {
-                    transitionToFullModal(root, params, peekCapybara)
+                    transitionToFullModal(root)
                 }
             }, 3200L)
 
@@ -495,37 +605,145 @@ class YudaOverlayService : Service() {
         }
     }
 
-    private fun transitionToFullModal(
-        root: FrameLayout,
-        params: WindowManager.LayoutParams,
-        peekCapybara: ImageView
-    ) {
+    private fun transitionToFullModal(peekRoot: FrameLayout) {
         val wm = windowManager ?: return
+        if (overlayView !== peekRoot) return
 
-        params.height = WindowManager.LayoutParams.MATCH_PARENT
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        try {
-            wm.updateViewLayout(root, params)
-        } catch (e: Exception) {
-            Log.e(TAG, "Gagal update layout modal: ${e.message}")
-            return
+        val (screenWidthPx, screenHeightPx) = getRealScreenSize()
+
+        val fullRoot = OverlayContainerLayout(this) {
+            if (activeSurface != null) {
+                val reactHost = (application as? ReactApplication)?.reactHost
+                reactHost?.onBackPressed() == true
+            } else if (isFullModal) {
+                dismissOverlay()
+                true
+            } else {
+                false
+            }
+        }.apply {
+            clipChildren = true
+            clipToPadding = true
         }
 
-        peekCapybara.animate().alpha(0f).setDuration(200).start()
+        val fullParams = WindowManager.LayoutParams(
+            screenWidthPx,
+            screenHeightPx,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                } else {
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                fitInsetsTypes = 0
+            }
+        }
+
+        val reactHost = (application as? ReactApplication)?.reactHost
+        if (reactHost != null) {
+            try {
+                val themeResId = if (applicationInfo.theme != 0) {
+                    applicationInfo.theme
+                } else {
+                    android.R.style.Theme_DeviceDefault_NoActionBar
+                }
+                val themedContext = ContextThemeWrapper(this, themeResId)
+                val density = resources.displayMetrics.density.coerceAtLeast(1f)
+                val reminderMinutes = 15
+                val elapsedMinutes = reminderMinutes * pauseStageLevel
+                val initialProps = Bundle().apply {
+                    putString("userName", userName)
+                    putInt("durationMinutes", elapsedMinutes)
+                    putInt("reminderMinutes", reminderMinutes)
+                    putString("pauseType", "biasa")
+                    putInt("pauseStage", pauseStageLevel)
+                    putInt("breathDurationSeconds", 30)
+                    putDouble("screenWidth", (screenWidthPx / density).toDouble())
+                    putDouble("screenHeight", (screenHeightPx / density).toDouble())
+                }
+                val surface = reactHost.createSurface(themedContext, "YudaAlertOverlay", initialProps)
+                val surfaceView = surface.view
+                if (surfaceView != null) {
+                    if (reactHost.lifecycleState != LifecycleState.RESUMED) {
+                        didResumeHostForOverlay = true
+                        reactHost.onHostResume(null)
+                    }
+                    surfaceView.setBackgroundColor(Color.TRANSPARENT)
+                    surfaceView.layoutParams = FrameLayout.LayoutParams(screenWidthPx, screenHeightPx)
+                    fullRoot.addView(surfaceView)
+
+                    wm.addView(fullRoot, fullParams)
+                    overlayView = fullRoot
+                    activeSurface = surface
+                    surface.start()
+
+                    fullRoot.isFocusableInTouchMode = true
+                    fullRoot.requestFocus()
+
+                    isPeeking = false
+                    isFullModal = true
+
+                    removePeekWindowAnimated(wm, peekRoot)
+                    return
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Gagal mount ReactSurface overlay: ${e.message}")
+                cleanupActiveSurface()
+            }
+        }
 
         val fullAlertView = createFullAlertView()
         fullAlertView.alpha = 0f
-        root.addView(fullAlertView)
+        fullAlertView.layoutParams = FrameLayout.LayoutParams(screenWidthPx, screenHeightPx)
+        fullRoot.addView(fullAlertView)
 
-        fullAlertView.animate()
-            .alpha(1f)
-            .setDuration(350)
-            .setInterpolator(DecelerateInterpolator())
+        try {
+            wm.addView(fullRoot, fullParams)
+            overlayView = fullRoot
+            fullRoot.isFocusableInTouchMode = true
+            fullRoot.requestFocus()
+            fullAlertView.animate()
+                .alpha(1f)
+                .setDuration(350)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+            isPeeking = false
+            isFullModal = true
+            removePeekWindowAnimated(wm, peekRoot)
+        } catch (e: Exception) {
+            Log.e(TAG, "Gagal fallback add fullRoot: ${e.message}")
+        }
+    }
+
+    private fun removePeekWindowAnimated(wm: WindowManager, peekRoot: FrameLayout) {
+        fadingPeekView = peekRoot
+        peekRoot.animate()
+            .alpha(0f)
+            .setDuration(180)
+            .withEndAction {
+                if (fadingPeekView === peekRoot) {
+                    fadingPeekView = null
+                }
+                try {
+                    wm.removeView(peekRoot)
+                } catch (_: Exception) {
+                }
+            }
             .start()
-
-        isPeeking = false
-        isFullModal = true
     }
 
     private class SpotlightView(context: Context) : View(context) {
@@ -647,16 +865,53 @@ class YudaOverlayService : Service() {
         return container
     }
 
+    private fun cleanupActiveSurface() {
+        activeSurface?.let { surface ->
+            try {
+                surface.stop()
+            } catch (_: Exception) {
+            }
+            try {
+                surface.detach()
+            } catch (_: Exception) {
+            }
+            try {
+                surface.clear()
+            } catch (_: Exception) {
+            }
+        }
+        activeSurface = null
+
+        if (didResumeHostForOverlay) {
+            didResumeHostForOverlay = false
+            val reactHost = (application as? ReactApplication)?.reactHost
+            if (reactHost != null &&
+                reactHost.lifecycleState == LifecycleState.RESUMED &&
+                reactHost.currentReactContext?.currentActivity == null
+            ) {
+                try {
+                    reactHost.onHostPause()
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
     private fun dismissOverlay() {
         val view = overlayView ?: return
         overlayView = null
+        pendingRemovalView = view
         isPeeking = false
         isFullModal = false
 
         view.animate()
             .alpha(0f)
-            .setDuration(240)
+            .setDuration(200)
             .withEndAction {
+                cleanupActiveSurface()
+                if (pendingRemovalView === view) {
+                    pendingRemovalView = null
+                }
                 try {
                     windowManager?.removeView(view)
                 } catch (_: Exception) {
@@ -667,10 +922,10 @@ class YudaOverlayService : Service() {
 
     private fun loadHandHalfBitmap(): Bitmap {
         return try {
-            assets.open("images/yuda/yuda-hand-half.png").use { BitmapFactory.decodeStream(it) }
+            assets.open("images/yuda/yuda-tangan-kebalik.png").use { BitmapFactory.decodeStream(it) }
         } catch (_: Exception) {
             try {
-                assets.open("yuda-hand-half.png").use { BitmapFactory.decodeStream(it) }
+                assets.open("yuda-tangan-kebalik.png").use { BitmapFactory.decodeStream(it) }
             } catch (_: Exception) {
                 loadCapybaraBitmap()
             }
@@ -745,6 +1000,7 @@ class YudaOverlayService : Service() {
         timerRunnable = null
         pollAppRunnable = null
         removeTimerBubble()
+        cleanupActiveSurface()
 
         overlayView?.let {
             try {
@@ -752,6 +1008,22 @@ class YudaOverlayService : Service() {
             } catch (_: Exception) {
             }
             overlayView = null
+        }
+
+        pendingRemovalView?.let {
+            try {
+                windowManager?.removeView(it)
+            } catch (_: Exception) {
+            }
+            pendingRemovalView = null
+        }
+
+        fadingPeekView?.let {
+            try {
+                windowManager?.removeView(it)
+            } catch (_: Exception) {
+            }
+            fadingPeekView = null
         }
     }
 }

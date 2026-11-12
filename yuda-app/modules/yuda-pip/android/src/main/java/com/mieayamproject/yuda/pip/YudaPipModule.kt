@@ -605,5 +605,19 @@ class YudaPipModule : Module() {
             val ms = prefs.getLong("total_reels_duration_ms", 0L)
             ms / 1000L
         }
+
+        Function("dismissActiveAlert") { reason: String? ->
+            val context = ctx() ?: return@Function false
+            try {
+                val intent = Intent(context, YudaOverlayService::class.java).apply {
+                    action = YudaOverlayService.ACTION_DISMISS_ALERT
+                    putExtra(YudaOverlayService.EXTRA_DISMISS_REASON, reason ?: "dismiss")
+                }
+                context.startService(intent)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 }
