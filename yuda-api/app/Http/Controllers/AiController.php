@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Ai\QuestionnaireDefinition;
+use App\Http\Requests\Ai\AnalyzeQuestionnaireGuestRequest;
 use App\Http\Requests\Ai\AnalyzeQuestionnaireRequest;
 use App\Http\Requests\Ai\SendAiMessageRequest;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Exceptions\AiException;
 use Laravel\Ai\Exceptions\ProviderConnectionException;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
@@ -57,6 +59,16 @@ class AiController extends Controller
         ));
     }
 
+    public function analyzeGuest(AnalyzeQuestionnaireGuestRequest $request): JsonResponse
+    {
+        /** @var array<string, mixed> $answers */
+        $answers = $request->validated();
+
+        return $this->respond(fn (): array => $this->yudaAi->analyzeQuestionnaireGuest(
+            $answers,
+        ));
+    }
+
     public function feedback(Request $request): JsonResponse
     {
         $this->authenticatedUser($request);
@@ -68,7 +80,7 @@ class AiController extends Controller
             'notes' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
 
-        \Illuminate\Support\Facades\Log::info('ai.questionnaire.feedback', [
+        Log::info('ai.questionnaire.feedback', [
             'user_id' => $request->user()?->id,
             'is_suitable' => $validated['is_suitable'],
             'pattern_hash' => $validated['pattern_hash'] ?? null,

@@ -116,6 +116,72 @@ class YudaAiService
     /**
      * @return array{jawaban: string, conversation_id: string}
      */
+    /**
+     * Analisis kuesioner untuk pengguna guest (tanpa akun).
+     * Alur sama dengan analyzeQuestionnaire, namun:
+     * - Tidak menyimpan hasil ke DB
+     * - Tidak membutuhkan User — AI dipanggil tanpa conversation
+     *
+     * @param  array<string, mixed>  $answers
+     * @return array<string, mixed>
+     */
+    public function analyzeQuestionnaireGuest(array $answers): array
+    {
+        $patternHash = QuestionnairePatternHasher::hash($answers);
+
+        // Cek cache pola di DB — boleh pakai hasil yang sudah ada meski milik user lain
+        // karena pola jawaban yang sama menghasilkan analisis yang sama
+        $cachedRecord = QuestionnaireAnalysis::query()->where('pattern_hash', $patternHash)->first();
+        if ($cachedRecord instanceof QuestionnaireAnalysis) {
+            $cachedRecord->increment('hit_count');
+            Log::info('ai.questionnaire.guest.cache_hit', [
+                'pattern_hash' => $patternHash,
+                'source' => $cachedRecord->source,
+            ]);
+
+            return $cachedRecord->analysis;
+        }
+
+        $prompt = QuestionnairePrompt::build($answers);
+
+        try {
+            $response = $this->generateGuest($prompt);
+            $analysisData = $response->toArray();
+
+            // Simpan ke cache pola supaya request berikutnya dengan jawaban sama bisa reuse
+            QuestionnaireAnalysis::query()->create([
+                'pattern_hash' => $patternHash,
+                'answers' => QuestionnairePatternHasher::normalize($answers),
+                'analysis' => $analysisData,
+                'source' => 'gemini',
+                'hit_count' => 1,
+            ]);
+
+            return $analysisData;
+        } catch (Throwable $exception) {
+            Log::warning('ai.questionnaire.guest.fallback_triggered', [
+                'pattern_hash' => $patternHash,
+                'error' => $exception->getMessage(),
+                'exception_class' => $exception::class,
+            ]);
+
+            $fallbackData = QuestionnaireFallbackGenerator::generate($answers);
+
+            QuestionnaireAnalysis::query()->create([
+                'pattern_hash' => $patternHash,
+                'answers' => QuestionnairePatternHasher::normalize($answers),
+                'analysis' => $fallbackData,
+                'source' => 'fallback',
+                'hit_count' => 1,
+            ]);
+
+            return $fallbackData;
+        }
+    }
+
+    /**
+     * @return array{jawaban: string, conversation_id: string}
+     */
     public function sendMessage(User $user, string $message, ?string $conversationId): array
     {
         $response = $this->generate($user, $message, $conversationId);
@@ -130,6 +196,85 @@ class YudaAiService
             'jawaban' => $answer,
             'conversation_id' => $response->conversationId,
         ];
+    }
+
+    /**
+     * Panggil AI tanpa User dan conversation — khusus untuk guest.
+     * Selalu mulai sesi baru, tidak ada conversation yang disimpan.
+     */
+    private function generateGuest(string $prompt): StructuredAgentResponse
+    {
+        $primaryModel = (string) config('ai.providers.gemini-compatible.models.text.default');
+        $fallbackModel = config('ai.providers.gemini-compatible.models.text.fallback');
+
+        if ($primaryModel === '') {
+            throw new LogicException('The primary Gemini-compatible text model is not configured.');
+        }
+
+        $overloadCache = Cache::store('file');
+        $overloadCacheKey = "ai:provider-overload-count:{$primaryModel}";
+        $primaryOverloadCount = (int) $overloadCache->get($overloadCacheKey, 0);
+        $fallbackModel = is_string($fallbackModel) && trim($fallbackModel) !== ''
+            ? trim($fallbackModel)
+            : null;
+
+        if ($fallbackModel === null || $fallbackModel === $primaryModel) {
+            $models = [$primaryModel];
+        } elseif ($primaryOverloadCount >= self::OVERLOAD_FAILURE_THRESHOLD) {
+            $models = [$fallbackModel];
+        } else {
+            $models = [$primaryModel, $fallbackModel];
+        }
+
+        foreach ($models as $index => $model) {
+            $attempt = $index + 1;
+            $isLastAttempt = $attempt === count($models);
+            $startedAt = microtime(true);
+            $outcome = 'failed';
+
+            try {
+                $agent = FastGeminiAssistant::make()->start();
+                $response = $agent->prompt(
+                    $prompt,
+                    provider: 'gemini-compatible',
+                    model: $model,
+                    timeout: (int) config('ai.timeout', 20),
+                );
+
+                $outcome = 'succeeded';
+
+                if (! $response instanceof StructuredAgentResponse) {
+                    throw new LogicException('The YUDA agent did not return structured output.');
+                }
+
+                return $response;
+            } catch (ProviderOverloadedException $exception) {
+                $outcome = 'overloaded';
+                $modelOverloadCacheKey = "ai:provider-overload-count:{$model}";
+                $overloadCache->add($modelOverloadCacheKey, 0, self::OVERLOAD_FAILURE_TTL_SECONDS);
+                $overloadCache->increment($modelOverloadCacheKey);
+
+                if ($isLastAttempt) {
+                    throw $exception;
+                }
+            } finally {
+                $context = [
+                    'attempt' => $attempt,
+                    'model' => $model,
+                    'provider' => 'gemini-compatible',
+                    'duration_ms' => round((microtime(true) - $startedAt) * 1000),
+                    'guest' => true,
+                ];
+
+                match ($outcome) {
+                    'succeeded' => Log::info('ai.prompt.succeeded', $context),
+                    'overloaded' => Log::warning('ai.prompt.overloaded', $context),
+                    default => Log::error('ai.prompt.failed', $context),
+                };
+            }
+        }
+
+        throw new LogicException('No Gemini model was available for this prompt.');
     }
 
     private function generate(User $user, string $prompt, ?string $conversationId): StructuredAgentResponse
