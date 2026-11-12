@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\Api\InterventionController;
+use App\Http\Controllers\Api\SocialScreenTimeController;
+use App\Http\Controllers\Api\TaskController;
 
 Route::middleware('throttle:10,1')->group(function () {
     Route::post(
@@ -63,3 +65,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/ai/questionnaire', [AiController::class, 'analyze'])->name('api.ai.questionnaire');
     Route::post('/ai/questionnaire/feedback', [AiController::class, 'feedback'])->name('api.ai.questionnaire.feedback');
 });
+
+// Social Media Screen Time Tracker (public: support guest & logged-in user)
+Route::post('/screen-time/social', [SocialScreenTimeController::class, 'update'])->name('api.screen_time.social.update');
+Route::get('/screen-time/social', [SocialScreenTimeController::class, 'show'])->name('api.screen_time.social.show');
+
+// Task List CRUD (public: support guest & logged-in user)
+Route::get('/tasks', [TaskController::class, 'index'])->name('api.tasks.index');
+Route::post('/tasks', [TaskController::class, 'store'])->name('api.tasks.store');
+Route::put('/tasks/{id}', [TaskController::class, 'update'])->name('api.tasks.update');
+Route::patch('/tasks/{id}/complete', [TaskController::class, 'toggleComplete'])->name('api.tasks.complete');
+Route::delete('/tasks/{id}', [TaskController::class, 'destroy'])->name('api.tasks.destroy');

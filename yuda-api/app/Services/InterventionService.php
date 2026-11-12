@@ -44,8 +44,14 @@ class InterventionService
             $targetEmotion = 'belum_teridentifikasi';
         }
 
+        // Dapatkan ID generasi aktif jika ada (agar hanya mengambil pesan dari generasi aktif)
+        $activeGenId = InterventionGenerationService::getActiveGenerationId();
+
         // 1. Coba cari yang cocok persis ketiga-tiganya: emotion + trigger + tone
         $query = InterventionMessage::query()->where('emotion', $targetEmotion);
+        if ($activeGenId) {
+            $query->where('generation_id', $activeGenId);
+        }
         if ($triggerCondition) {
             $query->where('trigger_condition', $triggerCondition);
         }
@@ -54,48 +60,47 @@ class InterventionService
 
         // 2. Jika tidak ada exact 3 kriteria dan trigger dikirim, utamakan emotion + trigger
         if (! $message instanceof InterventionMessage && $triggerCondition) {
-            $message = InterventionMessage::query()
+            $fallback2 = InterventionMessage::query()
                 ->where('emotion', $targetEmotion)
-                ->where('trigger_condition', $triggerCondition)
-                ->inRandomOrder()
-                ->first();
+                ->where('trigger_condition', $triggerCondition);
+            if ($activeGenId) {
+                $fallback2->where('generation_id', $activeGenId);
+            }
+            $message = $fallback2->inRandomOrder()->first();
         }
 
         // 3. Jika masih tidak ada, cari yang cocok emotion + tone_style
         if (! $message instanceof InterventionMessage) {
-            $message = InterventionMessage::query()
+            $fallback3 = InterventionMessage::query()
                 ->where('emotion', $targetEmotion)
-                ->where('tone_style', $normalizedTone)
-                ->inRandomOrder()
-                ->first();
+                ->where('tone_style', $normalizedTone);
+            if ($activeGenId) {
+                $fallback3->where('generation_id', $activeGenId);
+            }
+            $message = $fallback3->inRandomOrder()->first();
         }
 
         // 4. Jika masih tidak ada, cari yang cocok trigger_condition + tone_style
         if (! $message instanceof InterventionMessage && $triggerCondition) {
-            $message = InterventionMessage::query()
+            $fallback4 = InterventionMessage::query()
                 ->where('trigger_condition', $triggerCondition)
-                ->where('tone_style', $normalizedTone)
-                ->inRandomOrder()
-                ->first();
+                ->where('tone_style', $normalizedTone);
+            if ($activeGenId) {
+                $fallback4->where('generation_id', $activeGenId);
+            }
+            $message = $fallback4->inRandomOrder()->first();
         }
 
-        // 3. Jika masih tidak ada, ambil berdasarkan tone_style saja (gaya bahasa user diprioritaskan)
+        // 5. Fallback ke pesan emosi belum_teridentifikasi
         if (! $message instanceof InterventionMessage) {
-            $message = InterventionMessage::query()
-                ->where('tone_style', $normalizedTone)
-                ->inRandomOrder()
-                ->first();
+            $fallback5 = InterventionMessage::query()->where('emotion', 'belum_teridentifikasi');
+            if ($activeGenId) {
+                $fallback5->where('generation_id', $activeGenId);
+            }
+            $message = $fallback5->inRandomOrder()->first();
         }
 
-        // 4. Fallback ke pesan emosi belum_teridentifikasi
-        if (! $message instanceof InterventionMessage) {
-            $message = InterventionMessage::query()
-                ->where('emotion', 'belum_teridentifikasi')
-                ->inRandomOrder()
-                ->first();
-        }
-
-        // 5. Fallback terakhir jika DB kosong sama sekali
+        // 6. Fallback terakhir jika DB kosong atau belum ada di generasi aktif
         if (! $message instanceof InterventionMessage) {
             $message = InterventionMessage::query()->inRandomOrder()->first();
         }

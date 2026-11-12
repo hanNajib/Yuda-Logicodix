@@ -10,6 +10,7 @@ class InterventionMessage extends Model
     use HasFactory;
 
     protected $fillable = [
+        'generation_id',
         'emotion',
         'trigger_condition',
         'tone_style',
@@ -21,6 +22,11 @@ class InterventionMessage extends Model
         'source',
         'usage_count',
     ];
+
+    public function generation(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(InterventionGenerationRun::class, 'generation_id');
+    }
 
     protected $casts = [
         'usage_count' => 'integer',
