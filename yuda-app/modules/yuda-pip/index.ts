@@ -16,11 +16,23 @@ interface YudaPipNativeModule {
   requestOverlayWithPip(): boolean;
   requestBatteryWithPip(): boolean;
   requestNotificationWithPip(): boolean;
+  requestAccessibilityWithPip(): boolean;
   bringToFront(): boolean;
   stopWatching(): void;
   getInstalledApps(includeIcons?: boolean): Promise<InstalledAppInfo[]>;
   getAppIcon(packageName: string): Promise<string | null>;
   isPackageInstalled(packageName: string): boolean;
+  setTargetPackages(packages: string[]): boolean;
+  getTargetPackages(): string[];
+  startOverlayMonitor(userName?: string, targetPackages?: string[], testMode?: boolean, intervalSeconds?: number): boolean;
+  stopOverlayMonitor(): boolean;
+  setIntervalMinutes(minutes: number): boolean;
+  getIntervalMinutes(): number;
+  isOverlayMonitorRunning(): boolean;
+  isAccessibilityServiceEnabled(): boolean;
+  openAccessibilitySettings(): boolean;
+  getTotalReelsDurationSeconds(): number;
+  dismissActiveAlert(reason?: string): boolean;
 }
 
 let NativeModule: any = null;
@@ -78,6 +90,10 @@ export function requestNotificationWithPip(): boolean {
   return safe(() => NativeModule?.requestNotificationWithPip() ?? false, false);
 }
 
+export function requestAccessibilityWithPip(): boolean {
+  return safe(() => NativeModule?.requestAccessibilityWithPip() ?? false, false);
+}
+
 export function bringToFront(): boolean {
   return safe(() => NativeModule?.bringToFront() ?? false, false);
 }
@@ -108,6 +124,64 @@ export function isPackageInstalled(packageName: string): boolean {
   return safe(() => NativeModule?.isPackageInstalled(packageName) ?? false, false);
 }
 
+export function setTargetPackages(packages: string[]): boolean {
+  return safe(() => NativeModule?.setTargetPackages(packages) ?? false, false);
+}
+
+export function getTargetPackages(): string[] {
+  return safe(() => NativeModule?.getTargetPackages() ?? [], []);
+}
+
+export function setIntervalMinutes(minutes: number): boolean {
+  return safe(() => NativeModule?.setIntervalMinutes(minutes) ?? false, false);
+}
+
+export function getIntervalMinutes(): number {
+  return safe(() => NativeModule?.getIntervalMinutes() ?? 15, 15);
+}
+
+export function startOverlayMonitor(
+  userName = 'Gathan',
+  targetPackages: string[] = [
+    'com.instagram.android',
+    'com.zhiliaoapp.musically',
+    'com.ss.android.ugc.trill',
+    'com.facebook.katana',
+    'com.google.android.youtube',
+  ],
+  testMode = true,
+  intervalSeconds = 30
+): boolean {
+  return safe(
+    () => NativeModule?.startOverlayMonitor(userName, targetPackages, testMode, intervalSeconds) ?? false,
+    false
+  );
+}
+
+export function stopOverlayMonitor(): boolean {
+  return safe(() => NativeModule?.stopOverlayMonitor() ?? false, false);
+}
+
+export function isOverlayMonitorRunning(): boolean {
+  return safe(() => NativeModule?.isOverlayMonitorRunning() ?? false, false);
+}
+
+export function isAccessibilityServiceEnabled(): boolean {
+  return safe(() => NativeModule?.isAccessibilityServiceEnabled() ?? false, false);
+}
+
+export function openAccessibilitySettings(): boolean {
+  return safe(() => NativeModule?.openAccessibilitySettings() ?? false, false);
+}
+
+export function getTotalReelsDurationSeconds(): number {
+  return safe(() => NativeModule?.getTotalReelsDurationSeconds() ?? 0, 0);
+}
+
+export function dismissActiveAlert(reason = 'dismiss'): boolean {
+  return safe(() => NativeModule?.dismissActiveAlert(reason) ?? false, false);
+}
+
 export function addPipModeListener(
   listener: (event: { isInPip: boolean }) => void
 ): Subscription | undefined {
@@ -130,11 +204,21 @@ export default {
   requestOverlayWithPip,
   requestBatteryWithPip,
   requestNotificationWithPip,
+  requestAccessibilityWithPip,
   bringToFront,
   stopWatching,
   getInstalledApps,
   getAppIcon,
   isPackageInstalled,
+  setTargetPackages,
+  getTargetPackages,
+  startOverlayMonitor,
+  stopOverlayMonitor,
+  isOverlayMonitorRunning,
+  isAccessibilityServiceEnabled,
+  openAccessibilitySettings,
+  getTotalReelsDurationSeconds,
+  dismissActiveAlert,
   addPipModeListener,
   addPermissionGrantedListener,
 };

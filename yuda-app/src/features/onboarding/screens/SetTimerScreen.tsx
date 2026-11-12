@@ -43,11 +43,11 @@ export default function SetTimerScreen() {
     const { width: W } = useWindowDimensions();
     const reducedMotion = useReducedMotion();
 
-    const { user, userName, completeOnboarding } = useAuthStore();
+    const { user, userName, intervalMinutes: savedInterval, setIntervalMinutes } = useAuthStore();
     const displayName = userName || user?.name || 'Gathan';
     const initialLetter = (displayName[0] || 'G').toUpperCase();
 
-    const [durationMinutes, setDurationMinutes] = useState(15);
+    const [durationMinutes, setDurationMinutes] = useState(savedInterval || 15);
     const submitting = useRef(false);
 
     const [fontsLoaded] = useFonts({
@@ -163,6 +163,7 @@ export default function SetTimerScreen() {
         submitting.current = true;
 
         try {
+            setIntervalMinutes(durationMinutes);
             router.push('/onboarding/select-apps' as any);
         } finally {
             submitting.current = false;

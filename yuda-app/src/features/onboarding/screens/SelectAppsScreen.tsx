@@ -59,6 +59,8 @@ const DEFAULT_APPS: AppItem[] = [
     { id: 'instagram', name: 'Instagram', type: 'instagram', packageName: 'com.instagram.android' },
     { id: 'facebook', name: 'FaceBook', type: 'facebook', packageName: 'com.facebook.katana' },
     { id: 'youtube', name: 'YouTube', type: 'youtube', packageName: 'com.google.android.youtube' },
+    { id: 'threads', name: 'Threads', type: 'other', packageName: 'com.instagram.barcelona' },
+    { id: 'twitter', name: 'X', type: 'twitter', packageName: 'com.twitter.android' },
 ];
 
 function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
@@ -234,11 +236,16 @@ export default function SelectAppsScreen() {
     const { width: W } = useWindowDimensions();
     const reducedMotion = useReducedMotion();
 
-    const { user, userName } = useAuthStore();
+    const { user, userName, selectedTargetPackages, setSelectedTargetPackages } = useAuthStore();
     const displayName = userName || user?.name || 'Gathan';
     const initialLetter = (displayName[0] || 'G').toUpperCase();
 
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([
+        'tiktok',
+        'instagram',
+        'facebook',
+        'youtube',
+    ]);
     const [installedApps, setInstalledApps] = useState<AppItem[]>([]);
     const [isLoadingApps, setIsLoadingApps] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -315,18 +322,21 @@ export default function SelectAppsScreen() {
                             return installedNames.some((x) => x.includes(n));
                         };
 
-                        const autoSelected: string[] = [];
-                        DEFAULT_APPS.forEach((d) => {
-                            const isPresent = isPkgInstalled(d.packageName) || isNameMatches(d.name);
-                            if (isPresent) {
-                                autoSelected.push(d.id);
+                        if (selectedTargetPackages && selectedTargetPackages.length > 0) {
+                            const matchingIds: string[] = [];
+                            DEFAULT_APPS.forEach((d) => {
+                                if (d.packageName && selectedTargetPackages.includes(d.packageName)) {
+                                    matchingIds.push(d.id);
+                                }
+                            });
+                            selectedTargetPackages.forEach((pkg) => {
+                                if (!DEFAULT_APPS.some((d) => d.packageName === pkg)) {
+                                    matchingIds.push(pkg);
+                                }
+                            });
+                            if (matchingIds.length > 0) {
+                                setSelectedIds(Array.from(new Set(matchingIds)));
                             }
-                        });
-
-                        if (autoSelected.length > 0) {
-                            setSelectedIds(autoSelected);
-                        } else if (mapped.length > 0) {
-                            setSelectedIds([mapped[0].id]);
                         }
                     }
                 }
@@ -425,8 +435,6 @@ export default function SelectAppsScreen() {
     }, [defaultAppsWithStatus, installedApps, selectedIds]);
 
     const toggleApp = (id: string, isInstalled?: boolean) => {
-        if (isInstalled === false) return;
-
         setSelectedIds((prev) => {
             if (prev.includes(id)) {
                 return prev.filter((x) => x !== id);
@@ -473,6 +481,34 @@ export default function SelectAppsScreen() {
         submitting.current = true;
 
         try {
+            const packages: string[] = [];
+            selectedIds.forEach((id) => {
+                if (id === 'tiktok') {
+                    packages.push('com.zhiliaoapp.musically', 'com.ss.android.ugc.trill');
+                } else if (id === 'instagram') {
+                    packages.push('com.instagram.android');
+                } else if (id === 'facebook') {
+                    packages.push('com.facebook.katana', 'com.facebook.lite');
+                } else if (id === 'youtube') {
+                    packages.push('com.google.android.youtube');
+                } else if (id === 'threads') {
+                    packages.push('com.instagram.barcelona');
+                } else if (id === 'twitter') {
+                    packages.push('com.twitter.android', 'com.twitter.android.lite');
+                } else {
+                    const found = installedApps.find((a) => a.id === id);
+                    if (found?.packageName) {
+                        packages.push(found.packageName);
+                    } else if (id.includes('.')) {
+                        packages.push(id);
+                    }
+                }
+            });
+
+            const uniquePackages = Array.from(new Set(packages));
+            setSelectedTargetPackages(uniquePackages);
+            YudaPip.setTargetPackages(uniquePackages);
+
             router.push('/onboarding/welcome' as any);
         } finally {
             submitting.current = false;

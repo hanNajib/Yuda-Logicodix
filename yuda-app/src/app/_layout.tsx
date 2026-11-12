@@ -1,4 +1,6 @@
 import { useAuthStore } from "@/stores/useAuthStore";
+import YudaPip from "@/modules/yuda-pip";
+import { AppState, PermissionsAndroid, Platform } from "react-native";
 import {
   Outfit_500Medium,
   Outfit_600SemiBold,
@@ -52,6 +54,7 @@ export default function RootLayout() {
 
     const inAuthGroup = (segments[0] as string) === "auth";
     const inOnboarding = (segments[0] as string) === "onboarding";
+    const isOnboardingPermissions = inOnboarding && (segments[1] as string) === "permissions";
 
     if (!hasCompletedOnboarding) {
       if (inOnboarding || inAuthGroup) {
@@ -63,11 +66,49 @@ export default function RootLayout() {
         router.replace("/auth" as any);
       }
     } else {
-      if (inAuthGroup || inOnboarding) {
+      // Jika sudah menyelesaikan onboarding, pastikan izin penting tetap aktif
+      if (Platform.OS === 'android') {
+        const canDraw = YudaPip.canDrawOverlays();
+        const battery = YudaPip.isIgnoringBatteryOptimizations();
+        const accessibility = YudaPip.isAccessibilityServiceEnabled();
+
+        if (!canDraw || !battery || !accessibility) {
+          if (!isOnboardingPermissions) {
+            router.replace("/onboarding/permissions" as any);
+          }
+          return;
+        }
+      }
+
+      if (inAuthGroup || (inOnboarding && !isOnboardingPermissions)) {
         router.replace("/" as any);
       }
     }
   }, [isHydrated, hasCompletedOnboarding, userToken, segments]);
+
+  // Cek izin saat user kembali ke app dari Pengaturan Android
+  useEffect(() => {
+    if (!isHydrated || !hasCompletedOnboarding) return;
+
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && Platform.OS === 'android') {
+        const canDraw = YudaPip.canDrawOverlays();
+        const battery = YudaPip.isIgnoringBatteryOptimizations();
+        const accessibility = YudaPip.isAccessibilityServiceEnabled();
+
+        const inOnboarding = (segments[0] as string) === "onboarding";
+        const isOnboardingPermissions = inOnboarding && (segments[1] as string) === "permissions";
+
+        if (!canDraw || !battery || !accessibility) {
+          if (!isOnboardingPermissions) {
+            router.replace("/onboarding/permissions" as any);
+          }
+        }
+      }
+    });
+
+    return () => sub.remove();
+  }, [isHydrated, hasCompletedOnboarding, segments]);
 
   if (!isHydrated || !fontsLoaded) {
     return null;
