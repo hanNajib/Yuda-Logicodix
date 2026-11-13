@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Ai\Agents\InterventionBatchGeneratorAgent;
 use App\Models\InterventionGenerationBatch;
 use App\Services\InterventionGenerationService;
 use Illuminate\Bus\Queueable;
@@ -10,7 +11,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Facades\Ai;
 use Throwable;
 
 class ProcessInterventionBatchJob implements ShouldQueue
@@ -37,11 +37,12 @@ class ProcessInterventionBatchJob implements ShouldQueue
         }
 
         $batch->increment('attempts');
-        $batch->update(['status' => 'processing', 'error_message' => null]);
+        $batch->update(['status' => 'processing']);
 
         $combinations = $batch->combinations;
         if (empty($combinations)) {
-            $batch->update(['status' => 'failed', 'error_message' => 'Daftar kombinasi kosong.']);
+            $batch->update(['status' => 'failed']);
+            Log::warning('ProcessInterventionBatchJob: Combinations empty', ['batch_id' => $this->batchId]);
             return;
         }
 
@@ -91,8 +92,13 @@ PROMPT;
                 $prompt
             );
 
-            $model = (string) config('ai.providers.gemini-compatible.models.text.default', 'gemini-3.5-flash-lite');
-            $response = Ai::agent()->prompt($prompt, provider: 'gemini-compatible', model: $model);
+            $model = (string) config('ai.providers.gemini-compatible.models.text.default', 'gemini-3.8-flash');
+            $response = InterventionBatchGeneratorAgent::make()->prompt(
+                $prompt,
+                provider: 'gemini-compatible',
+                model: $model,
+                timeout: (int) config('ai.timeout', 45)
+            );
 
             $content = (string) $response;
             $items = null;
@@ -143,12 +149,10 @@ PROMPT;
             $batch->update([
                 'result' => $validatedMessages,
                 'status' => 'completed',
-                'error_message' => null,
             ]);
 
             // Cek apakah seluruh batch pada run ini sudah selesai
             $generationService->checkAndFinalizeRun($batch->generation_id);
-
         } catch (Throwable $e) {
             Log::error('ProcessInterventionBatchJob.failed', [
                 'batch_id' => $this->batchId,
@@ -158,7 +162,6 @@ PROMPT;
 
             $batch->update([
                 'status' => 'failed',
-                'error_message' => $e->getMessage(),
             ]);
 
             // Re-throw exception agar sistem Queue mencatat retry jika attempts < $tries
@@ -166,4 +169,3 @@ PROMPT;
         }
     }
 }
-

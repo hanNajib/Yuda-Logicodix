@@ -55,7 +55,6 @@ class InterventionGenerationService
                 'completed_batches' => 0,
                 'failed_batches' => 0,
                 'total_generated' => 0,
-                'error_message' => null,
                 'started_at' => now(),
                 'completed_at' => null,
             ]
@@ -122,7 +121,6 @@ class InterventionGenerationService
         if ($failedCount > 0) {
             $run->update([
                 'status' => 'failed',
-                'error_message' => "Terdapat {$failedCount} batch yang gagal diproses.",
             ]);
             Log::warning('InterventionGenerationService.run_failed_batches', [
                 'run_id' => $run->id,
@@ -140,14 +138,16 @@ class InterventionGenerationService
         foreach ($batches as $batch) {
             $result = $batch->result;
             if (! is_array($result) || count($result) === 0) {
-                $run->update(['status' => 'failed', 'error_message' => "Batch #{$batch->batch_number} hasilnya kosong."]);
+                $run->update(['status' => 'failed']);
+                Log::warning('InterventionGenerationService.batch_empty', ['run_id' => $run->id, 'batch' => $batch->batch_number]);
                 return false;
             }
 
             foreach ($result as $msg) {
                 // Validasi field wajib
                 if (empty($msg['header']) || empty($msg['message']) || empty($msg['emotion']) || empty($msg['trigger_condition']) || empty($msg['tone_style'])) {
-                    $run->update(['status' => 'failed', 'error_message' => "Ada pesan tidak lengkap pada batch #{$batch->batch_number}."]);
+                    $run->update(['status' => 'failed']);
+                    Log::warning('InterventionGenerationService.message_incomplete', ['run_id' => $run->id, 'batch' => $batch->batch_number]);
                     return false;
                 }
 
@@ -156,7 +156,8 @@ class InterventionGenerationService
                     ! in_array($msg['trigger_condition'], self::TRIGGERS, true) ||
                     ! in_array($msg['tone_style'], self::TONES, true) ||
                     ! in_array($msg['micro_habit_type'], self::HABITS, true)) {
-                    $run->update(['status' => 'failed', 'error_message' => "Ada pesan dengan ENUM tidak valid pada batch #{$batch->batch_number}."]);
+                    $run->update(['status' => 'failed']);
+                    Log::warning('InterventionGenerationService.enum_invalid', ['run_id' => $run->id, 'batch' => $batch->batch_number]);
                     return false;
                 }
 
@@ -185,7 +186,11 @@ class InterventionGenerationService
         if (count($allMessages) !== self::TOTAL_EXPECTED_MESSAGES) {
             $run->update([
                 'status' => 'failed',
-                'error_message' => 'Total pesan yang dihasilkan adalah ' . count($allMessages) . ', seharusnya ' . self::TOTAL_EXPECTED_MESSAGES . '.',
+            ]);
+            Log::warning('InterventionGenerationService.total_messages_mismatch', [
+                'run_id' => $run->id,
+                'actual' => count($allMessages),
+                'expected' => self::TOTAL_EXPECTED_MESSAGES,
             ]);
             return false;
         }
@@ -194,7 +199,11 @@ class InterventionGenerationService
         if (count($combinationTracker) !== self::TOTAL_COMBINATIONS) {
             $run->update([
                 'status' => 'failed',
-                'error_message' => 'Jumlah kombinasi unik adalah ' . count($combinationTracker) . ', seharusnya ' . self::TOTAL_COMBINATIONS . '.',
+            ]);
+            Log::warning('InterventionGenerationService.combination_count_mismatch', [
+                'run_id' => $run->id,
+                'actual' => count($combinationTracker),
+                'expected' => self::TOTAL_COMBINATIONS,
             ]);
             return false;
         }
@@ -217,7 +226,6 @@ class InterventionGenerationService
                     'status' => 'active',
                     'total_generated' => count($allMessages),
                     'completed_at' => now(),
-                    'error_message' => null,
                 ]);
             });
 
@@ -236,7 +244,6 @@ class InterventionGenerationService
 
             $run->update([
                 'status' => 'failed',
-                'error_message' => 'Gagal transaksi aktivasi: ' . $e->getMessage(),
             ]);
 
             return false;
