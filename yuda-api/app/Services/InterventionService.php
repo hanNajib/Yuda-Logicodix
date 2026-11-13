@@ -201,13 +201,16 @@ class InterventionService
         ?string $guestUuid,
         string $logDate,
         array $slots = [],
-        int $interventionsTriggered = 0
+        int $interventionsTriggered = 0,
+        array $socialTimes = []
     ): UserDailyScreenTimeMatrix {
         $allowedSlots = [
             'slot_00_02', 'slot_02_04', 'slot_04_06', 'slot_06_08',
             'slot_08_10', 'slot_10_12', 'slot_12_14', 'slot_14_16',
             'slot_16_18', 'slot_18_20', 'slot_20_22', 'slot_22_00',
         ];
+
+        $socialPlatforms = ['instagram', 'tiktok', 'facebook', 'threads', 'youtube', 'x'];
 
         $criteria = [
             'user_id' => $user?->id,
@@ -221,6 +224,13 @@ class InterventionService
         foreach ($allowedSlots as $slotName) {
             if (array_key_exists($slotName, $slots)) {
                 $matrix->{$slotName} = (int) $slots[$slotName];
+            }
+        }
+
+        // Update social screen times jika dikirim
+        foreach ($socialPlatforms as $platform) {
+            if (array_key_exists($platform, $socialTimes)) {
+                $matrix->{$platform} = (int) $socialTimes[$platform];
             }
         }
 

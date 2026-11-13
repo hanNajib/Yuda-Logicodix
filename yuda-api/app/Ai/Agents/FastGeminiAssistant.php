@@ -47,6 +47,7 @@ class FastGeminiAssistant implements Agent, Conversational, HasProviderOptions, 
             ])->required(),
             'layar_2_alternatif_aktivitas' => $schema->array()->items(
                 $schema->object(fn (JsonSchema $schema): array => [
+                    'kategori' => $schema->string()->enum(['membaca', 'sosial', 'olahraga', 'produktif', 'mindfulness'])->required(),
                     'judul' => $schema->string()->required(),
                     'deskripsi' => $schema->string()->required(),
                 ])->required()
