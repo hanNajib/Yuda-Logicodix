@@ -45,8 +45,9 @@ final class QuestionnaireFallbackGenerator
             ? 'Waw, itu waktu yang cukup banyak untuk dihabiskan dengan scrolling di kasur.'
             : 'Waw, itu waktu yang cukup banyak untuk dihabiskan dengan scrolling tanpa disadari.';
 
-        // 2. Layar 2: Tepat 3 Kartu Aktivitas Positif
+        // 2. Layar 2: Tepat 3 Kartu Aktivitas Positif (5 Kategori Baku: membaca, sosial, olahraga, produktif, mindfulness)
         $kartu1 = [
+            'kategori' => 'membaca',
             'judul' => 'Membaca Buku',
             'deskripsi' => 'Dengan kecepatan baca 50–100 halaman per jam, kamu bisa menyelesaikan 2–3 buku berkualitas dalam sebulan.',
         ];
@@ -54,26 +55,32 @@ final class QuestionnaireFallbackGenerator
         // Kartu 2 menyesuaikan Nilai Inti (Q8 baru: 5 opsi)
         $kartu2 = match (true) {
             in_array('A', $q8, true) => [
+                'kategori' => 'sosial',
                 'judul' => 'Quality Time Keluarga & Sahabat',
                 'deskripsi' => 'Waktu ini bisa dipakai untuk mengobrol hangat atau berkumpul bersama orang terdekat tanpa distraksi layar.',
             ],
             in_array('B', $q8, true) => [
+                'kategori' => 'produktif',
                 'judul' => 'Upgrade Karier & Finansial',
                 'deskripsi' => 'Dalam sebulan, kamu bisa mempelajari skill baru, merapikan portofolio, atau menata arus kas masa depan.',
             ],
             in_array('C', $q8, true) => [
+                'kategori' => 'olahraga',
                 'judul' => 'Pemulihan Fisik & Mental',
                 'deskripsi' => 'Tidur cukup dan relaksasi pikiran terbukti memulihkan fokus mental serta ketahanan tubuhmu secara optimal.',
             ],
             in_array('D', $q8, true) => [
+                'kategori' => 'mindfulness',
                 'judul' => 'Ibadah & Refleksi Tenang',
                 'deskripsi' => 'Menghadirkan ketenangan batin lewat doa, tadarus, atau perenungan tanpa kebisingan notifikasi.',
             ],
             in_array('E', $q8, true) => [
+                'kategori' => 'produktif',
                 'judul' => 'Menyalurkan Hobi Kreatif',
                 'deskripsi' => 'Kamu bisa membuat karya tulisan, sketsa, memainkan instrumen musik, atau hobi yang selama ini tertunda.',
             ],
             default => [
+                'kategori' => 'produktif',
                 'judul' => 'Waktu Bermakna Tanpa Layar',
                 'deskripsi' => 'Melakukan aktivitas nyata yang mendekatkanmu pada hal-hal terpenting dalam hidup.',
             ],
@@ -82,26 +89,32 @@ final class QuestionnaireFallbackGenerator
         // Kartu 3 menyesuaikan Respons Pengganti (Q10)
         $kartu3 = match (true) {
             in_array('A', $q10, true) => [
+                'kategori' => 'olahraga',
                 'judul' => 'Jalan Santai & Peregangan',
                 'deskripsi' => 'Jalan kaki ringan 30 menit membakar kalori, merilekskan otot kaku, dan menyegarkan sirkulasi darah.',
             ],
             in_array('B', $q10, true) => [
+                'kategori' => 'sosial',
                 'judul' => 'Ngobrol Santai',
                 'deskripsi' => 'Menelepon atau mengobrol sejenak dengan seseorang untuk mengalihkan pikiran dari dorongan scrolling.',
             ],
             in_array('C', $q10, true) => [
+                'kategori' => 'mindfulness',
                 'judul' => 'Latihan Pernapasan',
                 'deskripsi' => 'Latihan pernapasan 4-7-8 selama 5 menit langsung menurunkan hormon stres dan menenangkan denyut nadi.',
             ],
             in_array('D', $q10, true) => [
+                'kategori' => 'produktif',
                 'judul' => 'Merapikan Meja atau Kamar',
                 'deskripsi' => 'Melakukan pekerjaan fisik kecil memberikan kepuasan instan dan membuat lingkungan sekitarmu nyaman.',
             ],
             in_array('F', $q10, true) => [
+                'kategori' => 'mindfulness',
                 'judul' => 'Mendengarkan Musik Relaksasi',
                 'deskripsi' => 'Mendengarkan musik akustik atau podcast inspiratif membantu transisi santai menuju waktu istirahat.',
             ],
             default => [
+                'kategori' => 'mindfulness',
                 'judul' => 'Simpan HP di Meja',
                 'deskripsi' => 'Menaruh HP di luar jangkauan tangan memberi jeda alami bagi otak untuk kembali rileks.',
             ],
