@@ -50,6 +50,11 @@ interface AuthState {
         scroll_interval_minutes?: number;
         current_pause_duration?: number;
     }) => Promise<void>;
+    updateUserProfile: (profile: {
+        name?: string | null;
+        full_name?: string | null;
+        birth_date?: string | null;
+    }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -306,6 +311,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             set(nextState as any);
         } catch (e) {
             console.warn("Gagal menyimpan preferensi intervensi lokal:", e);
+        }
+    },
+
+    updateUserProfile: async (profile) => {
+        try {
+            const currentUser = get().user;
+            const updatedUser: AuthUser = currentUser
+                ? {
+                      ...currentUser,
+                      name: profile.name !== undefined ? profile.name : currentUser.name,
+                      full_name: profile.full_name !== undefined ? profile.full_name : currentUser.full_name,
+                      birth_date: profile.birth_date !== undefined ? profile.birth_date : currentUser.birth_date,
+                  }
+                : {
+                      id: 0,
+                      email: '',
+                      avatar: null,
+                      name: profile.name || null,
+                      full_name: profile.full_name || null,
+                      birth_date: profile.birth_date || null,
+                  };
+
+            const promises: Promise<any>[] = [
+                SecureStore.setItemAsync(USER_KEY, JSON.stringify(updatedUser)),
+            ];
+
+            if (profile.name) {
+                promises.push(SecureStore.setItemAsync(USER_NAME_KEY, profile.name));
+            }
+
+            await Promise.all(promises);
+
+            set({
+                user: updatedUser,
+                userName: updatedUser.name,
+            });
+        } catch (e) {
+            console.warn("Gagal memperbarui profil di storage lokal:", e);
         }
     },
 }));

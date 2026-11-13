@@ -12,6 +12,7 @@ export interface AuthUser {
     name: string | null;
     email: string;
     avatar: string | null;
+    birth_date?: string | null;
 }
 
 interface NativeAuthResponse {
