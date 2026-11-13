@@ -187,7 +187,7 @@ class InterventionController extends Controller
     {
         $validated = $request->validate([
             'guest_uuid' => ['nullable', 'string', 'max:64'],
-            'scroll_interval_minutes' => ['nullable', 'integer', 'min:5', 'max:120'],
+            'scroll_interval_minutes' => ['nullable', 'integer', 'min:5', 'max:60'],
             'tone_style' => ['nullable', 'string', 'in:lembut,tegas,humoris,faktual,reflektif'],
         ]);
 

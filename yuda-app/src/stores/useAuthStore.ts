@@ -2,6 +2,7 @@ import { AuthUser, signOutNativeGoogle } from '@/features/auth/services/authServ
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 import YudaPip from '@/modules/yuda-pip';
+import { apiClient } from '@/services/apiClient';
 
 const TOKEN_KEY = 'user_token';
 const USER_KEY = 'user_data';
@@ -336,6 +337,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             console.warn("Gagal menyimpan interval jeda:", e);
         }
         set({ intervalMinutes: minutes });
+
+        const token = get().userToken;
+        if (token) {
+            apiClient.post('/api/intervention/settings', {
+                scroll_interval_minutes: minutes,
+            }).catch((err) => {
+                console.warn("Gagal menyinkronkan scroll_interval_minutes ke server:", err);
+            });
+        }
     },
 
     saveInterventionSettingsLocally: async ({

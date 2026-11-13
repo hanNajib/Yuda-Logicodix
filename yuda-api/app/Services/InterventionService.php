@@ -352,7 +352,7 @@ class InterventionService
 
         $payload = [];
         if (isset($data['scroll_interval_minutes'])) {
-            $payload['scroll_interval_minutes'] = max(5, min(120, (int) $data['scroll_interval_minutes']));
+            $payload['scroll_interval_minutes'] = max(5, min(60, (int) $data['scroll_interval_minutes']));
         }
         if (isset($data['tone_style'])) {
             $payload['tone_style'] = $data['tone_style'];

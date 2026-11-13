@@ -152,8 +152,8 @@ export default function SetTimerScreen() {
     };
 
     const handleIncrease = () => {
-        if (durationMinutes < 120) {
-            setDurationMinutes((prev) => Math.min(120, prev + 5));
+        if (durationMinutes < 60) {
+            setDurationMinutes((prev) => Math.min(60, prev + 5));
             triggerChangeFeedback();
         }
     };
