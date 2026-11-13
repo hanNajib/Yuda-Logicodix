@@ -9,6 +9,8 @@ const ONBOARDING_KEY = 'onboarding_completed';
 const USER_NAME_KEY = 'user_name';
 const TARGET_PACKAGES_KEY = 'selected_target_packages';
 const INTERVAL_MINUTES_KEY = 'selected_interval_minutes';
+const TONE_STYLE_KEY = 'intervention_tone_style';
+const PAUSE_DURATION_KEY = 'intervention_pause_duration';
 
 export const DEFAULT_TARGET_PACKAGES = [
     'com.instagram.android',
@@ -30,6 +32,8 @@ interface AuthState {
     userName: string | null;
     selectedTargetPackages: string[];
     intervalMinutes: number;
+    toneStyle: string;
+    pauseDuration: number;
 
     hydrateAuth: () => Promise<void>;
     setAuthSession: (token: string, user: AuthUser) => Promise<void>;
@@ -41,6 +45,11 @@ interface AuthState {
     setUserName: (name: string | null) => Promise<void>;
     setSelectedTargetPackages: (packages: string[]) => Promise<void>;
     setIntervalMinutes: (minutes: number) => Promise<void>;
+    saveInterventionSettingsLocally: (settings: {
+        tone_style?: string;
+        scroll_interval_minutes?: number;
+        current_pause_duration?: number;
+    }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -51,16 +60,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     userName: null,
     selectedTargetPackages: DEFAULT_TARGET_PACKAGES,
     intervalMinutes: 15,
+    toneStyle: 'lembut',
+    pauseDuration: 30,
 
     hydrateAuth: async () => {
         try {
-            const [token, userJson, onboarding, savedName, savedPackagesJson, savedInterval] = await Promise.all([
+            const [
+                token,
+                userJson,
+                onboarding,
+                savedName,
+                savedPackagesJson,
+                savedInterval,
+                savedTone,
+                savedDuration,
+            ] = await Promise.all([
                 SecureStore.getItemAsync(TOKEN_KEY),
                 SecureStore.getItemAsync(USER_KEY),
                 SecureStore.getItemAsync(ONBOARDING_KEY),
                 SecureStore.getItemAsync(USER_NAME_KEY),
                 SecureStore.getItemAsync(TARGET_PACKAGES_KEY),
                 SecureStore.getItemAsync(INTERVAL_MINUTES_KEY),
+                SecureStore.getItemAsync(TONE_STYLE_KEY),
+                SecureStore.getItemAsync(PAUSE_DURATION_KEY),
             ]);
 
             let parsedUser: AuthUser | null = null;
@@ -99,12 +121,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 YudaPip.setIntervalMinutes(intervalVal);
             }
 
+            let toneVal = 'lembut';
+            if (savedTone) {
+                toneVal = savedTone;
+            }
+
+            let durationVal = 30;
+            if (savedDuration) {
+                const parsedDur = parseInt(savedDuration, 10);
+                if (!isNaN(parsedDur) && parsedDur > 0) {
+                    durationVal = parsedDur;
+                }
+            }
+
             set({
                 userToken: token || null,
                 user: parsedUser,
                 userName: savedName || parsedUser?.name || null,
                 selectedTargetPackages: packages,
                 intervalMinutes: intervalVal,
+                toneStyle: toneVal,
+                pauseDuration: durationVal,
                 hasCompletedOnboarding: onboarding === 'true',
                 isHydrated: true,
             });
@@ -120,6 +157,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             SecureStore.setItemAsync(USER_KEY, JSON.stringify(user)),
             user.name ? SecureStore.setItemAsync(USER_NAME_KEY, user.name) : Promise.resolve(),
         ]);
+
+        const currentTone = get().toneStyle || 'lembut';
+        const currentInterval = get().intervalMinutes || 15;
+
+        // Jika user baru login dan memiliki preferensi lokal, sinkronkan ke server dengan user_id
+        if (token && user.id) {
+            try {
+                const { API_ENDPOINTS } = require('@/constants/api');
+                fetch(API_ENDPOINTS.interventionSettings, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        scroll_interval_minutes: currentInterval,
+                        tone_style: currentTone,
+                    }),
+                }).catch((err) => console.warn('Gagal background sync settings intervensi pasca login:', err));
+            } catch (err) {
+                // ignore
+            }
+        }
 
         set({
             userToken: token,
@@ -212,5 +273,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             console.warn("Gagal menyimpan interval jeda:", e);
         }
         set({ intervalMinutes: minutes });
+    },
+
+    saveInterventionSettingsLocally: async ({
+        tone_style,
+        scroll_interval_minutes,
+        current_pause_duration,
+    }) => {
+        try {
+            const promises: Promise<any>[] = [];
+            const nextState: Partial<AuthState> = {};
+
+            if (tone_style) {
+                promises.push(SecureStore.setItemAsync(TONE_STYLE_KEY, tone_style));
+                nextState.toneStyle = tone_style;
+            }
+
+            if (scroll_interval_minutes && scroll_interval_minutes > 0) {
+                promises.push(SecureStore.setItemAsync(INTERVAL_MINUTES_KEY, scroll_interval_minutes.toString()));
+                if (typeof YudaPip.setIntervalMinutes === 'function') {
+                    YudaPip.setIntervalMinutes(scroll_interval_minutes);
+                }
+                nextState.intervalMinutes = scroll_interval_minutes;
+            }
+
+            if (current_pause_duration && current_pause_duration > 0) {
+                promises.push(SecureStore.setItemAsync(PAUSE_DURATION_KEY, current_pause_duration.toString()));
+                nextState.pauseDuration = current_pause_duration;
+            }
+
+            await Promise.all(promises);
+            set(nextState as any);
+        } catch (e) {
+            console.warn("Gagal menyimpan preferensi intervensi lokal:", e);
+        }
     },
 }));

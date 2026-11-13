@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/useAuthStore";
 import YudaPip from "@/modules/yuda-pip";
 import { AppState, PermissionsAndroid, Platform } from "react-native";
@@ -10,7 +11,7 @@ import {
 } from "@expo-google-fonts/outfit";
 import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -18,6 +19,20 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
+
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 1000 * 60 * 5,
+            gcTime: 1000 * 60 * 30,
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
 
   const [fontsLoaded] = useFonts({
     Outfit_500Medium,
@@ -66,7 +81,6 @@ export default function RootLayout() {
         router.replace("/auth" as any);
       }
     } else {
-      // Jika sudah menyelesaikan onboarding, pastikan izin penting tetap aktif
       if (Platform.OS === 'android') {
         const canDraw = YudaPip.canDrawOverlays();
         const battery = YudaPip.isIgnoringBatteryOptimizations();
@@ -86,7 +100,6 @@ export default function RootLayout() {
     }
   }, [isHydrated, hasCompletedOnboarding, userToken, segments]);
 
-  // Cek izin saat user kembali ke app dari Pengaturan Android
   useEffect(() => {
     if (!isHydrated || !hasCompletedOnboarding) return;
 
@@ -115,7 +128,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
@@ -126,6 +139,6 @@ export default function RootLayout() {
         <Stack.Screen name="dashboard/detail-waktu-scroll" />
         <Stack.Screen name="dashboard/edit-profile" />
       </Stack>
-    </>
+    </QueryClientProvider>
   );
 }

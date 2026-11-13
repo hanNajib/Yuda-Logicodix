@@ -47,7 +47,7 @@ Route::post('/questionnaire/analyze', [AiController::class, 'analyzeGuest'])->na
 
 // Fitur Intervensi, Matriks Screen Time & Pesan Cukup Tau
 Route::prefix('intervention')->group(function () {
-    // 1. Matriks Harian (Create/Upsert & Read 1 Bulan)
+    // 1. Matriks Harian (Create/Upsert & Read) - Optional Sanctum Auth
     Route::post('/matrix', [InterventionController::class, 'upsertMatrix'])->name('api.intervention.matrix.upsert');
     Route::get('/matrix', [InterventionController::class, 'getMonthlyMatrices'])->name('api.intervention.matrix.monthly');
 
@@ -58,9 +58,11 @@ Route::prefix('intervention')->group(function () {
     Route::post('/messages', [InterventionController::class, 'storeMessages'])->name('api.intervention.messages.store');
     Route::delete('/messages/{id}', [InterventionController::class, 'deleteMessage'])->name('api.intervention.messages.delete');
 
-    // 4. Konfigurasi Setting User (Read & Update)
-    Route::get('/settings', [InterventionController::class, 'getSettings'])->name('api.intervention.settings.get');
-    Route::post('/settings', [InterventionController::class, 'updateSettings'])->name('api.intervention.settings.update');
+    // 4. Konfigurasi Setting User (Read & Update) - Support optional sanctum auth & guest
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/settings', [InterventionController::class, 'getSettings'])->name('api.intervention.settings.get');
+        Route::post('/settings', [InterventionController::class, 'updateSettings'])->name('api.intervention.settings.update');
+    });
 });
 
 Route::middleware(['auth:sanctum'])->group(function () {

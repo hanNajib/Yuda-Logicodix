@@ -52,7 +52,7 @@ class InterventionController extends Controller
             'interventions_triggered' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $user = $request->user();
+        $user = $request->user('sanctum') ?: $request->user();
         $guestUuid = $validated['guest_uuid'] ?? $request->header('X-Guest-UUID');
 
         $matrix = $this->interventionService->upsertDailyMatrix(
@@ -71,18 +71,20 @@ class InterventionController extends Controller
     }
 
     /**
-     * 3. Ambil data riwayat matriks harian 1 bulan penuh.
+     * 3. Ambil data riwayat matriks harian (range: 'week' atau 'month').
      */
     public function getMonthlyMatrices(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user('sanctum') ?: $request->user();
         $guestUuid = $request->header('X-Guest-UUID') ?: $request->query('guest_uuid');
-        $month = $request->query('month'); // Format: YYYY-MM
+        $range = $request->query('range', 'month'); // 'week' | 'month'
+        $date = $request->query('date') ?: ($request->query('month') ? $request->query('month') . '-01' : null);
 
-        $matrices = $this->interventionService->getMonthlyMatrices($user, $guestUuid, $month);
+        $matrices = $this->interventionService->getMatricesByRange($user, $guestUuid, $range, $date);
 
         return response()->json([
             'status' => 'success',
+            'range' => $range,
             'data' => $matrices,
         ]);
     }
@@ -161,7 +163,7 @@ class InterventionController extends Controller
      */
     public function getSettings(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user('sanctum') ?: $request->user();
         $guestUuid = $request->header('X-Guest-UUID') ?: $request->query('guest_uuid');
 
         $setting = $this->interventionService->getOrCreateSetting($user, $guestUuid);
@@ -185,11 +187,11 @@ class InterventionController extends Controller
     {
         $validated = $request->validate([
             'guest_uuid' => ['nullable', 'string', 'max:64'],
-            'scroll_interval_minutes' => ['nullable', 'integer', 'min:5', 'max:60'],
+            'scroll_interval_minutes' => ['nullable', 'integer', 'min:5', 'max:120'],
             'tone_style' => ['nullable', 'string', 'in:lembut,tegas,humoris,faktual,reflektif'],
         ]);
 
-        $user = $request->user();
+        $user = $request->user('sanctum') ?: $request->user();
         $guestUuid = $validated['guest_uuid'] ?? $request->header('X-Guest-UUID');
 
         $updated = $this->interventionService->updateSetting($user, $guestUuid, $validated);

@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Text, TouchableOpacity, View } from 'react-native';
+import { useScrollMatrixStore } from '../../stores/useScrollMatrixStore';
+import { useScrollMatrixQuery } from '../../hooks/useScrollMatrixQuery';
 
 const yudaRamenSource = require('@/assets/images/yuda/yuda-makan.png');
 
@@ -8,70 +10,65 @@ interface ScrollMatrixCardProps {
     scale?: number;
 }
 
-type TileType = 'empty' | 'green' | 'yellow' | 'red' | 'coral';
+const SLOT_KEYS = [
+    'slot_00_02',
+    'slot_02_04',
+    'slot_04_06',
+    'slot_06_08',
+    'slot_08_10',
+    'slot_10_12',
+    'slot_12_14',
+    'slot_14_16',
+    'slot_16_18',
+    'slot_18_20',
+    'slot_20_22',
+    'slot_22_00',
+] as const;
 
-interface DayMatrixRow {
-    day: string;
-    tiles: TileType[];
+const DAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+function getMinuteColor(minutes: number): string {
+    if (minutes <= 0) return '#ffffff';
+    if (minutes <= 15) return '#275c43';
+    if (minutes <= 30) return '#4d8a63';
+    if (minutes <= 50) return '#f5b838';
+    if (minutes <= 80) return '#fca5a5';
+    if (minutes <= 100) return '#e85a4f';
+    return '#b91c1c';
 }
 
-const MATRIX_DATA: DayMatrixRow[] = [
-    {
-        day: 'Sen',
-        tiles: ['red', 'empty', 'empty', 'green', 'green', 'yellow', 'empty', 'green', 'yellow', 'coral', 'coral'],
-    },
-    {
-        day: 'Sel',
-        tiles: ['coral', 'empty', 'empty', 'empty', 'green', 'green', 'yellow', 'empty', 'green', 'red', 'coral'],
-    },
-    {
-        day: 'Rab',
-        tiles: ['empty', 'empty', 'empty', 'empty', 'green', 'green', 'empty', 'empty', 'green', 'red', 'coral'],
-    },
-    {
-        day: 'Kam',
-        tiles: ['coral', 'empty', 'empty', 'empty', 'green', 'green', 'yellow', 'green', 'green', 'yellow', 'red'],
-    },
-    {
-        day: 'Jum',
-        tiles: ['coral', 'empty', 'empty', 'empty', 'green', 'green', 'yellow', 'empty', 'yellow', 'red', 'coral'],
-    },
-    {
-        day: 'Sab',
-        tiles: ['coral', 'empty', 'empty', 'empty', 'yellow', 'green', 'yellow', 'green', 'green', 'red', 'coral'],
-    },
-    {
-        day: 'Min',
-        tiles: ['yellow', 'empty', 'empty', 'empty', 'green', 'green', 'green', 'green', 'yellow', 'yellow', 'coral'],
-    },
-];
-
-const CALENDAR_DATA: TileType[] = [
-    'green', 'yellow', 'coral', 'green', 'red', 'yellow', 'green',
-    'coral', 'green', 'yellow', 'green', 'red', 'coral', 'green',
-    'yellow', 'green', 'coral', 'red', 'green', 'yellow', 'coral',
-    'green', 'yellow', 'green', 'red', 'coral', 'green', 'yellow',
-    'green', 'coral', 'yellow', 'green', 'red', 'green', 'coral',
-    'yellow', 'green', 'red', 'coral', 'green', 'yellow', 'green',
-];
-
-function getTileColor(type: TileType): string {
-    switch (type) {
-        case 'green':
-            return '#275c43';
-        case 'yellow':
-            return '#f5b838';
-        case 'red':
-            return '#e85a4f';
-        case 'coral':
-            return '#fca5a5';
-        case 'empty':
-        default:
-            return '#ffffff';
-    }
+function getDailyColor(totalMinutes: number): string {
+    if (totalMinutes <= 0) return '#ffffff';
+    if (totalMinutes <= 45) return '#275c43';
+    if (totalMinutes <= 90) return '#4d8a63';
+    if (totalMinutes <= 150) return '#f5b838';
+    if (totalMinutes <= 240) return '#fca5a5';
+    if (totalMinutes <= 360) return '#e85a4f';
+    return '#b91c1c';
 }
 
-function getCalendarWeeks(): TileType[][] {
+function getCurrentWeekDates(): { day: string; dateStr: string }[] {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diffToMonday = (dayOfWeek + 6) % 7;
+
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - diffToMonday);
+
+    return DAY_LABELS.map((dayLabel, index) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + index);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return {
+            day: dayLabel,
+            dateStr: `${yyyy}-${mm}-${dd}`,
+        };
+    });
+}
+
+function getCalendarMonthMatrix(monthlyMap: Record<string, number>): { dateStr: string; minutes: number }[][] {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
@@ -81,18 +78,22 @@ function getCalendarWeeks(): TileType[][] {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const totalCells = Math.ceil((mondayOffset + daysInMonth) / 7) * 7;
-    const weeks: TileType[][] = [];
+    const weeks: { dateStr: string; minutes: number }[][] = [];
 
     for (let i = 0; i < totalCells; i += 7) {
-        const week: TileType[] = [];
+        const week: { dateStr: string; minutes: number }[] = [];
 
         for (let j = 0; j < 7; j++) {
-            const dateIndex = i + j - mondayOffset;
+            const dateNum = i + j - mondayOffset + 1;
 
-            if (dateIndex < 0 || dateIndex >= daysInMonth) {
-                week.push('empty');
+            if (dateNum < 1 || dateNum > daysInMonth) {
+                week.push({ dateStr: '', minutes: -1 });
             } else {
-                week.push(CALENDAR_DATA[dateIndex % CALENDAR_DATA.length]);
+                const mm = String(month + 1).padStart(2, '0');
+                const dd = String(dateNum).padStart(2, '0');
+                const dateStr = `${year}-${mm}-${dd}`;
+                const minutes = monthlyMap[dateStr] ?? 0;
+                week.push({ dateStr, minutes });
             }
         }
 
@@ -104,19 +105,72 @@ function getCalendarWeeks(): TileType[][] {
 
 export function ScrollMatrixCard({ scale = 1 }: ScrollMatrixCardProps) {
     const s = scale;
-    const [filter, setFilter] = useState('Minggu Ini');
+    const { filter, setFilter } = useScrollMatrixStore();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    const charWidth = 68 * s;
-    const charHeight = 68 * s;
+    const range = filter === 'Minggu Ini' ? 'week' : 'month';
+    const { data: matrixItems = [], isLoading } = useScrollMatrixQuery(range);
 
     const isWeekly = filter === 'Minggu Ini';
-    const calendarWeeks = getCalendarWeeks();
+    const weekDays = useMemo(() => getCurrentWeekDates(), []);
 
-    const handleSelectFilter = (value: string) => {
+    const todayStr = useMemo(() => {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }, []);
+
+    const weeklyDataMap = useMemo(() => {
+        const map: Record<string, any> = {};
+        if (isWeekly && Array.isArray(matrixItems)) {
+            for (const item of matrixItems) {
+                if (item.log_date) {
+                    const dateKey = item.log_date.split('T')[0];
+                    map[dateKey] = item;
+                }
+            }
+        }
+        return map;
+    }, [isWeekly, matrixItems]);
+
+    const monthlyDataMap = useMemo(() => {
+        const map: Record<string, number> = {};
+        if (!isWeekly && Array.isArray(matrixItems)) {
+            for (const item of matrixItems) {
+                if (item.log_date) {
+                    const dateKey = item.log_date.split('T')[0];
+                    map[dateKey] = item.total_screen_time_minutes || 0;
+                }
+            }
+        }
+        return map;
+    }, [isWeekly, matrixItems]);
+
+    const calendarWeeks = useMemo(() => getCalendarMonthMatrix(monthlyDataMap), [monthlyDataMap]);
+
+    const handleSelectFilter = (value: 'Minggu Ini' | 'Bulan Ini') => {
         setFilter(value);
         setIsDropdownOpen(false);
     };
+
+    const habitInsight = useMemo(() => {
+        let nightMinutes = 0;
+        let dayMinutes = 0;
+
+        if (isWeekly) {
+            for (const item of Object.values(weeklyDataMap)) {
+                nightMinutes += (item.slot_20_22 || 0) + (item.slot_22_00 || 0) + (item.slot_00_02 || 0);
+                dayMinutes += (item.slot_08_10 || 0) + (item.slot_10_12 || 0) + (item.slot_12_14 || 0) + (item.slot_14_16 || 0);
+            }
+        }
+
+        if (nightMinutes > dayMinutes && nightMinutes > 30) {
+            return 'Kamu lebih sering scrolling di malam hari ya, yuk coba taruh handphone kamu sejenak menjelang tidur.';
+        }
+        return 'Pola scrolling kamu terpantau stabil. Tetap jaga jeda aktivitasmu agar mata dan pikiran tetap segar!';
+    }, [isWeekly, weeklyDataMap]);
 
     return (
         <View
@@ -192,7 +246,7 @@ export function ScrollMatrixCard({ scale = 1 }: ScrollMatrixCardProps) {
                                 elevation: 5,
                             }}
                         >
-                            {['Minggu Ini', 'Bulan Ini'].map((option) => (
+                            {(['Minggu Ini', 'Bulan Ini'] as const).map((option) => (
                                 <TouchableOpacity
                                     key={option}
                                     className="flex-row items-center justify-between"
@@ -234,8 +288,16 @@ export function ScrollMatrixCard({ scale = 1 }: ScrollMatrixCardProps) {
                     padding: 12 * s,
                     marginTop: 14 * s,
                     backgroundColor: 'rgba(230, 237, 230, 0.75)',
+                    minHeight: 180 * s,
+                    justifyContent: 'center',
                 }}
             >
+                {isLoading && (
+                    <View style={{ position: 'absolute', alignSelf: 'center', zIndex: 10 }}>
+                        <ActivityIndicator size="small" color="#275c43" />
+                    </View>
+                )}
+
                 {isWeekly ? (
                     <>
                         <View
@@ -245,75 +307,69 @@ export function ScrollMatrixCard({ scale = 1 }: ScrollMatrixCardProps) {
                             <View style={{ width: 28 * s }} />
 
                             <View className="flex-1 flex-row justify-between px-[2px]">
-                                <Text
-                                    className="font-outfit-bold text-[#275c43]"
-                                    style={{ fontSize: 9.5 * s }}
-                                >
-                                    00:00
-                                </Text>
-
-                                <Text
-                                    className="font-outfit-bold text-[#275c43]"
-                                    style={{ fontSize: 9.5 * s }}
-                                >
-                                    06:00
-                                </Text>
-
-                                <Text
-                                    className="font-outfit-bold text-[#275c43]"
-                                    style={{ fontSize: 9.5 * s }}
-                                >
-                                    12:00
-                                </Text>
-
-                                <Text
-                                    className="font-outfit-bold text-[#275c43]"
-                                    style={{ fontSize: 9.5 * s }}
-                                >
-                                    18:00
-                                </Text>
-
-                                <Text
-                                    className="font-outfit-bold text-[#275c43]"
-                                    style={{ fontSize: 9.5 * s }}
-                                >
-                                    23:00
-                                </Text>
+                                <Text className="font-outfit-bold text-[#275c43]" style={{ fontSize: 9.5 * s }}>00:00</Text>
+                                <Text className="font-outfit-bold text-[#275c43]" style={{ fontSize: 9.5 * s }}>06:00</Text>
+                                <Text className="font-outfit-bold text-[#275c43]" style={{ fontSize: 9.5 * s }}>12:00</Text>
+                                <Text className="font-outfit-bold text-[#275c43]" style={{ fontSize: 9.5 * s }}>18:00</Text>
+                                <Text className="font-outfit-bold text-[#275c43]" style={{ fontSize: 9.5 * s }}>23:59</Text>
                             </View>
                         </View>
 
-                        {MATRIX_DATA.map((row) => (
-                            <View
-                                key={row.day}
-                                className="flex-row items-center"
-                                style={{ marginVertical: 3 * s }}
-                            >
-                                <Text
-                                    className="font-outfit-bold text-[#275c43]"
+                        {weekDays.map(({ day, dateStr }) => {
+                            const rowData = weeklyDataMap[dateStr];
+                            const isToday = dateStr === todayStr;
+
+                            return (
+                                <View
+                                    key={day}
+                                    className="flex-row items-center"
                                     style={{
-                                        width: 28 * s,
-                                        fontSize: 10.5 * s,
+                                        marginVertical: 3 * s,
                                     }}
                                 >
-                                    {row.day}
-                                </Text>
-
-                                <View className="flex-1 flex-row items-center">
-                                    {row.tiles.map((tileType, idx) => (
+                                    <View style={{ width: 28 * s, flexDirection: 'row', alignItems: 'center' }}>
                                         <View
-                                            key={idx}
                                             style={{
-                                                flex: 1,
-                                                height: 14 * s,
-                                                borderRadius: 4 * s,
-                                                marginHorizontal: 2 * s,
-                                                backgroundColor: getTileColor(tileType),
+                                                width: 4 * s,
+                                                height: 4 * s,
+                                                borderRadius: 2 * s,
+                                                backgroundColor: isToday ? '#275c43' : 'transparent',
+                                                marginRight: 3 * s,
                                             }}
                                         />
-                                    ))}
+                                        <Text
+                                            className="font-outfit-bold text-[#275c43]"
+                                            style={{
+                                                fontSize: 10.5 * s,
+                                                color: '#275c43',
+                                            }}
+                                        >
+                                            {day}
+                                        </Text>
+                                    </View>
+
+                                    <View className="flex-1 flex-row items-center">
+                                        {SLOT_KEYS.map((slotKey) => {
+                                            const minutes = (rowData && rowData[slotKey]) ? rowData[slotKey]! : 0;
+                                            const tileColor = getMinuteColor(minutes);
+
+                                            return (
+                                                <View
+                                                    key={slotKey}
+                                                    style={{
+                                                        flex: 1,
+                                                        height: 14 * s,
+                                                        borderRadius: 4 * s,
+                                                        marginHorizontal: 1.5 * s,
+                                                        backgroundColor: tileColor,
+                                                    }}
+                                                />
+                                            );
+                                        })}
+                                    </View>
                                 </View>
-                            </View>
-                        ))}
+                            );
+                        })}
                     </>
                 ) : (
                     <>
@@ -321,7 +377,7 @@ export function ScrollMatrixCard({ scale = 1 }: ScrollMatrixCardProps) {
                             className="flex-row items-center"
                             style={{ marginBottom: 6 * s }}
                         >
-                            {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((day) => (
+                            {DAY_LABELS.map((day) => (
                                 <View
                                     key={day}
                                     className="flex-1 items-center"
@@ -351,21 +407,34 @@ export function ScrollMatrixCard({ scale = 1 }: ScrollMatrixCardProps) {
                                         justifyContent: 'space-between',
                                     }}
                                 >
-                                    {week.map((tileType, dayIndex) => (
-                                        <View
-                                            key={dayIndex}
-                                            className="flex-1 items-center justify-center"
-                                        >
+                                    {week.map((cell, dayIndex) => {
+                                        const isOutOfMonth = cell.minutes < 0;
+                                        const isToday = cell.dateStr === todayStr;
+                                        const bgColor = isOutOfMonth ? 'transparent' : getDailyColor(cell.minutes);
+
+                                        return (
                                             <View
-                                                style={{
-                                                    width: '75%',
-                                                    height: 20 * s,
-                                                    borderRadius: 5 * s,
-                                                    backgroundColor: getTileColor(tileType),
-                                                }}
-                                            />
-                                        </View>
-                                    ))}
+                                                key={dayIndex}
+                                                className="flex-1 items-center justify-center"
+                                            >
+                                                <View
+                                                    style={{
+                                                        width: '78%',
+                                                        height: 18 * s,
+                                                        borderRadius: 4.5 * s,
+                                                        backgroundColor: bgColor,
+                                                        borderWidth: isToday ? 1.5 : 0,
+                                                        borderColor: isToday ? '#1f4e38' : 'transparent',
+                                                        shadowColor: isToday ? '#000' : 'transparent',
+                                                        shadowOffset: { width: 0, height: 1 },
+                                                        shadowOpacity: isToday ? 0.2 : 0,
+                                                        shadowRadius: 2,
+                                                        elevation: isToday ? 2 : 0,
+                                                    }}
+                                                />
+                                            </View>
+                                        );
+                                    })}
                                 </View>
                             ))}
                         </View>
@@ -387,8 +456,8 @@ export function ScrollMatrixCard({ scale = 1 }: ScrollMatrixCardProps) {
                 <View
                     className="items-center justify-end"
                     style={{
-                        width: charWidth,
-                        height: charHeight,
+                        width: 68 * s,
+                        height: 68 * s,
                         marginRight: 10 * s,
                     }}
                 >
@@ -421,7 +490,7 @@ export function ScrollMatrixCard({ scale = 1 }: ScrollMatrixCardProps) {
                             marginTop: 2 * s,
                         }}
                     >
-                        Kamu lebih sering scrolling di malam hari ya, yuk coba taruh handphone kamu sejenak.
+                        {habitInsight}
                     </Text>
                 </View>
             </View>

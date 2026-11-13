@@ -28,11 +28,14 @@ export async function submitQuestionnaireApi(
         conversation_id: answers.conversation_id ?? null,
     };
 
+    const url = token ? API_ENDPOINTS.aiQuestionnaire : API_ENDPOINTS.aiQuestionnaireGuest;
+
     console.log("=== SUBMITTING QUESTIONNAIRE API ===");
-    console.log("URL:", API_ENDPOINTS.aiQuestionnaire);
+    console.log("URL:", url);
+    console.log("Is Guest:", !token);
     console.log("Payload:", JSON.stringify(payload, null, 2));
 
-    const response = await fetch(API_ENDPOINTS.aiQuestionnaire, {
+    const response = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),

@@ -38,6 +38,8 @@ import Svg, {
     Stop,
 } from 'react-native-svg';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useQuizResultStore } from '../stores/useQuizResultStore';
+import { apiClient } from '@/services/apiClient';
 
 const BG = '#f5f3ec';
 const REF_W = 420;
@@ -75,7 +77,8 @@ export default function CommitmentScreen() {
     const { width: W, height: H } = useWindowDimensions();
     const reducedMotion = useReducedMotion();
 
-    const { completeOnboarding } = useAuthStore();
+    const { user, userToken, intervalMinutes, completeOnboarding, saveInterventionSettingsLocally } = useAuthStore();
+    const { rawAnswers } = useQuizResultStore();
     const completing = useRef(false);
 
     const [fontsLoaded] = useFonts({
@@ -241,12 +244,60 @@ export default function CommitmentScreen() {
         });
     };
 
+    const normalizeToneStyle = (val?: string): string => {
+        switch (val?.toLowerCase()) {
+            case 'a':
+            case 'lembut':
+            case 'empati':
+                return 'lembut';
+            case 'b':
+            case 'tegas':
+            case 'to_the_point':
+                return 'tegas';
+            case 'c':
+            case 'humoris':
+                return 'humoris';
+            case 'd':
+            case 'faktual':
+                return 'faktual';
+            case 'e':
+            case 'reflektif':
+                return 'reflektif';
+            default:
+                return 'lembut';
+        }
+    };
+
     const handleStartCommitment = async () => {
         if (completing.current) return;
 
         completing.current = true;
 
         try {
+            const tone = normalizeToneStyle(rawAnswers?.q9);
+            const interval = intervalMinutes && intervalMinutes > 0 ? intervalMinutes : 15;
+
+            // 1. Simpan selalu di lokal app (Guest maupun Logged-in User)
+            await saveInterventionSettingsLocally({
+                tone_style: tone,
+                scroll_interval_minutes: interval,
+                current_pause_duration: 30,
+            });
+
+            // 2. Jika user terautentikasi (bukan guest), sinkronkan ke server dengan menyertakan token
+            if (userToken) {
+                try {
+                    await apiClient.post('/api/intervention/settings', {
+                        scroll_interval_minutes: interval,
+                        tone_style: tone,
+                    });
+                } catch (err) {
+                    console.warn('Gagal sinkronisasi settings intervensi ke server:', err);
+                }
+            } else {
+                console.log('Mode Guest: Data pengaturan intervensi tersimpan penuh di penyimpanan lokal perangkat.');
+            }
+
             await completeOnboarding();
             router.replace('/');
         } catch (error) {

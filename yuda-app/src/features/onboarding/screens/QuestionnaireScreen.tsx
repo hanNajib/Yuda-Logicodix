@@ -40,7 +40,7 @@ export default function QuestionnaireScreen() {
     const reducedMotion = useReducedMotion();
 
     const { user, userName, userToken, completeOnboarding } = useAuthStore();
-    const { setAnalysisResult } = useQuizResultStore();
+    const { setAnalysisResult, setRawAnswers } = useQuizResultStore();
     const displayName = userName || user?.name || user?.full_name || 'Kamu';
 
     const [fontsLoaded] = useFonts({
@@ -109,11 +109,13 @@ export default function QuestionnaireScreen() {
         setSubmitting(true);
 
         try {
+            setRawAnswers(answers);
             const result = await submitQuestionnaireApi(answers, userToken);
             setAnalysisResult(result);
             router.push('/onboarding/quiz-result-insight');
         } catch (error) {
             console.error('Error submit questionnaire:', error);
+            setRawAnswers(answers);
             const mockFallback = {
                 layar_1_insight_waktu: {
                     headline: 'Kamu Menghabiskan 3-5 Jam Menjelang Tidur Setiap Hari?',
