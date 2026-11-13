@@ -84,7 +84,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 }
             }
 
-            YudaPip.setTargetPackages(packages);
+            if (typeof YudaPip.setTargetPackages === 'function') {
+                YudaPip.setTargetPackages(packages);
+            }
 
             let intervalVal = 15;
             if (savedInterval) {
@@ -93,7 +95,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                     intervalVal = parsedInt;
                 }
             }
-            YudaPip.setIntervalMinutes(intervalVal);
+            if (typeof YudaPip.setIntervalMinutes === 'function') {
+                YudaPip.setIntervalMinutes(intervalVal);
+            }
 
             set({
                 userToken: token || null,
@@ -189,7 +193,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setSelectedTargetPackages: async (packages: string[]) => {
         try {
             await SecureStore.setItemAsync(TARGET_PACKAGES_KEY, JSON.stringify(packages));
-            YudaPip.setTargetPackages(packages);
+            if (typeof YudaPip.setTargetPackages === 'function') {
+                YudaPip.setTargetPackages(packages);
+            }
         } catch (e) {
             console.warn("Gagal menyimpan target packages:", e);
         }
@@ -199,7 +205,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setIntervalMinutes: async (minutes: number) => {
         try {
             await SecureStore.setItemAsync(INTERVAL_MINUTES_KEY, minutes.toString());
-            YudaPip.setIntervalMinutes(minutes);
+            if (typeof YudaPip.setIntervalMinutes === 'function') {
+                YudaPip.setIntervalMinutes(minutes);
+            }
         } catch (e) {
             console.warn("Gagal menyimpan interval jeda:", e);
         }

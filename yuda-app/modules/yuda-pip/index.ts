@@ -214,6 +214,8 @@ export default {
   getTargetPackages,
   startOverlayMonitor,
   stopOverlayMonitor,
+  setIntervalMinutes,
+  getIntervalMinutes,
   isOverlayMonitorRunning,
   isAccessibilityServiceEnabled,
   openAccessibilitySettings,

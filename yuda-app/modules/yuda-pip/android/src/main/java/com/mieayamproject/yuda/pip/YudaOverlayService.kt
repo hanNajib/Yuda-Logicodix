@@ -680,12 +680,22 @@ class YudaOverlayService : Service() {
                 val density = resources.displayMetrics.density.coerceAtLeast(1f)
                 val reminderMinutes = (intervalSeconds / 60).coerceAtLeast(1)
                 val elapsedMinutes = (lastAccessibilityElapsedSeconds / 60).coerceAtLeast(reminderMinutes)
+                val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                val isSleepTime = currentHour >= 22 || currentHour < 4
+                val actionPool = if (isSleepTime) {
+                    arrayOf("nafas", "minum", "peregangan", "tidur")
+                } else {
+                    arrayOf("nafas", "minum", "peregangan")
+                }
+                val chosenAction = actionPool[((System.currentTimeMillis() / 1000L) % actionPool.size).toInt()]
+
                 val initialProps = Bundle().apply {
                     putString("userName", userName)
                     putInt("durationMinutes", elapsedMinutes)
                     putInt("reminderMinutes", reminderMinutes)
                     putString("pauseType", "biasa")
                     putInt("pauseStage", pauseStageLevel)
+                    putString("actionType", chosenAction)
                     putInt("breathDurationSeconds", 30)
                     putDouble("screenWidth", (screenWidthPx / density).toDouble())
                     putDouble("screenHeight", (screenHeightPx / density).toDouble())

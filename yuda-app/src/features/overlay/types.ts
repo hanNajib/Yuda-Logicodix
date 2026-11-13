@@ -1,5 +1,7 @@
 export type PauseType = 'biasa' | 'refleksi' | 'fokus';
 
+export type PauseActionType = 'nafas' | 'minum' | 'peregangan' | 'tidur';
+
 export type PauseBiasaStageLevel = 1 | 2 | 3;
 
 export type PauseDismissReason = 'rest' | 'continue' | 'dismiss';

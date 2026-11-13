@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BackHandler, Dimensions, View } from 'react-native';
 import YudaPip from '@/modules/yuda-pip';
 import {
+    PauseActionType,
     PauseBiasaStageLevel,
     PauseDismissReason,
     PauseType,
@@ -15,6 +16,7 @@ export interface YudaOverlayRootProps {
     pauseType?: PauseType;
     pauseStage?: number;
     breathDurationSeconds?: number;
+    actionType?: PauseActionType;
     screenWidth?: number;
     screenHeight?: number;
 }
@@ -32,6 +34,7 @@ export function YudaOverlayRoot({
     pauseType = 'biasa',
     pauseStage = 1,
     breathDurationSeconds = 30,
+    actionType,
     screenWidth,
     screenHeight,
 }: YudaOverlayRootProps) {
@@ -66,6 +69,7 @@ export function YudaOverlayRoot({
                 pauseType={pauseType}
                 pauseStage={normalizeStageLevel(pauseStage)}
                 breathDurationSeconds={breathDurationSeconds}
+                actionType={actionType}
                 screenWidth={resolvedWidth}
                 screenHeight={resolvedHeight}
                 onDismiss={handleDismiss}
