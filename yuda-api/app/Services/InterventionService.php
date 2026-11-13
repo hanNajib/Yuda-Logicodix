@@ -251,18 +251,58 @@ class InterventionService
     }
 
     /**
-     * Ambil riwayat matriks harian 1 bulan penuh.
+     * Ambil riwayat matriks harian berdasarkan range (minggu ini atau bulan ini).
      *
      * @return Collection<int, UserDailyScreenTimeMatrix>
      */
-    public function getMonthlyMatrices(?User $user, ?string $guestUuid, ?string $yearMonth = null): Collection
+    public function getMatricesByRange(?User $user, ?string $guestUuid, string $range = 'month', ?string $targetDateStr = null): Collection
     {
-        $targetDate = $yearMonth ? Carbon::parse($yearMonth . '-01') : now();
-        $startOfMonth = $targetDate->copy()->startOfMonth()->toDateString();
-        $endOfMonth = $targetDate->copy()->endOfMonth()->toDateString();
+        $baseDate = $targetDateStr ? Carbon::parse($targetDateStr) : now();
+
+        if ($range === 'week') {
+            // Minggu ini: Mulai Senin hingga Minggu
+            $startDate = $baseDate->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+            $endDate = $baseDate->copy()->endOfWeek(Carbon::SUNDAY)->toDateString();
+
+            $columns = [
+                'id',
+                'user_id',
+                'guest_uuid',
+                'log_date',
+                'slot_00_02',
+                'slot_02_04',
+                'slot_04_06',
+                'slot_06_08',
+                'slot_08_10',
+                'slot_10_12',
+                'slot_12_14',
+                'slot_14_16',
+                'slot_16_18',
+                'slot_18_20',
+                'slot_20_22',
+                'slot_22_00',
+                'total_screen_time_minutes',
+                'interventions_triggered',
+            ];
+        } else {
+            // Bulan ini: Mulai tanggal 1 hingga akhir bulan
+            $startDate = $baseDate->copy()->startOfMonth()->toDateString();
+            $endDate = $baseDate->copy()->endOfMonth()->toDateString();
+
+            // Optimal: Untuk bulan, hanya butuh tanggal & total_screen_time_minutes
+            $columns = [
+                'id',
+                'user_id',
+                'guest_uuid',
+                'log_date',
+                'total_screen_time_minutes',
+                'interventions_triggered',
+            ];
+        }
 
         $query = UserDailyScreenTimeMatrix::query()
-            ->whereBetween('log_date', [$startOfMonth, $endOfMonth])
+            ->select($columns)
+            ->whereBetween('log_date', [$startDate, $endDate])
             ->orderBy('log_date', 'asc');
 
         if ($user instanceof User) {
@@ -275,17 +315,35 @@ class InterventionService
     }
 
     /**
+     * Ambil riwayat matriks harian 1 bulan penuh (Legacy backward compatible).
+     *
+     * @return Collection<int, UserDailyScreenTimeMatrix>
+     */
+    public function getMonthlyMatrices(?User $user, ?string $guestUuid, ?string $yearMonth = null): Collection
+    {
+        return $this->getMatricesByRange($user, $guestUuid, 'month', $yearMonth ? $yearMonth . '-01' : null);
+    }
+
+    /**
      * Dapatkan setting intervensi aktif (1 record per user/guest).
      */
     public function getOrCreateSetting(?User $user, ?string $guestUuid = null): UserInterventionSetting
     {
-        $criteria = [
-            'user_id' => $user?->id,
-            'guest_uuid' => $user ? null : ($guestUuid ?: 'guest-default'),
-        ];
+        if ($user) {
+            return UserInterventionSetting::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'guest_uuid' => null,
+                    'tone_style' => 'lembut',
+                    'scroll_interval_minutes' => 15,
+                    'current_pause_duration' => self::MIN_PAUSE_DURATION,
+                    'last_pause_duration' => self::MIN_PAUSE_DURATION,
+                ]
+            );
+        }
 
         return UserInterventionSetting::firstOrCreate(
-            $criteria,
+            ['guest_uuid' => $guestUuid ?: 'guest-default', 'user_id' => null],
             [
                 'tone_style' => 'lembut',
                 'scroll_interval_minutes' => 15,

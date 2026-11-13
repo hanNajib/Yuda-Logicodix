@@ -145,15 +145,15 @@ export default function SetTimerScreen() {
     };
 
     const handleDecrease = () => {
-        if (durationMinutes > 15) {
-            setDurationMinutes((prev) => Math.max(15, prev - 5));
+        if (durationMinutes > 5) {
+            setDurationMinutes((prev) => Math.max(5, prev - 5));
             triggerChangeFeedback();
         }
     };
 
     const handleIncrease = () => {
-        if (durationMinutes < 120) {
-            setDurationMinutes((prev) => Math.min(120, prev + 5));
+        if (durationMinutes < 60) {
+            setDurationMinutes((prev) => Math.min(60, prev + 5));
             triggerChangeFeedback();
         }
     };
@@ -346,11 +346,11 @@ export default function SetTimerScreen() {
                                 className="items-center justify-center bg-[#f4c552] shadow-sm"
                                 style={[
                                     { width: 56 * s, height: 52 * s, borderRadius: 14 * s, elevation: 2 },
-                                    durationMinutes <= 15 && { opacity: 0.45 },
+                                    durationMinutes <= 5 && { opacity: 0.45 },
                                 ]}
                                 activeOpacity={0.82}
                                 onPress={handleDecrease}
-                                disabled={durationMinutes <= 15}
+                                disabled={durationMinutes <= 5}
                             >
                                 <View
                                     className="bg-[#262626]"

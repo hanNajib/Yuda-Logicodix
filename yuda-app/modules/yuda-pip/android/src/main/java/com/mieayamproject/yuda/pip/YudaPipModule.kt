@@ -31,6 +31,7 @@ class YudaPipModule : Module() {
         const val PREFS_NAME = "yuda_overlay_prefs"
         const val KEY_TARGET_PACKAGES = "target_packages"
         const val KEY_INTERVAL_MINUTES = "interval_minutes"
+        const val KEY_APP_DETECTION_MODE_PREFIX = "app_detection_mode_" // "trigger_only" (default) or "all"
         const val DEFAULT_INTERVAL_MINUTES = 15
 
         val DEFAULT_TARGET_PACKAGES = setOf(
@@ -54,6 +55,16 @@ class YudaPipModule : Module() {
         fun setTargetPackages(context: Context, packages: List<String>) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().putStringSet(KEY_TARGET_PACKAGES, packages.toSet()).apply()
+        }
+
+        fun getAppDetectionMode(context: Context, appId: String): String {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getString(KEY_APP_DETECTION_MODE_PREFIX + appId.lowercase(), "trigger_only") ?: "trigger_only"
+        }
+
+        fun setAppDetectionMode(context: Context, appId: String, mode: String) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(KEY_APP_DETECTION_MODE_PREFIX + appId.lowercase(), mode).apply()
         }
 
         fun getIntervalMinutes(context: Context): Int {
@@ -557,6 +568,17 @@ class YudaPipModule : Module() {
         Function("getTargetPackages") {
             val context = ctx() ?: return@Function DEFAULT_TARGET_PACKAGES.toList()
             getTargetPackages(context).toList()
+        }
+
+        Function("setAppDetectionMode") { appId: String, mode: String ->
+            val context = ctx() ?: return@Function false
+            setAppDetectionMode(context, appId, mode)
+            true
+        }
+
+        Function("getAppDetectionMode") { appId: String ->
+            val context = ctx() ?: return@Function "trigger_only"
+            getAppDetectionMode(context, appId)
         }
 
         Function("setIntervalMinutes") { minutes: Int ->

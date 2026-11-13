@@ -24,6 +24,8 @@ interface YudaPipNativeModule {
   isPackageInstalled(packageName: string): boolean;
   setTargetPackages(packages: string[]): boolean;
   getTargetPackages(): string[];
+  setAppDetectionMode(appId: string, mode: string): boolean;
+  getAppDetectionMode(appId: string): string;
   startOverlayMonitor(userName?: string, targetPackages?: string[], testMode?: boolean, intervalSeconds?: number): boolean;
   stopOverlayMonitor(): boolean;
   setIntervalMinutes(minutes: number): boolean;
@@ -140,6 +142,14 @@ export function getIntervalMinutes(): number {
   return safe(() => NativeModule?.getIntervalMinutes() ?? 15, 15);
 }
 
+export function setAppDetectionMode(appId: string, mode: 'all' | 'trigger_only'): boolean {
+  return safe(() => NativeModule?.setAppDetectionMode(appId, mode) ?? false, false);
+}
+
+export function getAppDetectionMode(appId: string): 'all' | 'trigger_only' {
+  return safe(() => NativeModule?.getAppDetectionMode(appId) ?? 'trigger_only', 'trigger_only');
+}
+
 export function startOverlayMonitor(
   userName = 'Gathan',
   targetPackages: string[] = [
@@ -212,6 +222,8 @@ export default {
   isPackageInstalled,
   setTargetPackages,
   getTargetPackages,
+  setAppDetectionMode,
+  getAppDetectionMode,
   startOverlayMonitor,
   stopOverlayMonitor,
   setIntervalMinutes,

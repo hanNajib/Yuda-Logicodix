@@ -18,17 +18,36 @@ class AuthController extends Controller
     public function updateProfile(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:12',
+            'name' => 'nullable|string|max:50',
+            'full_name' => 'nullable|string|max:100',
+            'birth_date' => 'nullable|string|max:50',
         ]);
 
-        $user = $request->user();
-        $user->name = $validated['name'];
+        $user = $request->user('sanctum') ?: $request->user();
+
+        if (array_key_exists('name', $validated) && $validated['name'] !== null) {
+            $user->name = trim($validated['name']);
+        }
+        if (array_key_exists('full_name', $validated) && $validated['full_name'] !== null) {
+            $user->full_name = trim($validated['full_name']);
+        }
+        if (array_key_exists('birth_date', $validated)) {
+            $user->birth_date = $validated['birth_date'];
+        }
+
         $user->save();
 
         return response()->json([
             'message' => 'Profile updated successfully.',
             'data' => [
-                'user' => $user,
+                'user' => [
+                    'id' => $user->id,
+                    'full_name' => $user->full_name,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'avatar' => $user->avatar,
+                    'birth_date' => $user->birth_date,
+                ],
             ],
         ]);
     }

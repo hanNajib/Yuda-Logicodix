@@ -9,7 +9,7 @@ import {
     useFonts,
 } from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Modal,
@@ -66,15 +66,28 @@ export default function PengaturanScreen({
     const { width: W } = useWindowDimensions();
     const s = Math.min(W / REF_W, 1.15);
 
-    const { user, userName } = useAuthStore();
+    const {
+        user,
+        userName,
+        userToken,
+        intervalMinutes: storedInterval,
+        setIntervalMinutes: updateStoredInterval,
+    } = useAuthStore();
 
     const displayName = userName || user?.name || 'Gathan';
     const displayEmail = user?.email || 'gathanfairuz23@gmail.com';
 
     const [activeTab, setActiveTab] = useState<DashboardTab>('settings');
 
-    const [intervalMinutes, setIntervalMinutes] = useState(15);
+    const [intervalMinutes, setIntervalMinutes] = useState(storedInterval || 15);
     const [isIntervalModalOpen, setIsIntervalModalOpen] = useState(false);
+    const [isSavingInterval, setIsSavingInterval] = useState(false);
+
+    useEffect(() => {
+        if (storedInterval && storedInterval > 0) {
+            setIntervalMinutes(storedInterval);
+        }
+    }, [storedInterval]);
 
     const [editButtonLayout, setEditButtonLayout] =
         useState<EditButtonLayout | null>(null);
@@ -259,7 +272,7 @@ export default function PengaturanScreen({
                 ref={scrollRef}
                 className="z-[2] flex-1 bg-transparent"
                 onScroll={scrollHandler}
-                onScrollToTop={() => {}}
+                onScrollToTop={() => { }}
                 onNativeScroll={handleScroll}
                 scrollEventThrottle={16}
                 decelerationRate="fast"
@@ -288,18 +301,30 @@ export default function PengaturanScreen({
                         animatedSheetStyle,
                     ]}
                 >
-                    <PengaturanDasarCard />
-
-                    <View
-                        style={{
-                            height: 14 * s,
+                    <PengaturanDasarCard
+                        scale={s}
+                        hours={Math.floor(storedInterval / 60)}
+                        minutes={storedInterval % 60}
+                        onEditInterval={() => {
+                            setIntervalMinutes(storedInterval || 15);
+                            setIsIntervalModalOpen(true);
                         }}
                     />
 
-                    <TautkanAkunCard
-                        scale={s}
-                        onLinkGoogle={handleGoogleAuth}
-                    />
+                    {!userToken && (
+                        <>
+                            <View
+                                style={{
+                                    height: 14 * s,
+                                }}
+                            />
+
+                            <TautkanAkunCard
+                                scale={s}
+                                onLinkGoogle={handleGoogleAuth}
+                            />
+                        </>
+                    )}
                 </Animated.View>
             </Animated.ScrollView>
 
@@ -438,7 +463,7 @@ export default function PengaturanScreen({
                                 }}
                                 onPress={() =>
                                     setIntervalMinutes((prev) =>
-                                        Math.min(120, prev + 5)
+                                        Math.min(60, prev + 5)
                                     )
                                 }
                             >
@@ -459,10 +484,21 @@ export default function PengaturanScreen({
                                 borderRadius: 14 * s,
                                 paddingVertical: 12 * s,
                                 marginTop: 22 * s,
+                                opacity: isSavingInterval ? 0.7 : 1,
                             }}
-                            onPress={() =>
-                                setIsIntervalModalOpen(false)
-                            }
+                            disabled={isSavingInterval}
+                            onPress={async () => {
+                                if (isSavingInterval) return;
+                                setIsSavingInterval(true);
+                                try {
+                                    await updateStoredInterval(intervalMinutes);
+                                    setIsIntervalModalOpen(false);
+                                } catch (e) {
+                                    console.warn('Gagal menyimpan interval waktu jeda:', e);
+                                } finally {
+                                    setIsSavingInterval(false);
+                                }
+                            }}
                         >
                             <Text
                                 className="font-outfit-bold text-white"
@@ -470,7 +506,7 @@ export default function PengaturanScreen({
                                     fontSize: 14.5 * s,
                                 }}
                             >
-                                Simpan Waktu Jeda
+                                {isSavingInterval ? 'Menyimpan...' : 'Simpan Waktu Jeda'}
                             </Text>
                         </Pressable>
                     </Pressable>

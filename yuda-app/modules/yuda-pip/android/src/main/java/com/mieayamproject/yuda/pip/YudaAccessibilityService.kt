@@ -301,7 +301,25 @@ class YudaAccessibilityService : AccessibilityService() {
     private fun isReelsOrShortsContext(pkgName: String, event: AccessibilityEvent?): Boolean {
         val pkg = pkgName.lowercase()
 
-        // TikTok, Threads, dan X (Twitter) secara menyeluruh berpotensi doomscroll di timeline/FYP
+        // Cek mode deteksi untuk aplikasi ini: "all" (seluruhnya) atau "trigger_only" (hanya pemicu)
+        val appId = when {
+            pkg.contains("instagram") && !pkg.contains("barcelona") -> "instagram"
+            pkg.contains("musically") || pkg.contains("trill") || pkg.contains("tiktok") -> "tiktok"
+            pkg.contains("facebook") || pkg.contains("katana") -> "facebook"
+            pkg.contains("youtube") -> "youtube"
+            pkg.contains("barcelona") -> "threads"
+            pkg.contains("twitter") -> "twitter"
+            else -> ""
+        }
+
+        if (appId.isNotEmpty()) {
+            val mode = YudaPipModule.getAppDetectionMode(this, appId)
+            if (mode == "all") {
+                return true
+            }
+        }
+
+        // Mode trigger_only: Khusus Threads, TikTok, X (Twitter) secara default timeline/FYP adalah pemicu
         if (pkg.contains("musically") || pkg.contains("trill") || pkg.contains("tiktok") || 
             pkg.contains("barcelona") || pkg.contains("twitter")) {
             return true

@@ -381,7 +381,7 @@ export default function QuizResultProfileScreen() {
                     </Animated.View>
                 </View>
 
-                <Animated.View style={animatedTapStyle} className="items-center pb-2">
+                <Animated.View style={animatedTapStyle} className="items-center pb-20">
                     <Text
                         className="text-[#55695a] font-outfit-semibold tracking-wide"
                         style={{

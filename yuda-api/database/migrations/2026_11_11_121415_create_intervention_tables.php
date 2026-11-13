@@ -32,7 +32,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('guest_uuid', 64)->nullable()->index(); // ID unik perangkat jika guest
+            $table->string('tone_style', 50)->default('lembut');
+            $table->unsignedInteger('scroll_interval_minutes')->default(15);
             $table->unsignedInteger('current_pause_duration')->default(30); // Default 30s, min 30s, max 60s
+            $table->unsignedInteger('last_pause_duration')->default(30);
             $table->unsignedInteger('previous_week_screen_time_minutes')->default(0);
             $table->unsignedInteger('current_week_screen_time_minutes')->default(0);
             $table->boolean('has_pending_alert')->default(false); // Flag notifikasi perubahan durasi

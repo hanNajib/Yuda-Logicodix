@@ -306,12 +306,12 @@ export default function QuizResultActivitiesScreen() {
             <View
                 className="flex-1 justify-between"
                 style={{
-                    paddingTop: Math.max(insets.top, 20) + 24 * s,
+                    paddingTop: Math.max(insets.top, 20) + 40 * s,
                     paddingBottom: Math.max(insets.bottom, 20) + 12 * s,
                     paddingHorizontal: 22 * s,
                 }}
             >
-                <Animated.View style={animatedTitleStyle} className="items-center px-2">
+                <Animated.View style={animatedTitleStyle} className="items-center px-2" style={{ marginTop: 12 * s }}>
                     <Text
                         className="text-[#1f2923] text-center font-outfit-extrabold"
                         style={{
@@ -349,7 +349,7 @@ export default function QuizResultActivitiesScreen() {
                     </View>
                 </Animated.View>
 
-                <Animated.View style={animatedTapStyle} className="items-center pb-2">
+                <Animated.View style={animatedTapStyle} className="items-center pb-20">
                     <Text
                         className="text-[#55695a] font-outfit-semibold tracking-wide"
                         style={{

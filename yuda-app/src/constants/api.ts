@@ -7,6 +7,9 @@ export const API_ENDPOINTS = {
     googleExchange: `${API_BASE_URL}/api/auth/google/exchange`,
     profile: `${API_BASE_URL}/api/user/profile`,
     aiQuestionnaire: `${API_BASE_URL}/api/ai/questionnaire`,
+    aiQuestionnaireGuest: `${API_BASE_URL}/api/questionnaire/analyze`,
+    interventionSettings: `${API_BASE_URL}/api/intervention/settings`,
+    interventionMatrix: `${API_BASE_URL}/api/intervention/matrix`,
 };
 
 export const GOOGLE_AUTH_CONFIG = {
