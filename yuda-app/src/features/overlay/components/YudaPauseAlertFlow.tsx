@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import {
+    PauseActionType,
     PauseAlertStage,
     PauseBiasaStageLevel,
     PauseDismissReason,
@@ -10,6 +11,7 @@ import {
 import { PauseBiasaFlow } from './PauseBiasaFlow';
 
 export type {
+    PauseActionType,
     PauseAlertStage,
     PauseBiasaStageLevel,
     PauseDismissReason,
@@ -24,6 +26,7 @@ export interface YudaPauseAlertFlowProps {
     pauseType?: PauseType;
     pauseStage?: PauseBiasaStageLevel;
     breathDurationSeconds?: number;
+    actionType?: PauseActionType;
     initialStage?: PauseAlertStage;
     tasks?: PauseTaskItem[];
     screenWidth?: number;
@@ -41,6 +44,7 @@ export function YudaPauseAlertFlow({
     pauseType = 'biasa',
     pauseStage = 1,
     breathDurationSeconds = 30,
+    actionType,
     initialStage,
     tasks,
     screenWidth,
@@ -76,6 +80,7 @@ export function YudaPauseAlertFlow({
                     reminderMinutes={reminderMinutes}
                     pauseStage={pauseStage}
                     breathDurationSeconds={breathDurationSeconds}
+                    actionType={actionType}
                     initialStage={initialStage}
                     tasks={tasks}
                     width={W}
@@ -92,6 +97,7 @@ export function YudaPauseAlertFlow({
                     reminderMinutes={reminderMinutes}
                     pauseStage={pauseStage}
                     breathDurationSeconds={breathDurationSeconds}
+                    actionType={actionType}
                     initialStage={initialStage}
                     tasks={tasks}
                     width={W}

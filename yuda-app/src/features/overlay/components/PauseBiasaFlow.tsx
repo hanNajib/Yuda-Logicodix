@@ -32,6 +32,7 @@ import Svg, {
     Stop,
 } from 'react-native-svg';
 import {
+    PauseActionType,
     PauseAlertStage,
     PauseBiasaStageLevel,
     PauseDismissReason,
@@ -44,6 +45,7 @@ export interface PauseBiasaFlowProps {
     reminderMinutes: number;
     pauseStage: PauseBiasaStageLevel;
     breathDurationSeconds: number;
+    actionType?: PauseActionType;
     initialStage?: PauseAlertStage;
     tasks?: PauseTaskItem[];
     width: number;
@@ -65,6 +67,91 @@ const yudaHalfBodySource = require('../../../../assets/images/yuda/yudahalfbody.
 const yudaHandHalfSource = require('../../../../assets/images/yuda/yuda-hand-half.png');
 const yudaXdSource = require('../../../../assets/images/yuda/yuda_xD.png');
 const yudaQuestioningSource = require('../../../../assets/images/yuda/yuda-questioning.png');
+
+const yudaNafasSource = require('../../../../assets/images/yuda/yuda_nafas.png');
+const yudaMinumSource = require('../../../../assets/images/yuda/yuda_minum.png');
+const yudaPereganganSource = require('../../../../assets/images/yuda/yuda_peregangan.png');
+const yudaTidurSource = require('../../../../assets/images/yuda/yuda_tidur.png');
+
+interface ActionConfig {
+    introActionTitle: string;
+    introDesc: string;
+    missionTitle: string;
+    actionImage: ImageSourcePropType;
+    getGuideLabel: (remaining: number, total: number) => string;
+}
+
+function resolveActionType(providedType?: PauseActionType): PauseActionType {
+    if (providedType) return providedType;
+
+    const currentHour = new Date().getHours();
+    // Khusus tidur hanya direntang jam 22 (10 malam) sampai jam 4 pagi
+    const isSleepTime = currentHour >= 22 || currentHour < 4;
+
+    const pool: PauseActionType[] = isSleepTime
+        ? ['nafas', 'minum', 'peregangan', 'tidur']
+        : ['nafas', 'minum', 'peregangan'];
+
+    // Pilih bergantian secara acak/rotasi berdasarkan detik waktu saat ini
+    const index = Math.floor(Date.now() / 1000) % pool.length;
+    return pool[index];
+}
+
+const ACTION_CONFIGS: Record<PauseActionType, ActionConfig> = {
+    nafas: {
+        introActionTitle: 'Tarik Nafas',
+        introDesc: 'agar pikiranmu tenang dan rileks',
+        missionTitle: 'Misi Tarik Nafas',
+        actionImage: yudaNafasSource,
+        getGuideLabel: (remaining: number, total: number) => {
+            if (remaining <= 0) return 'Selesai!';
+            const elapsed = Math.max(0, total - remaining);
+            const cyclePos = elapsed % 10;
+            if (cyclePos < 4) return 'Tarik ......';
+            if (cyclePos < 6) return 'Tahan ......';
+            return 'Hembuskan ......';
+        },
+    },
+    minum: {
+        introActionTitle: 'Minum Air',
+        introDesc: 'teguk air putih agar tubuhmu tetap segar',
+        missionTitle: 'Misi Minum Air',
+        actionImage: yudaMinumSource,
+        getGuideLabel: (remaining: number, total: number) => {
+            if (remaining <= 0) return 'Tubuh kembali segar!';
+            const elapsed = Math.max(0, total - remaining);
+            if (elapsed < 10) return 'Ambil segelas air putih hangat ......';
+            if (elapsed < 20) return 'Minum perlahan beberapa teguk ......';
+            return 'Rasakan kesegarannya ......';
+        },
+    },
+    peregangan: {
+        introActionTitle: 'Peregangan',
+        introDesc: 'lemaskan otot leher dan pundak yang kaku',
+        missionTitle: 'Misi Peregangan Tubuh',
+        actionImage: yudaPereganganSource,
+        getGuideLabel: (remaining: number, total: number) => {
+            if (remaining <= 0) return 'Ototmu sudah lebih santai!';
+            const elapsed = Math.max(0, total - remaining);
+            if (elapsed < 10) return 'Putar bahu ke belakang perlahan ......';
+            if (elapsed < 20) return 'Miringkan leher ke kiri dan kanan ......';
+            return 'Rentangkan tangan ke atas ......';
+        },
+    },
+    tidur: {
+        introActionTitle: 'Pejamkan Mata',
+        introDesc: 'sudah larut malam, istirahatkan matamu',
+        missionTitle: 'Misi Istirahat & Pejamkan Mata',
+        actionImage: yudaTidurSource,
+        getGuideLabel: (remaining: number, total: number) => {
+            if (remaining <= 0) return 'Waktunya tidur nyenyak!';
+            const elapsed = Math.max(0, total - remaining);
+            if (elapsed < 10) return 'Jauhkan layar HP dari mata ......';
+            if (elapsed < 20) return 'Pejamkan matamu perlahan ......';
+            return 'Bernafas perlahan dan bersiap tidur ......';
+        },
+    },
+};
 
 const DEFAULT_REMINDER_TASKS: PauseTaskItem[] = [
     { id: '1', title: 'Makanin kucing', time: '13.00', isCompleted: true },
@@ -110,6 +197,7 @@ export function PauseBiasaFlow({
     reminderMinutes,
     pauseStage,
     breathDurationSeconds,
+    actionType: propActionType,
     initialStage,
     tasks = DEFAULT_REMINDER_TASKS,
     width: W,
@@ -121,6 +209,9 @@ export function PauseBiasaFlow({
 }: PauseBiasaFlowProps) {
     const s = Math.min(W / 400, 1.15);
     const reducedMotion = useReducedMotion();
+
+    const [activeActionType] = useState<PauseActionType>(() => resolveActionType(propActionType));
+    const actionConfig = ACTION_CONFIGS[activeActionType] ?? ACTION_CONFIGS.nafas;
 
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
@@ -325,7 +416,7 @@ export function PauseBiasaFlow({
     const handsWidth = halfBodyWidth * 0.90;
     const handsHeight = Math.round(handsWidth / handHalfRatio);
 
-    const { label: breathLabel } = getBreathGuide(remainingSeconds, breathDurationSeconds);
+    const actionGuideLabel = actionConfig.getGuideLabel(remainingSeconds, breathDurationSeconds);
 
     const completedCount = tasks.filter((t) => t.isCompleted).length;
     const totalCount = tasks.length;
@@ -516,9 +607,9 @@ export function PauseBiasaFlow({
                                                 color: '#1A1F1B',
                                             }}
                                         >
-                                            Tarik Nafas
+                                            {actionConfig.introActionTitle}
                                         </Text>{' '}
-                                        agar kamu tenang
+                                        {actionConfig.introDesc}
                                     </Text>
 
                                     <View
@@ -546,8 +637,8 @@ export function PauseBiasaFlow({
                                             />
                                         </Svg>
                                         <Image
-                                            source={yudaXdSource}
-                                            style={{ width: 126 * s, height: 126 * s }}
+                                            source={actionConfig.actionImage}
+                                            style={{ width: 136 * s, height: 136 * s }}
                                             resizeMode="contain"
                                         />
                                     </View>
@@ -599,7 +690,7 @@ export function PauseBiasaFlow({
                                                 marginBottom: 16 * s,
                                             }}
                                         >
-                                            Misi Tarik Nafas
+                                            {actionConfig.missionTitle}
                                         </Text>
 
                                         <View
@@ -706,7 +797,7 @@ export function PauseBiasaFlow({
                                                 marginTop: 18 * s,
                                             }}
                                         >
-                                            {breathLabel}
+                                            {actionGuideLabel}
                                         </Text>
                                     </View>
 
@@ -748,7 +839,7 @@ export function PauseBiasaFlow({
                                             ]}
                                         >
                                             <Image
-                                                source={yudaXdSource}
+                                                source={actionConfig.actionImage}
                                                 style={styles.fullSize}
                                                 resizeMode="contain"
                                             />
