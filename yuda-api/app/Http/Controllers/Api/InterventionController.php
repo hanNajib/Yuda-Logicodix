@@ -50,10 +50,19 @@ class InterventionController extends Controller
             'slots' => ['nullable', 'array'],
             'slots.*' => ['integer', 'min:0', 'max:120'],
             'interventions_triggered' => ['nullable', 'integer', 'min:0'],
+            'instagram' => ['nullable', 'integer', 'min:0'],
+            'tiktok' => ['nullable', 'integer', 'min:0'],
+            'facebook' => ['nullable', 'integer', 'min:0'],
+            'threads' => ['nullable', 'integer', 'min:0'],
+            'youtube' => ['nullable', 'integer', 'min:0'],
+            'x' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $user = $request->user();
         $guestUuid = $validated['guest_uuid'] ?? $request->header('X-Guest-UUID');
+
+        $socialKeys = ['instagram', 'tiktok', 'facebook', 'threads', 'youtube', 'x'];
+        $socialTimes = array_intersect_key($validated, array_flip($socialKeys));
 
         $matrix = $this->interventionService->upsertDailyMatrix(
             user: $user,
@@ -61,6 +70,7 @@ class InterventionController extends Controller
             logDate: $validated['log_date'],
             slots: $validated['slots'] ?? [],
             interventionsTriggered: (int) ($validated['interventions_triggered'] ?? 0),
+            socialTimes: $socialTimes,
         );
 
         return response()->json([
