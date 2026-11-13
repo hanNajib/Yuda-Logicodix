@@ -19,7 +19,6 @@ class InterventionGenerationBatch extends Model
         'combinations',
         'result',
         'attempts',
-        'error_message',
     ];
 
     protected $casts = [

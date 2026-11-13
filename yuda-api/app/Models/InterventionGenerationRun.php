@@ -20,7 +20,6 @@ class InterventionGenerationRun extends Model
         'completed_batches',
         'failed_batches',
         'total_generated',
-        'error_message',
         'started_at',
         'completed_at',
     ];
