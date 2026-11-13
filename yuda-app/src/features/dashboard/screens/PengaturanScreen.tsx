@@ -66,7 +66,7 @@ export default function PengaturanScreen({
     const { width: W } = useWindowDimensions();
     const s = Math.min(W / REF_W, 1.15);
 
-    const { user, userName } = useAuthStore();
+    const { user, userName, userToken } = useAuthStore();
 
     const displayName = userName || user?.name || 'Gathan';
     const displayEmail = user?.email || 'gathanfairuz23@gmail.com';
@@ -290,16 +290,20 @@ export default function PengaturanScreen({
                 >
                     <PengaturanDasarCard />
 
-                    <View
-                        style={{
-                            height: 14 * s,
-                        }}
-                    />
+                    {!userToken && (
+                        <>
+                            <View
+                                style={{
+                                    height: 14 * s,
+                                }}
+                            />
 
-                    <TautkanAkunCard
-                        scale={s}
-                        onLinkGoogle={handleGoogleAuth}
-                    />
+                            <TautkanAkunCard
+                                scale={s}
+                                onLinkGoogle={handleGoogleAuth}
+                            />
+                        </>
+                    )}
                 </Animated.View>
             </Animated.ScrollView>
 
