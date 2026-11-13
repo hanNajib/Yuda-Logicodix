@@ -8,17 +8,14 @@ import {
 } from '@expo-google-fonts/outfit';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
     Image,
     Modal,
     Platform,
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     useWindowDimensions,
     View,
@@ -38,43 +35,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useAuthStore } from '@/stores/useAuthStore';
 import YudaPip from '../../../../modules/yuda-pip';
+import { DOOMSCROLL_APPS, DoomscrollAppDefinition } from '@/constants/apps';
 
 const REF_W = 420;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
-interface AppItem {
+function AppBrandIcon({
+    id,
+    iconUri,
+    size = 38,
+}: {
     id: string;
-    name: string;
-    type: 'tiktok' | 'instagram' | 'facebook' | 'youtube' | 'twitter' | 'reddit' | 'game' | 'browser' | 'other';
-    iconColor?: string;
-    packageName?: string;
     iconUri?: string;
-    isCustom?: boolean;
-    isInstalled?: boolean;
-}
-
-const DEFAULT_APPS: AppItem[] = [
-    { id: 'tiktok', name: 'TikTok', type: 'tiktok', packageName: 'com.zhiliaoapp.musically' },
-    { id: 'instagram', name: 'Instagram', type: 'instagram', packageName: 'com.instagram.android' },
-    { id: 'facebook', name: 'FaceBook', type: 'facebook', packageName: 'com.facebook.katana' },
-    { id: 'youtube', name: 'YouTube', type: 'youtube', packageName: 'com.google.android.youtube' },
-    { id: 'threads', name: 'Threads', type: 'other', packageName: 'com.instagram.barcelona' },
-    { id: 'twitter', name: 'X', type: 'twitter', packageName: 'com.twitter.android' },
-];
-
-function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
-    if (item.iconUri) {
+    size?: number;
+}) {
+    if (iconUri) {
         return (
             <Image
-                source={{ uri: item.iconUri }}
+                source={{ uri: iconUri }}
                 style={{ width: size, height: size, borderRadius: size * 0.22 }}
                 resizeMode="cover"
             />
         );
     }
 
-    if (item.type === 'tiktok') {
+    if (id === 'tiktok') {
         return (
             <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <Path
@@ -85,7 +71,7 @@ function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
         );
     }
 
-    if (item.type === 'instagram') {
+    if (id === 'instagram') {
         return (
             <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <Rect x="2" y="2" width="20" height="20" rx="5.5" stroke="#E1306C" strokeWidth="2.2" />
@@ -95,7 +81,7 @@ function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
         );
     }
 
-    if (item.type === 'facebook') {
+    if (id === 'facebook') {
         return (
             <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <Circle cx="12" cy="12" r="11" fill="#1877F2" />
@@ -107,7 +93,7 @@ function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
         );
     }
 
-    if (item.type === 'youtube') {
+    if (id === 'youtube') {
         return (
             <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <Rect x="2" y="5" width="20" height="14" rx="4" fill="#FF0000" />
@@ -116,20 +102,26 @@ function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
         );
     }
 
-    if (item.type === 'twitter') {
-        return <Ionicons name="logo-twitter" size={size} color="#1DA1F2" />;
+    if (id === 'twitter') {
+        return (
+            <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+                <Path
+                    d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+                    fill="#111827"
+                />
+            </Svg>
+        );
     }
 
-    if (item.type === 'reddit') {
-        return <Ionicons name="logo-reddit" size={size} color="#FF4500" />;
-    }
-
-    if (item.type === 'game') {
-        return <Ionicons name="game-controller" size={size} color="#6366f1" />;
-    }
-
-    if (item.type === 'browser') {
-        return <Ionicons name="globe-outline" size={size} color="#0284c7" />;
+    if (id === 'threads') {
+        return (
+            <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+                <Path
+                    d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm3.923 11.22c-.12 2.24-1.464 3.633-3.805 3.633-2.616 0-4.148-1.854-4.148-4.636 0-3.088 1.77-4.808 4.316-4.808 2.378 0 3.738 1.488 3.864 3.493h-1.637c-.11-1.16-.867-1.922-2.227-1.922-1.644 0-2.627 1.156-2.627 3.237 0 2.012.983 3.064 2.457 3.064 1.474 0 2.148-.823 2.258-2.061H12v-1.554h3.923v1.554z"
+                    fill="#111827"
+                />
+            </Svg>
+        );
     }
 
     return <Ionicons name="apps-outline" size={size * 0.85} color="#2e6b4e" />;
@@ -138,24 +130,27 @@ function AppBrandIcon({ item, size = 38 }: { item: AppItem; size?: number }) {
 function AppGridCard({
     item,
     isSelected,
+    mode,
+    iconUri,
     onPress,
+    onOpenSettings,
     s = 1,
 }: {
-    item: AppItem;
+    item: DoomscrollAppDefinition;
     isSelected: boolean;
+    mode: 'all' | 'trigger_only';
+    iconUri?: string;
     onPress: () => void;
+    onOpenSettings: () => void;
     s?: number;
 }) {
     const scale = useSharedValue(1);
-    const disabled = item.isInstalled === false;
 
     const handlePressIn = () => {
-        if (disabled) return;
         scale.value = withTiming(0.95, { duration: 90, easing: EASE_OUT });
     };
 
     const handlePressOut = () => {
-        if (disabled) return;
         scale.value = withSpring(1, { duration: 250, dampingRatio: 0.75 });
     };
 
@@ -166,9 +161,7 @@ function AppGridCard({
     return (
         <AnimatedPressable
             className={`w-[48.5%] items-center border-[1.5px] shadow-sm elevation-2 ${
-                disabled
-                    ? 'border-[#e2e8e3] bg-[#f0f3f1] opacity-55'
-                    : isSelected
+                isSelected
                     ? 'border-[#2e6b4e] bg-[#f4faf5]'
                     : 'border-[#e5e7eb] bg-white'
             }`}
@@ -178,54 +171,56 @@ function AppGridCard({
             ]}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            onPress={disabled ? undefined : onPress}
-            disabled={disabled}
+            onPress={onPress}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
             <View
-                className={`w-full items-center justify-center relative ${disabled ? 'bg-[#dce3de]' : 'bg-[#e7ede7]'}`}
+                className="w-full items-center justify-center relative bg-[#e7ede7]"
                 style={{ borderRadius: 12 * s, height: 76 * s }}
             >
-                <AppBrandIcon item={item} size={36 * s} />
+                <AppBrandIcon id={item.id} iconUri={iconUri} size={42 * s} />
 
-                {disabled ? (
-                    <View
-                        className="absolute top-2 right-2 items-center justify-center bg-[#a6b4aa]"
-                        style={{ width: 22 * s, height: 22 * s, borderRadius: 6 * s }}
-                    >
-                        <Ionicons name="close" size={13 * s} color="#ffffff" />
-                    </View>
-                ) : (
-                    <View
-                        className={`absolute top-2 right-2 items-center justify-center ${
-                            isSelected ? 'bg-[#2e6b4e]' : 'bg-[#c5d1c8]'
-                        }`}
-                        style={{ width: 22 * s, height: 22 * s, borderRadius: 6 * s }}
-                    >
-                        {isSelected && (
-                            <Ionicons name="checkmark" size={14 * s} color="#ffffff" />
-                        )}
-                    </View>
-                )}
+                {/* Tombol Pengaturan Mode Deteksi */}
+                <TouchableOpacity
+                    className="absolute top-2 left-2 items-center justify-center bg-white/85 shadow-sm"
+                    style={{ width: 24 * s, height: 24 * s, borderRadius: 7 * s }}
+                    onPress={(e) => {
+                        e.stopPropagation();
+                        onOpenSettings();
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                    <Ionicons name="options-outline" size={15 * s} color="#275c43" />
+                </TouchableOpacity>
+
+                {/* Indikator Checkmark */}
+                <View
+                    className={`absolute top-2 right-2 items-center justify-center ${
+                        isSelected ? 'bg-[#2e6b4e]' : 'bg-[#c5d1c8]'
+                    }`}
+                    style={{ width: 22 * s, height: 22 * s, borderRadius: 6 * s }}
+                >
+                    {isSelected && (
+                        <Ionicons name="checkmark" size={14 * s} color="#ffffff" />
+                    )}
+                </View>
             </View>
 
             <Text
-                className={`text-center px-1 ${disabled ? 'text-[#87968c]' : 'text-[#1f2923]'}`}
+                className="text-center px-1 text-[#1f2923]"
                 style={{ fontFamily: 'Outfit_800ExtraBold', fontSize: 13.5 * s, marginTop: 8 * s }}
                 numberOfLines={1}
             >
                 {item.name}
             </Text>
 
-            {disabled && (
-                <Text
-                    className="text-center text-[#8e9d93] text-[10px]"
-                    style={{ fontFamily: 'Outfit_500Medium', marginTop: 1 }}
-                    numberOfLines={1}
-                >
-                    Belum Terinstall
-                </Text>
-            )}
+            <Text
+                className="text-center text-[#526458]"
+                style={{ fontFamily: 'Outfit_500Medium', fontSize: 10.5 * s, marginTop: 2 * s }}
+                numberOfLines={1}
+            >
+                {mode === 'all' ? 'Deteksi Seluruh App' : `Fitur: ${item.triggerFeatureName}`}
+            </Text>
         </AnimatedPressable>
     );
 }
@@ -236,21 +231,29 @@ export default function SelectAppsScreen() {
     const { width: W } = useWindowDimensions();
     const reducedMotion = useReducedMotion();
 
-    const { user, userName, selectedTargetPackages, setSelectedTargetPackages } = useAuthStore();
+    const {
+        user,
+        userName,
+        selectedTargetPackages,
+        appDetectionModes,
+        setSelectedTargetPackages,
+        setAppDetectionMode,
+    } = useAuthStore();
     const displayName = userName || user?.name || 'Gathan';
     const initialLetter = (displayName[0] || 'G').toUpperCase();
 
     const [selectedIds, setSelectedIds] = useState<string[]>([
-        'tiktok',
         'instagram',
         'facebook',
+        'threads',
         'youtube',
+        'twitter',
+        'tiktok',
     ]);
-    const [installedApps, setInstalledApps] = useState<AppItem[]>([]);
-    const [isLoadingApps, setIsLoadingApps] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [customAppName, setCustomAppName] = useState('');
+
+    const [appIcons, setAppIcons] = useState<Record<string, string>>({});
+    const [activeConfigApp, setActiveConfigApp] = useState<DoomscrollAppDefinition | null>(null);
+
     const submitting = useRef(false);
 
     const [fontsLoaded] = useFonts({
@@ -277,77 +280,43 @@ export default function SelectAppsScreen() {
     useEffect(() => {
         let isMounted = true;
 
-        async function loadInstalled() {
-            try {
-                if (Platform.OS === 'android' && YudaPip.isNativeModuleAvailable()) {
-                    const apps = await YudaPip.getInstalledApps(true);
-                    if (!isMounted) return;
-
-                    if (apps && apps.length > 0) {
-                        const mapped: AppItem[] = apps.map((app) => {
-                            const pkg = app.packageName.toLowerCase();
-                            let type: AppItem['type'] = 'other';
-                            if (pkg.includes('tiktok') || pkg.includes('musically')) type = 'tiktok';
-                            else if (pkg.includes('instagram')) type = 'instagram';
-                            else if (pkg.includes('facebook') || pkg.includes('katana')) type = 'facebook';
-                            else if (pkg.includes('youtube')) type = 'youtube';
-                            else if (pkg.includes('twitter')) type = 'twitter';
-                            else if (pkg.includes('reddit')) type = 'reddit';
-                            else if (pkg.includes('game') || pkg.includes('mobilelegends') || pkg.includes('pubg') || pkg.includes('freefire') || pkg.includes('roblox')) type = 'game';
-                            else if (pkg.includes('chrome') || pkg.includes('browser')) type = 'browser';
-
-                            return {
-                                id: app.packageName,
-                                name: app.appName,
-                                type,
-                                packageName: app.packageName,
-                                iconUri: app.iconUri,
-                                isInstalled: true,
-                            };
-                        });
-
-                        setInstalledApps(mapped);
-
-                        const installedPkgs = new Set(apps.map((x) => x.packageName.toLowerCase()));
-                        const installedNames = apps.map((x) => x.appName.toLowerCase());
-
-                        const isPkgInstalled = (pkgName?: string) => {
-                            if (!pkgName) return false;
-                            const p = pkgName.toLowerCase();
-                            return installedPkgs.has(p) || Array.from(installedPkgs).some((x) => x.includes(p));
-                        };
-
-                        const isNameMatches = (name: string) => {
-                            const n = name.toLowerCase();
-                            return installedNames.some((x) => x.includes(n));
-                        };
-
-                        if (selectedTargetPackages && selectedTargetPackages.length > 0) {
-                            const matchingIds: string[] = [];
-                            DEFAULT_APPS.forEach((d) => {
-                                if (d.packageName && selectedTargetPackages.includes(d.packageName)) {
-                                    matchingIds.push(d.id);
-                                }
-                            });
-                            selectedTargetPackages.forEach((pkg) => {
-                                if (!DEFAULT_APPS.some((d) => d.packageName === pkg)) {
-                                    matchingIds.push(pkg);
-                                }
-                            });
-                            if (matchingIds.length > 0) {
-                                setSelectedIds(Array.from(new Set(matchingIds)));
+        async function fetchNativeIcons() {
+            if (Platform.OS === 'android' && YudaPip.isNativeModuleAvailable()) {
+                const loadedIcons: Record<string, string> = {};
+                for (const app of DOOMSCROLL_APPS) {
+                    for (const pkg of app.packages) {
+                        try {
+                            const icon = await YudaPip.getAppIcon(pkg);
+                            if (icon) {
+                                loadedIcons[app.id] = icon;
+                                break;
                             }
+                        } catch {
+                            // ignore
                         }
                     }
                 }
-            } catch (e) {
-                console.warn('Gagal membaca installed apps:', e);
-            } finally {
-                if (isMounted) setIsLoadingApps(false);
+                if (isMounted) {
+                    setAppIcons(loadedIcons);
+                }
             }
         }
 
-        loadInstalled();
+        fetchNativeIcons();
+
+        if (selectedTargetPackages && selectedTargetPackages.length > 0) {
+            const active: string[] = [];
+            DOOMSCROLL_APPS.forEach((app) => {
+                const isSelected = app.packages.some((pkg) => selectedTargetPackages.includes(pkg));
+                if (isSelected) {
+                    active.push(app.id);
+                }
+            });
+            if (active.length > 0) {
+                setSelectedIds(active);
+            }
+        }
+
         return () => {
             isMounted = false;
         };
@@ -405,36 +374,7 @@ export default function SelectAppsScreen() {
         ],
     }));
 
-    const defaultAppsWithStatus = useMemo(() => {
-        const installedPkgSet = new Set(installedApps.map((x) => x.packageName?.toLowerCase() ?? ''));
-        const installedNameList = installedApps.map((x) => x.name.toLowerCase());
-
-        return DEFAULT_APPS.map((d) => {
-            const p = d.packageName?.toLowerCase() ?? '';
-            const matchingApp = installedApps.find(
-                (x) => (x.packageName && x.packageName.toLowerCase().includes(p)) || x.name.toLowerCase() === d.name.toLowerCase()
-            );
-
-            const isInstalled = matchingApp
-                ? true
-                : installedPkgSet.has(p) || installedNameList.some((n) => n.includes(d.name.toLowerCase()));
-
-            return {
-                ...d,
-                iconUri: matchingApp?.iconUri,
-                isInstalled,
-            };
-        });
-    }, [installedApps]);
-
-    const displayMainApps = useMemo(() => {
-        const extraSelected = installedApps.filter(
-            (a) => selectedIds.includes(a.id) && !DEFAULT_APPS.some((d) => d.id === a.id || d.packageName === a.packageName)
-        );
-        return [...defaultAppsWithStatus, ...extraSelected];
-    }, [defaultAppsWithStatus, installedApps, selectedIds]);
-
-    const toggleApp = (id: string, isInstalled?: boolean) => {
+    const toggleApp = (id: string) => {
         setSelectedIds((prev) => {
             if (prev.includes(id)) {
                 return prev.filter((x) => x !== id);
@@ -443,31 +383,15 @@ export default function SelectAppsScreen() {
         });
     };
 
-    const handleAddCustomApp = () => {
-        const trimmed = customAppName.trim();
-        if (!trimmed) return;
+    const handleSelectDetectionMode = async (mode: 'all' | 'trigger_only') => {
+        if (!activeConfigApp) return;
 
-        const newId = `custom_${Date.now()}`;
-        const newApp: AppItem = {
-            id: newId,
-            name: trimmed,
-            type: 'other',
-            isCustom: true,
-            isInstalled: true,
-        };
-
-        setInstalledApps((prev) => [newApp, ...prev]);
-        setSelectedIds((prev) => [...prev, newId]);
-        setCustomAppName('');
+        const appId = activeConfigApp.id;
+        await setAppDetectionMode(appId, mode);
+        setActiveConfigApp(null);
     };
 
-    const filteredInstalledApps = useMemo(() => {
-        const q = searchQuery.toLowerCase().trim();
-        if (!q) return installedApps;
-        return installedApps.filter((a) => a.name.toLowerCase().includes(q) || a.packageName?.toLowerCase().includes(q));
-    }, [installedApps, searchQuery]);
-
-    const handleContinue = () => {
+    const handleContinue = async () => {
         if (selectedIds.length === 0) {
             btnShakeX.value = withSequence(
                 withTiming(-8, { duration: 45 }),
@@ -482,32 +406,14 @@ export default function SelectAppsScreen() {
 
         try {
             const packages: string[] = [];
-            selectedIds.forEach((id) => {
-                if (id === 'tiktok') {
-                    packages.push('com.zhiliaoapp.musically', 'com.ss.android.ugc.trill');
-                } else if (id === 'instagram') {
-                    packages.push('com.instagram.android');
-                } else if (id === 'facebook') {
-                    packages.push('com.facebook.katana', 'com.facebook.lite');
-                } else if (id === 'youtube') {
-                    packages.push('com.google.android.youtube');
-                } else if (id === 'threads') {
-                    packages.push('com.instagram.barcelona');
-                } else if (id === 'twitter') {
-                    packages.push('com.twitter.android', 'com.twitter.android.lite');
-                } else {
-                    const found = installedApps.find((a) => a.id === id);
-                    if (found?.packageName) {
-                        packages.push(found.packageName);
-                    } else if (id.includes('.')) {
-                        packages.push(id);
-                    }
+            DOOMSCROLL_APPS.forEach((app) => {
+                if (selectedIds.includes(app.id)) {
+                    packages.push(...app.packages);
                 }
             });
 
             const uniquePackages = Array.from(new Set(packages));
-            setSelectedTargetPackages(uniquePackages);
-            YudaPip.setTargetPackages(uniquePackages);
+            await setSelectedTargetPackages(uniquePackages);
 
             router.push('/onboarding/welcome' as any);
         } finally {
@@ -659,7 +565,7 @@ export default function SelectAppsScreen() {
                             className="text-[#516457]"
                             style={{ fontFamily: 'Outfit_500Medium', fontSize: 13 * s, lineHeight: 18 * s, marginTop: 4 * s }}
                         >
-                            Pilih jebakan digital yang sering bikin lupa waktu.
+                            Pilih aplikasi pemicu scroll yang ingin dipantau oleh YUDA.
                         </Text>
 
                         <View
@@ -670,7 +576,7 @@ export default function SelectAppsScreen() {
                                 className="text-[#24593f]"
                                 style={{ fontFamily: 'Outfit_700Bold', fontSize: 12 * s }}
                             >
-                                {selectedIds.length} Aplikasi Dipilih
+                                {selectedIds.length} dari 6 Aplikasi Dipilih
                             </Text>
                         </View>
                     </View>
@@ -679,57 +585,25 @@ export default function SelectAppsScreen() {
                         className="flex-row flex-wrap justify-between"
                         style={{ marginTop: 10 * s, rowGap: 10 }}
                     >
-                        {displayMainApps.map((item) => {
+                        {DOOMSCROLL_APPS.map((item) => {
                             const isSelected = selectedIds.includes(item.id);
+                            const mode = appDetectionModes[item.id] || 'trigger_only';
+                            const iconUri = appIcons[item.id];
+
                             return (
                                 <AppGridCard
                                     key={item.id}
                                     item={item}
                                     isSelected={isSelected}
-                                    onPress={() => toggleApp(item.id, item.isInstalled)}
+                                    mode={mode}
+                                    iconUri={iconUri}
+                                    onPress={() => toggleApp(item.id)}
+                                    onOpenSettings={() => setActiveConfigApp(item)}
                                     s={s}
                                 />
                             );
                         })}
                     </View>
-
-                    <TouchableOpacity
-                        className="flex-row items-center justify-between bg-[#fbfbf9]"
-                        style={[
-                            { borderRadius: 16 * s, paddingHorizontal: 14 * s, paddingVertical: 12 * s, marginTop: 12 * s },
-                        ]}
-                        activeOpacity={0.85}
-                        onPress={() => setIsModalOpen(true)}
-                    >
-                        <View className="flex-row items-center flex-1">
-                            <View
-                                className="items-center justify-center bg-[#e1ebe2]"
-                                style={{ width: 38 * s, height: 38 * s, borderRadius: 10 * s }}
-                            >
-                                <Ionicons name="apps-outline" size={22 * s} color="#2e6b4e" />
-                            </View>
-                            <View style={{ marginLeft: 12 * s, flex: 1 }}>
-                                <Text
-                                    className="text-[#1f2923]"
-                                    style={{ fontFamily: 'Outfit_800ExtraBold', fontSize: 14.5 * s }}
-                                >
-                                    Pilih Aplikasi Lainnya
-                                </Text>
-                                <Text
-                                    className="text-[#6c7f73]"
-                                    style={{ fontFamily: 'Outfit_500Medium', fontSize: 11.5 * s, marginTop: 1 }}
-                                    numberOfLines={1}
-                                >
-                                    {isLoadingApps
-                                        ? 'Sedang memuat aplikasi HP...'
-                                        : installedApps.length > 0
-                                        ? `${installedApps.length} aplikasi terinstall di HP`
-                                        : 'Buka daftar aplikasi terinstall'}
-                                </Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={19 * s} color="#6d7f72" />
-                    </TouchableOpacity>
                 </Animated.View>
             </ScrollView>
 
@@ -778,150 +652,159 @@ export default function SelectAppsScreen() {
                 )}
             </View>
 
+            {/* MODAL PENGATURAN MODE DETEKSI PER APLIKASI */}
             <Modal
-                visible={isModalOpen}
-                animationType="slide"
+                visible={!!activeConfigApp}
+                animationType="fade"
                 transparent
-                onRequestClose={() => setIsModalOpen(false)}
+                onRequestClose={() => setActiveConfigApp(null)}
             >
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View
-                        className="bg-[#fbfbf9] rounded-t-[28px]"
-                        style={{ height: '86%', paddingBottom: Math.max(insets.bottom, 20) }}
+                <Pressable
+                    className="flex-1 bg-black/50 justify-center items-center"
+                    style={{ paddingHorizontal: 20 * s }}
+                    onPress={() => setActiveConfigApp(null)}
+                >
+                    <Pressable
+                        className="w-full bg-[#f6f3ec] rounded-3xl"
+                        style={{ padding: 20 * s, maxWidth: 380 * s }}
+                        onPress={(e) => e.stopPropagation()}
                     >
-                        <View className="flex-row items-start justify-between px-5 pt-5 pb-3">
-                            <View className="flex-1 pr-2.5">
+                        <View className="flex-row items-center justify-between" style={{ marginBottom: 14 * s }}>
+                            <View className="flex-row items-center flex-1">
+                                {activeConfigApp && (
+                                    <AppBrandIcon
+                                        id={activeConfigApp.id}
+                                        iconUri={appIcons[activeConfigApp.id]}
+                                        size={32 * s}
+                                    />
+                                )}
                                 <Text
-                                    className="text-[#1f2923] text-[19px]"
-                                    style={{ fontFamily: 'Outfit_800ExtraBold' }}
+                                    className="font-outfit-extrabold text-[#1f2923]"
+                                    style={{ fontSize: 17 * s, marginLeft: 10 * s }}
                                 >
-                                    Pilih Dari Aplikasi Terinstall
-                                </Text>
-                                <Text
-                                    className="text-[#64748b] text-[12.5px] mt-0.5"
-                                    style={{ fontFamily: 'Outfit_500Medium' }}
-                                >
-                                    {installedApps.length > 0
-                                        ? `${installedApps.length} aplikasi terdeteksi di HP kamu`
-                                        : 'Daftar semua aplikasi di HP kamu'}
+                                    Mode Deteksi {activeConfigApp?.name}
                                 </Text>
                             </View>
                             <TouchableOpacity
-                                className="w-[34px] h-[34px] rounded-full bg-[#edf2ee] items-center justify-center"
-                                onPress={() => setIsModalOpen(false)}
-                            >
-                                <Ionicons name="close" size={22} color="#4b5563" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View className="flex-row items-center bg-[#edf2ee] mx-5 rounded-xl px-3 h-11 mt-1">
-                            <Ionicons name="search-outline" size={19} color="#6b7280" style={{ marginRight: 8 }} />
-                            <TextInput
-                                className="flex-1 text-[#1f2923] text-sm py-0"
-                                style={{ fontFamily: 'Outfit_500Medium' }}
-                                placeholder="Cari nama aplikasi..."
-                                placeholderTextColor="#9ca3af"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                autoCorrect={false}
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                    <Ionicons name="close-circle" size={17} color="#9ca3af" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-
-                        <View className="flex-row items-center mx-5 mt-2.5 mb-2 gap-2">
-                            <TextInput
-                                className="flex-1 bg-[#edf2ee] h-[42px] rounded-xl px-3 text-[#1f2923] text-[13.5px] py-0"
-                                style={{ fontFamily: 'Outfit_500Medium' }}
-                                placeholder="Ketik nama aplikasi lainnya..."
-                                placeholderTextColor="#9ca3af"
-                                value={customAppName}
-                                onChangeText={setCustomAppName}
-                            />
-                            <TouchableOpacity
-                                className={`h-[42px] px-3.5 rounded-xl flex-row items-center justify-center ${
-                                    !customAppName.trim() ? 'bg-[#9ab3a3]' : 'bg-[#2e6b4e]'
-                                }`}
-                                disabled={!customAppName.trim()}
-                                onPress={handleAddCustomApp}
-                            >
-                                <Ionicons name="add" size={18} color="#ffffff" style={{ marginRight: 4 }} />
-                                <Text
-                                    className="text-white text-[13px]"
-                                    style={{ fontFamily: 'Outfit_700Bold' }}
-                                >
-                                    Tambah
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {isLoadingApps ? (
-                            <View className="flex-1 items-center justify-center py-10">
-                                <ActivityIndicator size="large" color="#2e6b4e" />
-                                <Text
-                                    className="text-[#64748b] text-sm mt-3"
-                                    style={{ fontFamily: 'Outfit_500Medium' }}
-                                >
-                                    Membaca aplikasi terinstall...
-                                </Text>
-                            </View>
-                        ) : filteredInstalledApps.length === 0 ? (
-                            <View className="flex-1 items-center justify-center py-10 px-5">
-                                <Ionicons name="search-outline" size={36} color="#9ca3af" />
-                                <Text
-                                    className="text-[#374151] text-base mt-2.5"
-                                    style={{ fontFamily: 'Outfit_700Bold' }}
-                                >
-                                    Tidak ditemukan
-                                </Text>
-                                <Text
-                                    className="text-[#6b7280] text-[13px] text-center mt-1"
-                                    style={{ fontFamily: 'Outfit_500Medium' }}
-                                >
-                                    Tidak ada aplikasi terinstall yang cocok dengan pencarian
-                                </Text>
-                            </View>
-                        ) : (
-                            <FlatList
-                                data={filteredInstalledApps}
-                                keyExtractor={(item) => item.id}
-                                numColumns={2}
-                                columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 10 }}
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 }}
-                                renderItem={({ item }) => {
-                                    const isSelected = selectedIds.includes(item.id);
-                                    return (
-                                        <AppGridCard
-                                            item={item}
-                                            isSelected={isSelected}
-                                            onPress={() => toggleApp(item.id, item.isInstalled)}
-                                            s={s}
-                                        />
-                                    );
+                                onPress={() => setActiveConfigApp(null)}
+                                style={{
+                                    width: 32 * s,
+                                    height: 32 * s,
+                                    borderRadius: 16 * s,
+                                    backgroundColor: '#e6ede6',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
                                 }}
-                            />
-                        )}
-
-                        <View className="px-5 pt-2.5">
-                            <TouchableOpacity
-                                className="bg-[#2e6b4e] h-[52px] rounded-[14px] items-center justify-center"
-                                activeOpacity={0.88}
-                                onPress={() => setIsModalOpen(false)}
                             >
-                                <Text
-                                    className="text-white text-base"
-                                    style={{ fontFamily: 'Outfit_700Bold' }}
-                                >
-                                    Simpan Pilihan ({selectedIds.length})
-                                </Text>
+                                <Ionicons name="close" size={18 * s} color="#275c43" />
                             </TouchableOpacity>
                         </View>
-                    </View>
-                </View>
+
+                        <Text
+                            className="font-outfit-medium text-[#55685d]"
+                            style={{ fontSize: 12.5 * s, marginBottom: 16 * s }}
+                        >
+                            Tentukan kapan YUDA akan menghitung durasi waktu dan memunculkan jeda intervensi pada {activeConfigApp?.name}:
+                        </Text>
+
+                        {/* Opsi 1: Hanya Fitur Pemicu Doomscroll */}
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => handleSelectDetectionMode('trigger_only')}
+                            className={`p-3.5 rounded-2xl border-2 mb-3 ${
+                                activeConfigApp &&
+                                (appDetectionModes[activeConfigApp.id] || 'trigger_only') === 'trigger_only'
+                                    ? 'border-[#2e6b4e] bg-[#eef5f0]'
+                                    : 'border-gray-200 bg-white'
+                            }`}
+                        >
+                            <View className="flex-row items-center justify-between">
+                                <View className="flex-row items-center flex-1 pr-2">
+                                    <View
+                                        className="w-8 h-8 rounded-full items-center justify-center bg-[#dce8de]"
+                                        style={{ marginRight: 10 * s }}
+                                    >
+                                        <Ionicons name="flash-outline" size={17 * s} color="#2e6b4e" />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text
+                                            className="font-outfit-bold text-[#1f2923]"
+                                            style={{ fontSize: 14 * s }}
+                                        >
+                                            Hanya Fitur Pemicu ({activeConfigApp?.triggerFeatureName})
+                                        </Text>
+                                        <Text
+                                            className="font-outfit-medium text-[#64748b]"
+                                            style={{ fontSize: 11 * s, marginTop: 2 * s }}
+                                        >
+                                            Hanya mendeteksi saat membuka Reels, Shorts, atau feed scroll cepat.
+                                        </Text>
+                                    </View>
+                                </View>
+                                <View
+                                    className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
+                                        activeConfigApp &&
+                                        (appDetectionModes[activeConfigApp.id] || 'trigger_only') === 'trigger_only'
+                                            ? 'border-[#2e6b4e] bg-[#2e6b4e]'
+                                            : 'border-gray-300'
+                                    }`}
+                                >
+                                    {activeConfigApp &&
+                                        (appDetectionModes[activeConfigApp.id] || 'trigger_only') === 'trigger_only' && (
+                                            <Ionicons name="checkmark" size={12 * s} color="#ffffff" />
+                                        )}
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Opsi 2: Keseluruhan Aplikasi */}
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => handleSelectDetectionMode('all')}
+                            className={`p-3.5 rounded-2xl border-2 ${
+                                activeConfigApp && appDetectionModes[activeConfigApp.id] === 'all'
+                                    ? 'border-[#2e6b4e] bg-[#eef5f0]'
+                                    : 'border-gray-200 bg-white'
+                            }`}
+                        >
+                            <View className="flex-row items-center justify-between">
+                                <View className="flex-row items-center flex-1 pr-2">
+                                    <View
+                                        className="w-8 h-8 rounded-full items-center justify-center bg-[#dce8de]"
+                                        style={{ marginRight: 10 * s }}
+                                    >
+                                        <Ionicons name="scan-outline" size={17 * s} color="#2e6b4e" />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text
+                                            className="font-outfit-bold text-[#1f2923]"
+                                            style={{ fontSize: 14 * s }}
+                                        >
+                                            Deteksi Secara Keseluruhan
+                                        </Text>
+                                        <Text
+                                            className="font-outfit-medium text-[#64748b]"
+                                            style={{ fontSize: 11 * s, marginTop: 2 * s }}
+                                        >
+                                            Mendeteksi sepanjang aplikasi sedang dibuka di layar HP.
+                                        </Text>
+                                    </View>
+                                </View>
+                                <View
+                                    className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
+                                        activeConfigApp && appDetectionModes[activeConfigApp.id] === 'all'
+                                            ? 'border-[#2e6b4e] bg-[#2e6b4e]'
+                                            : 'border-gray-300'
+                                    }`}
+                                >
+                                    {activeConfigApp && appDetectionModes[activeConfigApp.id] === 'all' && (
+                                        <Ionicons name="checkmark" size={12 * s} color="#ffffff" />
+                                    )}
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
             </Modal>
         </View>
     );

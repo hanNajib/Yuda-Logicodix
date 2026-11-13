@@ -11,6 +11,7 @@ const TARGET_PACKAGES_KEY = 'selected_target_packages';
 const INTERVAL_MINUTES_KEY = 'selected_interval_minutes';
 const TONE_STYLE_KEY = 'intervention_tone_style';
 const PAUSE_DURATION_KEY = 'intervention_pause_duration';
+const DETECTION_MODES_KEY = 'app_detection_modes';
 
 export const DEFAULT_TARGET_PACKAGES = [
     'com.instagram.android',
@@ -31,6 +32,7 @@ interface AuthState {
     user: AuthUser | null;
     userName: string | null;
     selectedTargetPackages: string[];
+    appDetectionModes: Record<string, 'all' | 'trigger_only'>;
     intervalMinutes: number;
     toneStyle: string;
     pauseDuration: number;
@@ -44,6 +46,7 @@ interface AuthState {
     setUserToken: (token: string | null) => void;
     setUserName: (name: string | null) => Promise<void>;
     setSelectedTargetPackages: (packages: string[]) => Promise<void>;
+    setAppDetectionMode: (appId: string, mode: 'all' | 'trigger_only') => Promise<void>;
     setIntervalMinutes: (minutes: number) => Promise<void>;
     saveInterventionSettingsLocally: (settings: {
         tone_style?: string;
@@ -64,6 +67,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
     userName: null,
     selectedTargetPackages: DEFAULT_TARGET_PACKAGES,
+    appDetectionModes: {
+        instagram: 'trigger_only',
+        facebook: 'trigger_only',
+        threads: 'trigger_only',
+        youtube: 'trigger_only',
+        twitter: 'trigger_only',
+        tiktok: 'trigger_only',
+    },
     intervalMinutes: 15,
     toneStyle: 'lembut',
     pauseDuration: 30,
@@ -79,6 +90,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 savedInterval,
                 savedTone,
                 savedDuration,
+                savedModesJson,
             ] = await Promise.all([
                 SecureStore.getItemAsync(TOKEN_KEY),
                 SecureStore.getItemAsync(USER_KEY),
@@ -88,6 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 SecureStore.getItemAsync(INTERVAL_MINUTES_KEY),
                 SecureStore.getItemAsync(TONE_STYLE_KEY),
                 SecureStore.getItemAsync(PAUSE_DURATION_KEY),
+                SecureStore.getItemAsync(DETECTION_MODES_KEY),
             ]);
 
             let parsedUser: AuthUser | null = null;
@@ -139,11 +152,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 }
             }
 
+            let modesVal: Record<string, 'all' | 'trigger_only'> = {
+                instagram: 'trigger_only',
+                facebook: 'trigger_only',
+                threads: 'trigger_only',
+                youtube: 'trigger_only',
+                twitter: 'trigger_only',
+                tiktok: 'trigger_only',
+            };
+            if (savedModesJson) {
+                try {
+                    const parsed = JSON.parse(savedModesJson);
+                    if (parsed && typeof parsed === 'object') {
+                        modesVal = { ...modesVal, ...parsed };
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+
+            if (typeof YudaPip.setAppDetectionMode === 'function') {
+                Object.entries(modesVal).forEach(([appId, mode]) => {
+                    YudaPip.setAppDetectionMode(appId, mode);
+                });
+            }
+
             set({
                 userToken: token || null,
                 user: parsedUser,
                 userName: savedName || parsedUser?.name || null,
                 selectedTargetPackages: packages,
+                appDetectionModes: modesVal,
                 intervalMinutes: intervalVal,
                 toneStyle: toneVal,
                 pauseDuration: durationVal,
@@ -266,6 +305,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             console.warn("Gagal menyimpan target packages:", e);
         }
         set({ selectedTargetPackages: packages });
+    },
+
+    setAppDetectionMode: async (appId: string, mode: 'all' | 'trigger_only') => {
+        try {
+            const currentModes = get().appDetectionModes;
+            const updatedModes = {
+                ...currentModes,
+                [appId]: mode,
+            };
+
+            await SecureStore.setItemAsync(DETECTION_MODES_KEY, JSON.stringify(updatedModes));
+            if (typeof YudaPip.setAppDetectionMode === 'function') {
+                YudaPip.setAppDetectionMode(appId, mode);
+            }
+
+            set({ appDetectionModes: updatedModes });
+        } catch (e) {
+            console.warn("Gagal menyimpan app detection mode lokal:", e);
+        }
     },
 
     setIntervalMinutes: async (minutes: number) => {
