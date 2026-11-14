@@ -24,10 +24,26 @@ Berikut merupakan dokumentasi tampilan antarmuka dari fitur POP_UP_JEDA_PENGINGA
 
 ## User Flow
 
-1. Pengguna membuka menu [Nama Menu].
-2. Pengguna memilih [Aksi].
-3. Sistem menampilkan [Hasil].
-4. Pengguna dapat [Aksi lanjutan].
+```mermaid
+flowchart TD
+    A([Mulai]) --> B[Trigger durasi scrolling tercapai]
+    B --> C["Sapaan Pengingat<br/>Maskot menyapa dan menampilkan durasi scrolling"]
+    C --> D["Pilihan Aktivitas<br/>Napas 30 detik / Minum / Peregangan"]
+    D --> E{"Memasuki jam tidur<br/>22.00–04.00?"}
+    E -->|Ya| F[Tambahkan pilihan Tidur]
+    E -->|Tidak| G[Pengguna memulai aktivitas]
+    F --> G
+    G --> H["Menampilkan card misi sesuai pilihan"]
+    H --> I[Pengguna melakukan aktivitas]
+    I --> J["Konfirmasi Keberhasilan<br/>Misi berhasil diselesaikan"]
+    J --> K["Pengingat Aktivitas<br/>Menampilkan task list Daily Planner"]
+    K --> L["Konfirmasi Jeda<br/>Istirahat Scroll / Lanjut Scroll"]
+    L --> M{"Pilihan pengguna?"}
+    M -->|Istirahat Scroll| N([Mengakhiri aktivitas scrolling])
+    M -->|Lanjut Scroll| O["Pengingat Lanjutan<br/>Pesan pengguna ingin melanjutkan"]
+    O --> P[Menjadwalkan jeda berikutnya setelah 15 menit]
+    P --> Q([Kembali ke aktivitas scrolling])
+```
 
 ## Related Documentation
 

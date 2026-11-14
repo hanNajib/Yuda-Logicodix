@@ -27,10 +27,31 @@ Berikut merupakan dokumentasi tampilan antarmuka dari fitur POP_UP_JEDA_EVALUASI
 
 ## User Flow
 
-1. Pengguna membuka menu [Nama Menu].
-2. Pengguna memilih [Aksi].
-3. Sistem menampilkan [Hasil].
-4. Pengguna dapat [Aksi lanjutan].
+```mermaid
+
+flowchart TD
+    A([Mulai]) --> B["Trigger: Pengguna tetap melanjutkan scrolling setelah jeda sebelumnya"]
+    B --> C["Sapaan Pengingat<br/>Maskot menyapa dan menampilkan durasi scrolling"]
+    C --> D["Pengenalan Emosi<br/>Tenang / Cemas / Bosan / Lelah"]
+    D --> E[Pengguna memilih kondisi emosional]
+    E --> F["Kartu Afirmasi<br/>Menampilkan afirmasi dan tips sederhana"]
+    F --> G["Pilihan Aktivitas<br/>Napas 30 detik / Minum / Peregangan"]
+    G --> H{"Memasuki jam tidur<br/>22.00–04.00?"}
+    H -->|Ya| I[Tambahkan pilihan Tidur]
+    H -->|Tidak| J[Pengguna memulai aktivitas]
+    I --> J
+    J --> K["Menampilkan card misi sesuai pilihan"]
+    K --> L[Pengguna melakukan aktivitas]
+    L --> M["Konfirmasi Keberhasilan<br/>Misi berhasil diselesaikan"]
+    M --> N["Pengingat Aktivitas<br/>Menampilkan task list Daily Planner"]
+    N --> O["Konfirmasi Jeda<br/>Istirahat Scroll / Lanjut Scroll"]
+    O --> P{"Pilihan pengguna?"}
+    P -->|Istirahat Scroll| Q([Mengakhiri aktivitas scrolling])
+    P -->|Lanjut Scroll| R["Pengingat Lanjutan<br/>Pesan pengguna ingin melanjutkan"]
+    R --> S[Menjadwalkan jeda berikutnya setelah 15 menit]
+    S --> T([Kembali ke aktivitas scrolling])
+
+```
 
 ## Related Documentation
 
