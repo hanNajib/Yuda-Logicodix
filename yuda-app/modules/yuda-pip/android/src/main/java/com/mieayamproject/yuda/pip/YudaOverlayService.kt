@@ -241,7 +241,7 @@ class YudaOverlayService : Service() {
             }
         }
 
-        userName = intent.getStringExtra(EXTRA_USER_NAME) ?: "Gathan"
+        userName = intent.getStringExtra(EXTRA_USER_NAME) ?: "Yuda"
         targetPackage = intent.getStringExtra(EXTRA_TARGET_PACKAGE) ?: "com.instagram.android"
         testMode = intent.getBooleanExtra(EXTRA_TEST_MODE, true)
         val prefInterval = YudaPipModule.getIntervalMinutes(this) * 60

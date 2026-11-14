@@ -285,13 +285,13 @@ class YudaAccessibilityService : AccessibilityService() {
         return targets.any { target ->
             val lowerTarget = target.lowercase()
             lowerPkg == lowerTarget ||
-                (lowerTarget.contains("instagram") && lowerPkg.contains("instagram")) ||
+                (lowerTarget.contains("instagram") && lowerPkg.contains("instagram") && !lowerTarget.contains("barcelona") && !lowerPkg.contains("barcelona")) ||
                 (lowerTarget.contains("tiktok") && (lowerPkg.contains("musically") || lowerPkg.contains("trill") || lowerPkg.contains("tiktok"))) ||
                 (lowerTarget.contains("facebook") && (lowerPkg.contains("katana") || lowerPkg.contains("facebook"))) ||
                 (lowerTarget.contains("youtube") && lowerPkg.contains("youtube")) ||
                 (lowerTarget.contains("barcelona") && lowerPkg.contains("barcelona")) ||
                 (lowerTarget.contains("twitter") && lowerPkg.contains("twitter"))
-        } || lowerPkg.contains("barcelona") || lowerPkg.contains("twitter")
+        }
     }
 
     private fun isReelsOrShortsContext(pkgName: String, event: AccessibilityEvent?): Boolean {

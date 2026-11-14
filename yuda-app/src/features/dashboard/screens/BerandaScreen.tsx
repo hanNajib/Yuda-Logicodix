@@ -70,7 +70,7 @@ export default function HomeScreen() {
         setIntervalMinutes: updateStoredInterval,
         setPauseDuration: updateStoredPauseDuration,
     } = useAuthStore();
-    const displayName = userName || user?.name || 'Gathan';
+    const displayName = userName || user?.name || 'Yuda';
 
     const [activeTab, setActiveTab] = useState<DashboardTab>('home');
     const [weeklyEvalResult, setWeeklyEvalResult] = useState<WeeklyEvaluationResult | null>(null);

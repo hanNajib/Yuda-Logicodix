@@ -92,6 +92,35 @@ class TaskController extends Controller
             'google_calendar_event_id' => 'nullable|string|max:255',
         ]);
 
+        // Validasi agar task tidak dapat dibuat di masa lalu
+        $timezone = 'Asia/Jakarta';
+        $now = Carbon::now($timezone);
+        $todayStr = $now->toDateString();
+        $scheduledDate = $validated['scheduled_date'];
+
+        if ($scheduledDate < $todayStr) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak dapat menambahkan aktivitas pada tanggal di masa lalu.',
+                'errors'  => [
+                    'scheduled_date' => ['Tanggal aktivitas tidak boleh di masa lalu.']
+                ]
+            ], 422);
+        }
+
+        if ($scheduledDate === $todayStr && !empty($validated['scheduled_time'])) {
+            $scheduledDateTime = Carbon::createFromFormat('Y-m-d H:i', "{$scheduledDate} {$validated['scheduled_time']}", $timezone);
+            if ($scheduledDateTime->lt($now)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat menambahkan aktivitas pada jam yang sudah terlewat.',
+                    'errors'  => [
+                        'scheduled_time' => ['Jam aktivitas sudah terlewat di hari ini.']
+                    ]
+                ], 422);
+            }
+        }
+
         $task = UserTask::create([
             'user_id'                  => $identity['user_id'],
             'guest_uuid'               => $identity['guest_uuid'],
@@ -136,6 +165,43 @@ class TaskController extends Controller
             'scheduled_time'           => 'nullable|date_format:H:i',
             'google_calendar_event_id' => 'nullable|string|max:255',
         ]);
+
+        $timezone = 'Asia/Jakarta';
+        $now = Carbon::now($timezone);
+        $todayStr = $now->toDateString();
+
+        $originalDateStr = $task->scheduled_date->toDateString();
+        if ($originalDateStr < $todayStr) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak dapat mengubah aktivitas yang berada di masa lalu.',
+            ], 422);
+        }
+
+        $newDateStr = $validated['scheduled_date'] ?? $originalDateStr;
+        if ($newDateStr < $todayStr) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tanggal aktivitas baru tidak boleh di masa lalu.',
+                'errors'  => [
+                    'scheduled_date' => ['Tanggal aktivitas tidak boleh di masa lalu.']
+                ]
+            ], 422);
+        }
+
+        $newTimeStr = array_key_exists('scheduled_time', $validated) ? $validated['scheduled_time'] : ($task->scheduled_time ? substr($task->scheduled_time, 0, 5) : null);
+        if ($newDateStr === $todayStr && !empty($newTimeStr)) {
+            $scheduledDateTime = Carbon::createFromFormat('Y-m-d H:i', "{$newDateStr} {$newTimeStr}", $timezone);
+            if ($scheduledDateTime->lt($now)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jam aktivitas baru sudah terlewat di hari ini.',
+                    'errors'  => [
+                        'scheduled_time' => ['Jam aktivitas sudah terlewat di hari ini.']
+                    ]
+                ], 422);
+            }
+        }
 
         $task->update($validated);
 

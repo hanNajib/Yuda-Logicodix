@@ -13,6 +13,7 @@ import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { syncScreenTimeIfDue } from "@/features/dashboard/services/screenTimeSyncService";
+import { AppSplashScreen } from "@/components/ui/AppSplashScreen";
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -20,6 +21,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
+  const [showSplash, setShowSplash] = useState(true);
 
   const [queryClient] = useState(
     () =>
@@ -145,6 +147,9 @@ export default function RootLayout() {
         <Stack.Screen name="dashboard/detail-waktu-scroll" />
         <Stack.Screen name="dashboard/edit-profile" />
       </Stack>
+      {showSplash && (
+        <AppSplashScreen onFinish={() => setShowSplash(false)} />
+      )}
     </QueryClientProvider>
   );
 }

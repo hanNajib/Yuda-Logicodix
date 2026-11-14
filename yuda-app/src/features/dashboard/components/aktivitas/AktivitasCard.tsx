@@ -396,6 +396,13 @@ export function AktivitasCard({
     };
 
     const handleOpenAdd = () => {
+        // Cek apakah tanggal yang dipilih adalah masa lalu (kemarin dsb)
+        const todayStr = getTodayIsoString();
+        if (targetDate < todayStr) {
+            showAlert('Tidak Dapat Menambah', 'Aktivitas tidak dapat dibuat untuk tanggal di masa lalu.', 'warning');
+            return;
+        }
+
         setIsEditing(false);
         setEditingTaskId(null);
         setTaskTitle('');
@@ -409,6 +416,14 @@ export function AktivitasCard({
     };
 
     const handleOpenEdit = (task: TaskItem) => {
+        // Cek apakah task berasal dari tanggal di masa lalu
+        const todayStr = getTodayIsoString();
+        const taskDate = task.scheduled_date || targetDate;
+        if (taskDate < todayStr) {
+            showAlert('Tidak Dapat Mengubah', 'Aktivitas di masa lalu tidak dapat diubah.', 'warning');
+            return;
+        }
+
         setSelectedTaskId(null);
         setIsEditing(true);
         setEditingTaskId(task.id);
@@ -432,7 +447,25 @@ export function AktivitasCard({
             return;
         }
 
+        const todayStr = getTodayIsoString();
+        if (targetDate < todayStr) {
+            showAlert('Waktu Tidak Valid', 'Tanggal aktivitas tidak boleh di masa lalu.', 'warning');
+            return;
+        }
+
         const scheduledTimeStr = hasTimeSet ? formatHourMinute(taskHour, taskMinute) : null;
+
+        // Jika tanggal adalah hari ini dan jam diset, pastikan tidak di masa lalu (misal 1 jam yang lalu)
+        if (targetDate === todayStr && scheduledTimeStr) {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+
+            if (taskHour < currentHour || (taskHour === currentHour && taskMinute < currentMinute)) {
+                showAlert('Waktu Tidak Valid', 'Jam yang kamu tentukan sudah terlewat di hari ini.', 'warning');
+                return;
+            }
+        }
 
         setIsSaving(true);
         try {

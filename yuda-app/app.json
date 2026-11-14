@@ -39,9 +39,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash_icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#2F6B4F",
+          "image": "./assets/images/yuda/yuda-home.png",
+          "imageWidth": 160
         }
       ],
       "expo-font",
