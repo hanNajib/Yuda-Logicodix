@@ -248,43 +248,96 @@ Saat durasi scroll melewati batas interval, overlay ditampilkan **di atas aplika
 
 **Prasyarat**
 
-- [ISI: mis. Node.js versi X / PHP versi X / Flutter SDK vversi X]
-- [ISI: database yang harus tersedia]
-- Akun Google Cloud Console untuk membuat OAuth Client ID
+- **Node.js**: Versi `>= 18.x` (disarankan LTS v20 atau v22) dan package manager `npm` (atau `pnpm`).
+- **PHP**: Versi `>= 8.3` (disarankan PHP 8.3 / 8.4) serta **Composer** versi `>= 2.x`.
+- **Database**: **MySQL** `>= 8.0` atau MariaDB (tersedia via Laragon, XAMPP, atau Docker).
+- **Java Development Kit (JDK)**: OpenJDK 17 atau OpenJDK 21 (diperlukan untuk kompilasi mobile Android).
+- **Android SDK & Platform Tools**: Android SDK Command-line Tools, Build-Tools (versi 34/35/36), dan `adb` yang sudah ditambahkan ke *System / User PATH* serta variabel `ANDROID_HOME`.
+- **Akun Google Cloud Console**: Untuk membuat OAuth 2.0 Client ID (Web Client ID & Android Client ID) dan Gemini API Key dari Google AI Studio.
+- **Perangkat Fisik Android**: HP Android yang terhubung via kabel USB dengan **USB Debugging** aktif (atau Android Emulator).
 
-**Langkah instalasi**
+---
+
+#### 1. Langkah Instalasi Backend API (`yuda-api`)
+
+Buka terminal dan lakukan langkah-langkah berikut:
 
 ```bash
 # 1. Clone repository
-git clone [ISI: URL repository]
-cd [ISI: nama folder]
+git clone https://github.com/hanNajib/Yuda-Logicodix.git
+cd Yuda-Logicodix/yuda-api
 
-# 2. Instal dependensi
-[ISI: mis. npm install / composer install / flutter pub get]
+# 2. Instal dependensi PHP via Composer
+composer install
 
-# 3. Salin file environment lalu isi nilainya
+# 3. Siapkan file konfigurasi environment
+cp .env.example .env
+php artisan key:generate
+
+# 4. Konfigurasi database dan API Keys di file .env:
+#    - Sesuaikan DB_DATABASE=yudabackend, DB_USERNAME, dan DB_PASSWORD
+#    - Masukkan GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+#    - Masukkan GEMINI_API_KEY dari Google AI Studio
+
+# 5. Jalankan migrasi dan seeder database
+php artisan migrate --seed
+php artisan db:seed --class=InterventionMessageSeeder
+
+# 6. Jalankan server lokal Laravel (Port 8000)
+php artisan serve
+```
+
+> **Catatan Antrean (Queue Worker):** Buka terminal baru di folder `yuda-api` dan jalankan worker antrean untuk memproses pembuatan pesan intervensi AI secara asinkron:
+> ```bash
+> php artisan queue:work
+> ```
+
+---
+
+#### 2. Langkah Instalasi Mobile APP (`yuda-app`)
+
+Buka terminal baru untuk aplikasi mobile:
+
+```bash
+# 1. Masuk ke direktori yuda-app
+cd Yuda-Logicodix/yuda-app
+
+# 2. Instal dependensi Node.js
+npm install
+
+# 3. Siapkan file konfigurasi environment
 cp .env.example .env
 
-# 4. Siapkan database
-[ISI: mis. npx prisma migrate dev / php artisan migrate --seed]
+# 4. Sesuaikan variabel di file .env:
+#    - EXPO_PUBLIC_API_URL:
+#      * http://localhost:8000 (jika menggunakan kabel USB + adb reverse)
+#      * http://<IP_KOMPUTER>:8000 (jika menggunakan jaringan Wi-Fi lokal yang sama)
+#    - EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: Client ID Web dari Google Cloud Console
+#    - EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: Client ID Android dari Google Cloud Console
 
-# 5. Jalankan aplikasi
-[ISI: mis. npm run dev / php artisan serve / flutter run]
+# 5. Hubungkan HP Android ke PC via USB dan lakukan port reverse backend
+adb devices
+adb reverse tcp:8000 tcp:8000
+
+# 6. Kompilasi dan jalankan aplikasi langsung ke HP Android
+npx expo run:android
 ```
+
+---
 
 **Konfigurasi tambahan untuk fitur tertentu**
 
 | Fitur | Konfigurasi yang diperlukan |
 |-------|-----------------------------|
-| Login Google | Buat OAuth Client ID di Google Cloud Console, daftarkan *redirect URI* / *authorized origin*, lalu isi `GOOGLE_CLIENT_ID` (dan secret jika diperlukan). |
-| App Permission | [ISI: izin yang harus diaktifkan manual di perangkat, mis. akses data penggunaan, notifikasi] |
-| Notifikasi / Break Interval | [ISI: konfigurasi tambahan jika ada] |
+| **Login Google** | 1. Buat project di Google Cloud Console dan siapkan OAuth Consent Screen.<br>2. Buat **Web Client ID** lalu pasang pada `GOOGLE_CLIENT_ID` (backend) dan `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (mobile).<br>3. Buat **Android Client ID** dengan package name `com.mieayamproject.yuda` dan SHA-1 fingerprint keystore debug komputer Anda, lalu pasang di `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`.<br>4. Tambahkan email penguji ke daftar *Test Users* jika status OAuth Consent Screen masih *Testing*. |
+| **App Permission** | Seluruh izin berikut dipandu dan diaktifkan manual oleh pengguna pada halaman onboarding *App Permission*:<br>1. **Tampilkan di Atas Aplikasi Lain** (`SYSTEM_ALERT_WINDOW`): Diperlukan agar pop-up intervensi dan animasi peeking maskot Yuda dapat muncul di atas aplikasi media sosial target.<br>2. **Abaikan Optimasi Baterai** (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`): Mencegah sistem Android menghentikan *foreground service* pendamping saat layar mati atau memori menipis.<br>3. **Izin Notifikasi** (`POST_NOTIFICATIONS`): Diperlukan Android 13+ untuk menampilkan notifikasi persisten layanan pendamping scrolling.<br>4. **Layanan Aksesibilitas** (`YudaAccessibilityService`): Wajib diaktifkan manual di menu *Aksesibilitas / Accessibility* perangkat agar aplikasi dapat mendeteksi reels, shorts, dan aktivitas scroll pada aplikasi target secara real-time. |
+| **Notifikasi / Break Interval** | 1. Pengguna mengonfigurasi batas interval scrolling (5 sampai 60 menit) dan memilih aplikasi target (Instagram, TikTok, YouTube, Facebook, Threads) di halaman *App Preferences* dan *Set Timer*.<br>2. Jika HP dihubungkan ke komputer melalui kabel USB, pastikan perintah `adb reverse tcp:8000 tcp:8000` telah dijalankan agar aplikasi di HP dapat berkomunikasi dengan backend Laravel lokal di `http://localhost:8000`. |
 
 ### e. Daftar Variabel `.env` Mobile APP
 
 | Variabel | Deskripsi | Contoh nilai |
 |----------|-----------|--------------|
-| `EXPO_PUBLIC_API_URL` | Client ID OAuth Google untuk autentikasi | `http://192.xxx.x.x:8000` |
+| `EXPO_PUBLIC_API_URL` | URL dasar backend API Laravel yang diakses oleh aplikasi mobile. | `http://localhost:8000` atau `http://192.168.x.x:8000` |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Client ID OAuth 2.0 untuk platform Web yang digunakan dalam konfigurasi autentikasi Google, termasuk proses verifikasi token ID Google pada backend. | `xxxxxxxx.apps.googleusercontent.com` |
 | `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Client ID OAuth 2.0 khusus aplikasi Android yang digunakan dalam konfigurasi autentikasi Google pada perangkat Android. | `xxxxxxxx.apps.googleusercontent.com` |
 
@@ -322,16 +375,18 @@ cp .env.example .env
 | Tool AI | Digunakan untuk | Bagian proyek | Bagaimana hasilnya diverifikasi/diadaptasi |
 |---------|-----------------|---------------|---------------------------------------------|
 | `Claude (Anthropic)` | Merancang 10 pertanyaan kuisioner onboarding berbasis jurnal beserta kerangka output (jam rawan, tipe, afirmasi) | Kuisioner Page | Pertanyaan dicocokkan dengan jurnal rujukan dan disederhanakan agar mudah dipahami lalu diimplementasikan pada **Kuisioner Page.** |
-| `Claude (Anthropic)` | Menyusun README ini | Dokumentasi | Dilengkapi dan diperiksa ulang oleh tim |
-| `Google Gemini API` | Fitur di dalam produk: menganalisis jawaban kuisioner pengguna | Kuisioner Page (`/api/ai/questionnaire` untuk pengguna login dan `/api/questionnaire/analyze` untuk tamu, keduanya melalui layanan AI yang sama) | Prompt dibangun dari 10 jawaban kuisioner, dan output dipastikan berupa structured output. Jika AI gagal, dipakai generator fallback berbasis aturan. |
-| `Google Gemini API` | Fitur di dalam produk: membuat 180 pesan kartu intervensi setiap minggu (60 kombinasi emosi, pemicu, dan nada, masing-masing 3 variasi) | `InterventionGenerationService` dan `ProcessInterventionBatchJob` | Hasil divalidasi ketat (field wajib, nilai enum, tepat 180 pesan dan 60 kombinasi) sebelum diaktifkan secara atomik. Generasi yang gagal tidak diaktifkan sehingga generasi sebelumnya tetap dipakai. |
-| [ISI: tool lain] | [ISI] | [ISI] | [ISI] |
+| `Claude (Anthropic)` | Menyusun dan menstrukturkan draf dokumentasi proyek | Dokumentasi (`README.md`) | Dilengkapi, disesuaikan dengan kode riil, dan diperiksa ulang oleh tim |
+| `Google Gemini API` | Fitur di dalam produk: menganalisis jawaban kuisioner pengguna secara dinamis | Kuisioner Page (`/api/ai/questionnaire` dan `/api/questionnaire/analyze`) | Prompt dirancang dengan *structured output* JSON. Dilengkapi validasi skema ketat dan *rule-based fallback generator* jika API bermasalah. |
+| `Google Gemini API` | Fitur di dalam produk: membuat 180 pesan kartu intervensi mingguan (60 kombinasi emosi, pemicu, nada) | `InterventionGenerationService` dan `ProcessInterventionBatchJob` | Hasil divalidasi ketat (field wajib, enum, validasi jumlah 180 pesan) sebelum diaktifkan secara atomik ke database. |
+| `Google AI Studio` | Prototyping, eksperimen *system prompt*, dan validasi skema JSON response | Backend AI Module | Prompt diuji berulang dengan berbagai variasi input jawaban ekstrem untuk memastikan stabilitas format output sebelum masuk ke kode Laravel. |
+| `Claude / GitHub Copilot` | Asistensi penulisan *boilerplate code*, helper logic, dan integrasi custom hooks React Native | Mobile App & Backend API | Kode hasil AI tidak langsung dipakai mentah-mentah; selalu di-refactor, diselaraskan dengan standar PSR-12 (Laravel) / TypeScript, dan diuji lewat unit/manual test. |
+| `Claude / ChatGPT` | Brainstorming tone of voice, copy micro-interaction, dan variasi persona tipe doomscrolling (mis. *Night Owl*, dsb.) | Konten & UI Copy | Disesuaikan dengan karakteristik anak muda/mahasiswa Indonesia agar komunikatif, empatik, dan tidak menggurui. |
 
 ### i. Atribusi
 
 | Jenis | Nama | Sumber / URL | Lisensi |
 |-------|------|--------------|---------|
-| Jurnal rujukan latar belakang dan kuisioner | Lihat docs/references/ | Tautan atau DOI pada tiap referensi | — |
+| Jurnal rujukan latar belakang dan kuisioner | Lihat [README Referensi](docs/references/README.md) | Tautan atau DOI pada tiap referensi | — |
 
 ### j. Catatan Bagi Juri
 Seandainya ada kendala dalam membuka Aplikasi YUDA, silahkan menonaktifkan Google Play Protect dan aktifkan pengaturan terbatas.
