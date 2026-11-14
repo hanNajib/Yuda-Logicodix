@@ -22,6 +22,8 @@ export type {
 export interface YudaPauseAlertFlowProps {
     userName?: string;
     durationMinutes?: number;
+    durationSeconds?: number;
+    totalElapsedSeconds?: number;
     reminderMinutes?: number;
     pauseType?: PauseType;
     pauseStage?: PauseBiasaStageLevel;
@@ -40,6 +42,8 @@ export interface YudaPauseAlertFlowProps {
 export function YudaPauseAlertFlow({
     userName = 'Gathan',
     durationMinutes = 15,
+    durationSeconds = 0,
+    totalElapsedSeconds,
     reminderMinutes = 15,
     pauseType = 'biasa',
     pauseStage = 1,
@@ -77,6 +81,8 @@ export function YudaPauseAlertFlow({
                 <PauseBiasaFlow
                     userName={userName}
                     durationMinutes={durationMinutes}
+                    durationSeconds={durationSeconds}
+                    totalElapsedSeconds={totalElapsedSeconds}
                     reminderMinutes={reminderMinutes}
                     pauseStage={pauseStage}
                     breathDurationSeconds={breathDurationSeconds}
@@ -94,6 +100,8 @@ export function YudaPauseAlertFlow({
                 <PauseBiasaFlow
                     userName={userName}
                     durationMinutes={durationMinutes}
+                    durationSeconds={durationSeconds}
+                    totalElapsedSeconds={totalElapsedSeconds}
                     reminderMinutes={reminderMinutes}
                     pauseStage={pauseStage}
                     breathDurationSeconds={breathDurationSeconds}

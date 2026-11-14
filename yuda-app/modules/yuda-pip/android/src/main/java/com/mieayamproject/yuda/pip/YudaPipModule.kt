@@ -639,6 +639,16 @@ class YudaPipModule : Module() {
         Function("setIntervalMinutes") { minutes: Int ->
             val context = ctx() ?: return@Function false
             setIntervalMinutes(context, minutes)
+            if (YudaOverlayService.isRunning) {
+                try {
+                    val intent = Intent(context, YudaOverlayService::class.java).apply {
+                        action = YudaOverlayService.ACTION_UPDATE_INTERVAL
+                        putExtra(YudaOverlayService.EXTRA_INTERVAL_SECONDS, minutes * 60)
+                    }
+                    context.startService(intent)
+                } catch (_: Exception) {
+                }
+            }
             true
         }
 

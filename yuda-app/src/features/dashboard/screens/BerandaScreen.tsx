@@ -33,7 +33,6 @@ import { ScreenTimeCard } from '../components/beranda/ScreenTimeCard';
 import { TipsCard } from '../components/beranda/TipsCard';
 import { ToDoListCard } from '../components/beranda/ToDoListCard';
 import { OverlayQuickControlCard } from '../components/beranda/OverlayQuickControlCard';
-import { YudaScrollAlertSimulator } from '@/features/overlay/components/YudaScrollAlertSimulator';
 import YudaPip from '@/modules/yuda-pip';
 import { syncScreenTimeIfDue } from '../services/screenTimeSyncService';
 
@@ -60,7 +59,6 @@ export default function HomeScreen() {
     const displayName = userName || user?.name || 'Gathan';
 
     const [activeTab, setActiveTab] = useState<DashboardTab>('home');
-    const [simulatorVisible, setSimulatorVisible] = useState(true);
 
     const todayIso = useMemo(() => getTodayIsoString(), []);
 
@@ -337,15 +335,6 @@ export default function HomeScreen() {
                     scale={s}
                 />
             </View>
-
-            <YudaScrollAlertSimulator
-                visible={simulatorVisible}
-                userName={displayName}
-                durationMinutes={15}
-                initialSeconds={30}
-                showTimerDisplay={true}
-                onDismiss={() => { }}
-            />
         </View>
     );
 }

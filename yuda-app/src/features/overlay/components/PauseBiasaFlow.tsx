@@ -42,6 +42,8 @@ import {
 export interface PauseBiasaFlowProps {
     userName: string;
     durationMinutes: number;
+    durationSeconds?: number;
+    totalElapsedSeconds?: number;
     reminderMinutes: number;
     pauseStage: PauseBiasaStageLevel;
     breathDurationSeconds: number;
@@ -57,7 +59,7 @@ export interface PauseBiasaFlowProps {
 }
 
 const BIASA_STAGE_FLOWS: Record<PauseBiasaStageLevel, PauseAlertStage[]> = {
-    1: ['alert', 'breakChoice'],
+    1: ['alert', 'pauseIntro', 'pauseAction', 'missionSuccess', 'breakChoice'],
     2: ['alert', 'pauseIntro', 'pauseAction', 'missionSuccess', 'breakChoice'],
     3: ['alert', 'pauseIntro', 'pauseAction', 'missionSuccess', 'taskReminder', 'breakChoice'],
 };
@@ -194,6 +196,8 @@ function getNextStage(current: PauseAlertStage, level: PauseBiasaStageLevel): Pa
 export function PauseBiasaFlow({
     userName,
     durationMinutes,
+    durationSeconds = 0,
+    totalElapsedSeconds,
     reminderMinutes,
     pauseStage,
     breathDurationSeconds,
@@ -494,7 +498,16 @@ export function PauseBiasaFlow({
                                 textShadowRadius: 8,
                             }}
                         >
-                            Halo {userName}, Kamu{'\n'}Sudah Scrolling{'\n'}Selama {durationMinutes} Menit
+                            Halo {userName}, Kamu{'\n'}Sudah Scrolling{'\n'}Selama{' '}
+                            {totalElapsedSeconds !== undefined
+                                ? (Math.floor(totalElapsedSeconds / 60) > 0
+                                    ? `${Math.floor(totalElapsedSeconds / 60)} Menit ${totalElapsedSeconds % 60 > 0 ? `${totalElapsedSeconds % 60} Detik` : ''}`.trim()
+                                    : `${totalElapsedSeconds} Detik`)
+                                : (durationMinutes > 0
+                                    ? (durationSeconds > 0
+                                        ? `${durationMinutes} Menit ${durationSeconds} Detik`
+                                        : `${durationMinutes} Menit`)
+                                    : `${durationSeconds || 30} Detik`)}
                         </Text>
                     </Animated.View>
                 </TouchableOpacity>

@@ -18,6 +18,12 @@ class InterventionService
     public const VALID_TONE_STYLES = ['lembut', 'tegas', 'humoris', 'faktual', 'reflektif'];
     public const VALID_MICRO_HABITS = ['minum', 'tidur', 'nafas', 'peregangan'];
 
+    public const SLOT_COLUMNS = [
+        'slot_00_02', 'slot_02_04', 'slot_04_06', 'slot_06_08',
+        'slot_08_10', 'slot_10_12', 'slot_12_14', 'slot_14_16',
+        'slot_16_18', 'slot_18_20', 'slot_20_22', 'slot_22_00',
+    ];
+
     private const MIN_PAUSE_DURATION = 30; 
     private const MAX_PAUSE_DURATION = 60; 
     private const DURATION_STEP = 5;       
@@ -204,11 +210,7 @@ class InterventionService
         int $interventionsTriggered = 0,
         array $socialTimes = []
     ): UserDailyScreenTimeMatrix {
-        $allowedSlots = [
-            'slot_00_02', 'slot_02_04', 'slot_04_06', 'slot_06_08',
-            'slot_08_10', 'slot_10_12', 'slot_12_14', 'slot_14_16',
-            'slot_16_18', 'slot_18_20', 'slot_20_22', 'slot_22_00',
-        ];
+        $allowedSlots = self::SLOT_COLUMNS;
 
         $socialPlatforms = ['instagram', 'tiktok', 'facebook', 'threads', 'youtube', 'x'];
 

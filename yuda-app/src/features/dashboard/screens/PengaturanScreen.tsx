@@ -422,7 +422,7 @@ export default function PengaturanScreen({
                                 }}
                                 onPress={() =>
                                     setIntervalMinutes((prev) =>
-                                        Math.max(5, prev - 5)
+                                        Math.max(1, prev - 1)
                                     )
                                 }
                             >
@@ -463,7 +463,7 @@ export default function PengaturanScreen({
                                 }}
                                 onPress={() =>
                                     setIntervalMinutes((prev) =>
-                                        Math.min(60, prev + 5)
+                                        Math.min(60, prev + 1)
                                     )
                                 }
                             >
