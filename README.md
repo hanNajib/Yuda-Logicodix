@@ -70,6 +70,8 @@ Banyak pengguna menyadari kebiasaan ini tetapi tidak tahu **kapan** mereka palin
 > **Catatan:** sebagian besar bukti di atas bersifat korelasional (*cross-sectional*), sehingga menunjukkan adanya hubungan, bukan sebab-akibat [3][4][5]. YUDA tidak mengklaim mengobati gangguan kesehatan mental; YUDA membantu pengguna mengenali dan mengatur kebiasaan menggulir mereka.
  
 ### Referensi
+
+> Fokus penelitian dan relevansi tiap referensi dirinci di [docs/references/proposal-background.md](docs/references/proposal-background.md).
  
 1. We Are Social & Meltwater. (2025). *Digital 2026: Top digital and social media trends in Indonesia*. https://wearesocial.com/id/blog/2025/11/digital-2026-top-digital-and-social-media-trends-in-indonesia/
 2. Park, J., & Jung, Y. (2024). Unveiling the dynamics of binge-scrolling: A comprehensive analysis of short-form video consumption using a Stimulus-Organism-Response model. *Telematics and Informatics, 95*, 102200. https://pure.korea.ac.kr/en/publications/unveiling-the-dynamics-of-binge-scrolling-a-comprehensive-analysi/
@@ -120,7 +122,7 @@ Banyak pengguna menyadari kebiasaan ini tetapi tidak tahu **kapan** mereka palin
 | Autentikasi | Google Sign-In ( @react-native-google-signin/google-signin: ^17.0.0 ) |
 | API Internal | REST API Laravel dengan autentikasi token Laravel Sanctum (daftar endpoint di bawah) |
 | API Eksternal | Google Sign-In (autentikasi)<br>Google Gemini API: <br>- analisis kuisioner; model: `gemini-3.5-flash-lite` <br>- fallback; model: `gemini-3.5-flash` |
-| Layanan pihak ketiga | Hosting: Dokploy |
+| Layanan pihak ketiga | Google Sign-In, Google Gemini API, Hosting: Dokploy |
 
 **Penyimpanan data hybrid**
  
@@ -150,7 +152,7 @@ Banyak pengguna menyadari kebiasaan ini tetapi tidak tahu **kapan** mereka palin
 | GET | `/intervention/settings` | Bearer token (Sanctum) | Mengambil pengaturan intervensi: *tone_style*, interval scroll (menit), durasi jeda saat ini dan terakhir (detik), serta waktu evaluasi terakhir. |
 | POST | `/intervention/settings` | Bearer token (Sanctum) | Memperbarui interval scroll (5 sampai 60 menit) dan *tone_style* (lembut, tegas, humoris, faktual, reflektif). |
 | GET | `/screen-time/social` | Bearer token (Sanctum) atau `guest_uuid` | Mengambil total screen time per platform (Instagram, TikTok, Facebook, Threads, YouTube, X). |
-| POST | `/screen-time/social` | Bearer token (Sanctum) atau `guest_uuid` | Menambahkan (mengakumulasi) screen time per platform. Minimal satu platform harus dikirim, bernilai bilangan bulat ≥ 0. Satuan waktu yang disimpan adalah menit [CRUSIAL] |
+| POST | `/screen-time/social` | Bearer token (Sanctum) atau `guest_uuid` | Menambahkan (mengakumulasi) screen time per platform. Minimal satu platform harus dikirim, bernilai bilangan bulat ≥ 0. Satuan waktu yang disimpan adalah menit. |
 | GET | `/tasks` | Bearer token (Sanctum) atau `guest_uuid` | Mengambil daftar tugas (Daily Planner Page), dengan filter tanggal opsional dan ringkasan tugas hari ini. |
 | POST | `/tasks` | Bearer token (Sanctum) atau `guest_uuid` | Membuat tugas baru (judul, tanggal, dan jam opsional). |
 | PUT | `/tasks/{id}` | Bearer token (Sanctum) atau `guest_uuid` | Memperbarui judul, tanggal, atau jam tugas. |
@@ -271,7 +273,7 @@ cp .env.example .env
 | `GOOGLE_CLIENT_ID` | Client ID untuk integrasi Google Sign-In. | `xxxxxxxxxxxx.apps.googleusercontent.com` |
 | `GOOGLE_CLIENT_SECRET` | Client Secret untuk autentikasi Google pada backend. | `GOCSPX-xxxxxxxxx` |
 | `GOOGLE_REDIRECT_URI` | URL callback setelah proses autentikasi Google. | `http://localhost:8000/auth/google/callback` |
-| `GEMINI_API_KEY` | 	API key Google Gemini untuk analisis kuisioner. Dibuat di Google AI Studio dan tidak boleh di-commit ke repository. | `xxxxxxxxx` | 
+| `GEMINI_API_KEY` | API key Google Gemini untuk analisis kuisioner. Dibuat di Google AI Studio dan tidak boleh di-commit ke repository. | `xxxxxxxxx` | 
 | `MOBILE_APP_SCHEME` | Skema URL untuk mengarahkan kembali pengguna ke aplikasi mobile. | `yuda` |
 | `EXPO_PUBLIC_API_URL` | URL API backend yang diakses oleh aplikasi mobile Expo. | `http://10.0.2.2:8000` |
 
@@ -289,7 +291,7 @@ cp .env.example .env
 | `Claude (Anthropic)` | Merancang 10 pertanyaan kuisioner onboarding berbasis jurnal beserta kerangka output (jam rawan, tipe, afirmasi) | Kuisioner Page | [CRUSIAL: mis. pertanyaan dicocokkan dengan jurnal rujukan dan disederhanakan agar mudah dipahami] |
 | `Claude (Anthropic)` | Menyusun README ini | Dokumentasi | Dilengkapi dan diperiksa ulang oleh tim |
 | `Google Gemini API` | Fitur di dalam produk: menganalisis jawaban kuisioner pengguna | Kuisioner Page (`/api/ai/questionnaire` untuk pengguna login dan `/api/questionnaire/analyze` untuk tamu, keduanya melalui layanan AI yang sama) | Prompt dibangun dari 10 jawaban kuisioner, dan output dipastikan berupa structured output. Jika AI gagal, dipakai generator fallback berbasis aturan. [CRUSIAL: ringkasan isi prompt dan format output] |
-| `Google Gemini API` | Fitur di dalam produk: membuat 180 pesan kartu intervensi setiap minggu (60 kombinasi emosi, pemicu, dan nada, masing-masing 3 variasi) | `InterventionGenerationService` dan `ProcessInterventionBatchJob` | Hasil divalidasi ketat (field wajib, nilai enum, tepat 180 pesan dan 60 kombinasi) sebelum diaktifkan secara atomik. Generasi yang gagal tidak diaktifkan sehingga generasi sebelumnya tetap dipakai. [ISI: ringkasan prompt] |
+| `Google Gemini API` | Fitur di dalam produk: membuat 180 pesan kartu intervensi setiap minggu (60 kombinasi emosi, pemicu, dan nada, masing-masing 3 variasi) | `InterventionGenerationService` dan `ProcessInterventionBatchJob` | Hasil divalidasi ketat (field wajib, nilai enum, tepat 180 pesan dan 60 kombinasi) sebelum diaktifkan secara atomik. Generasi yang gagal tidak diaktifkan sehingga generasi sebelumnya tetap dipakai. |
 | [ISI: tool lain] | [ISI] | [ISI] | [ISI] |
 
 [ISI: tambahkan seluruh penggunaan AI lain secara jujur (kode, desain, aset, teks), termasuk tool dan versinya jika diketahui]
@@ -298,12 +300,7 @@ cp .env.example .env
 
 | Jenis | Nama | Sumber / URL | Lisensi |
 |-------|------|--------------|---------|
-| Template | [ISI atau "tidak ada"] | [ISI] | [ISI] |
-| Ikon / ilustrasi | [ISI] | [ISI] | [ISI] |
-| Font | [ISI] | [ISI] | [ISI] |
-| Dataset | [ISI atau "tidak ada"] | [ISI] | [ISI] |
-| Kode / library pihak ketiga | [ISI: daftar dari file dependensi proyek] | [ISI] | [ISI] |
-| Jurnal rujukan kuisioner | [ISI: daftar jurnal yang menjadi dasar pertanyaan] | [ISI] | — |
+| Jurnal rujukan latar belakang dan kuisioner | Lihat docs/references/ | Tautan atau DOI pada tiap referensi | — |
 
 ---
 
