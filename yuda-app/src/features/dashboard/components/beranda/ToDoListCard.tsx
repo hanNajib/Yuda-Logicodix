@@ -1,45 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
     withTiming,
 } from 'react-native-reanimated';
-
-export interface TaskItem {
-    id: string;
-    title: string;
-    time: string;
-    isCompleted: boolean;
-}
+import {
+    TaskItem,
+    fetchTasks,
+    toggleTaskComplete,
+} from '../../services/taskService';
 
 interface TodoListProps {
     scale?: number;
     initialTasks?: TaskItem[];
 }
-
-const DEFAULT_TASKS: TaskItem[] = [
-    {
-        id: '1',
-        title: 'Makanin kucing',
-        time: '13.00',
-        isCompleted: true,
-    },
-    {
-        id: '2',
-        title: 'Maki-maki pemerintah',
-        time: '15.00',
-        isCompleted: false,
-    },
-    {
-        id: '3',
-        title: 'Gila kamu, kamu yang gila',
-        time: '21.00',
-        isCompleted: false,
-    },
-];
 
 interface TaskRowProps {
     item: TaskItem;
@@ -107,26 +84,38 @@ function TaskRow({
                     )}
                 </View>
 
-                <Text
-                    className="flex-1 font-outfit-bold"
-                    style={{
-                        fontSize: 14.5 * s,
-                        marginLeft: 14 * s,
-                        textDecorationLine: item.isCompleted
-                            ? 'line-through'
-                            : 'none',
-                        color: item.isCompleted ? '#55685d' : '#1f2923',
-                    }}
-                >
-                    {item.title}
-                </Text>
+                <View className="flex-1" style={{ marginLeft: 14 * s }}>
+                    <Text
+                        className="font-outfit-bold"
+                        style={{
+                            fontSize: 14.5 * s,
+                            textDecorationLine: item.isCompleted ? 'line-through' : 'none',
+                            color: item.isCompleted ? '#55685d' : '#1f2923',
+                        }}
+                    >
+                        {item.title}
+                    </Text>
+                    {item.google_calendar_event_id && (
+                        <View className="mt-1 flex-row items-center">
+                            <Ionicons name="calendar-outline" size={11 * s} color="#2e6b4e" />
+                            <Text
+                                className="ml-1 font-outfit-medium text-[#2e6b4e]"
+                                style={{ fontSize: 10.5 * s }}
+                            >
+                                Google Calendar
+                            </Text>
+                        </View>
+                    )}
+                </View>
 
-                <Text
-                    className="font-outfit-bold text-[#2e6b4e]"
-                    style={{ fontSize: 13 * s }}
-                >
-                    {item.time}
-                </Text>
+                {item.time ? (
+                    <Text
+                        className="font-outfit-bold text-[#2e6b4e]"
+                        style={{ fontSize: 13 * s }}
+                    >
+                        {item.time}
+                    </Text>
+                ) : null}
             </Animated.View>
         </Pressable>
     );
@@ -134,19 +123,37 @@ function TaskRow({
 
 export function ToDoListCard({
     scale = 1,
-    initialTasks = DEFAULT_TASKS,
 }: TodoListProps) {
     const s = scale;
-    const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
+    const [tasks, setTasks] = useState<TaskItem[]>([]);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
 
-    const completedCount = tasks.filter(
-        (task) => task.isCompleted
-    ).length;
+    const todayIso = () => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
 
+    const loadTodayTasks = async () => {
+        try {
+            const res = await fetchTasks(todayIso());
+            setTasks(res.tasks);
+        } catch (e) {
+            console.warn('[ToDoListCard] Gagal memuat tasks hari ini:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadTodayTasks();
+    }, []);
+
+    const completedCount = tasks.filter((task) => task.isCompleted).length;
     const totalCount = tasks.length;
-    const progressRatio = totalCount > 0
-        ? completedCount / totalCount
-        : 0;
+    const progressRatio = totalCount > 0 ? completedCount / totalCount : 0;
 
     const progressWidth = useSharedValue(progressRatio);
 
@@ -161,14 +168,20 @@ export function ToDoListCard({
         width: `${progressWidth.value * 100}%`,
     }));
 
-    const handleToggle = (id: string) => {
+    const handleToggle = async (id: string | number) => {
+        // Optimistic UI update
         setTasks((prev) =>
             prev.map((task) =>
-                task.id === id
-                    ? { ...task, isCompleted: !task.isCompleted }
-                    : task
+                task.id === id ? { ...task, isCompleted: !task.isCompleted } : task
             )
         );
+
+        try {
+            await toggleTaskComplete(id);
+        } catch (e) {
+            console.warn('[ToDoListCard] Gagal toggle complete:', e);
+            loadTodayTasks();
+        }
     };
 
     return (
@@ -240,16 +253,39 @@ export function ToDoListCard({
                 </Animated.View>
             </View>
 
-            <View style={{ marginTop: 4 * s }}>
-                {tasks.map((task) => (
-                    <TaskRow
-                        key={task.id}
-                        item={task}
-                        onToggle={() => handleToggle(task.id)}
-                        scale={s}
-                    />
-                ))}
-            </View>
+            {isLoading ? (
+                <View className="py-4 items-center justify-center">
+                    <ActivityIndicator size="small" color="#2e6b4e" />
+                </View>
+            ) : tasks.length === 0 ? (
+                <View
+                    className="items-center justify-center bg-white"
+                    style={{
+                        paddingVertical: 20 * s,
+                        borderRadius: 16 * s,
+                        marginTop: 4 * s,
+                    }}
+                >
+                    <Ionicons name="checkmark-done-circle-outline" size={28 * s} color="#a8b8ac" />
+                    <Text
+                        className="mt-1 font-outfit-medium text-[#7a8c80]"
+                        style={{ fontSize: 13 * s }}
+                    >
+                        Tidak ada aktivitas yang dijadwalkan hari ini.
+                    </Text>
+                </View>
+            ) : (
+                <View style={{ marginTop: 4 * s }}>
+                    {tasks.map((task) => (
+                        <TaskRow
+                            key={task.id}
+                            item={task}
+                            onToggle={() => handleToggle(task.id)}
+                            scale={s}
+                        />
+                    ))}
+                </View>
+            )}
         </View>
     );
 }

@@ -45,6 +45,13 @@ export default function AktivitasScreen({
     const s = Math.min(W / REF_W, 1.15);
 
     const [activeTab, setActiveTab] = useState<DashboardTab>('tasks');
+    const [selectedDate, setSelectedDate] = useState<string>(() => {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    });
 
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
@@ -198,12 +205,16 @@ export default function AktivitasScreen({
                 >
                     <CalendarMiniCard
                         scale={s}
-                        selectedDate={10}
+                        selectedDate={selectedDate}
+                        onSelectDate={(dateIso) => setSelectedDate(dateIso)}
                     />
 
                     <View style={{ height: 14 * s }} />
 
-                    <AktivitasCard />
+                    <AktivitasCard
+                        scale={s}
+                        selectedDate={selectedDate}
+                    />
                 </Animated.View>
             </Animated.ScrollView>
 

@@ -78,6 +78,7 @@ Route::get('/screen-time/social', [SocialScreenTimeController::class, 'show'])->
 // Task List CRUD (public: support guest & logged-in user)
 Route::get('/tasks', [TaskController::class, 'index'])->name('api.tasks.index');
 Route::post('/tasks', [TaskController::class, 'store'])->name('api.tasks.store');
+Route::post('/tasks/sync-google', [TaskController::class, 'syncGoogle'])->name('api.tasks.sync_google');
 Route::put('/tasks/{id}', [TaskController::class, 'update'])->name('api.tasks.update');
 Route::patch('/tasks/{id}/complete', [TaskController::class, 'toggleComplete'])->name('api.tasks.complete');
 Route::delete('/tasks/{id}', [TaskController::class, 'destroy'])->name('api.tasks.destroy');

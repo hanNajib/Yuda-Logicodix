@@ -38,6 +38,7 @@ export function configureGoogleSignIn() {
     GoogleSignin.configure({
         webClientId: GOOGLE_AUTH_CONFIG.webClientId,
         offlineAccess: true,
+        scopes: ['https://www.googleapis.com/auth/calendar.events'],
     });
 
     isGoogleConfigured = true;

@@ -1,53 +1,40 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
+    Modal,
     Pressable,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
     withTiming,
 } from 'react-native-reanimated';
-
-export interface TaskItem {
-    id: string;
-    title: string;
-    time: string;
-    isCompleted: boolean;
-}
+import { YudaAlertModal, AlertType } from '@/components/ui/YudaAlertModal';
+import {
+    TaskItem,
+    fetchTasks,
+    createTask,
+    updateTask,
+    toggleTaskComplete,
+    deleteTask,
+    syncGoogleCalendarTasks,
+} from '../../services/taskService';
+import {
+    createGoogleCalendarEvent,
+    fetchGoogleCalendarEvents,
+} from '../../services/googleCalendarService';
 
 interface AktivitasCardProps {
     scale?: number;
-    initialTasks?: TaskItem[];
-    onPressAdd?: () => void;
-    onPressEdit?: (task: TaskItem) => void;
+    selectedDate?: string; // YYYY-MM-DD
+    onTasksUpdated?: () => void;
 }
-
-const DEFAULT_TASKS: TaskItem[] = [
-    {
-        id: '1',
-        title: 'Makanin kucing',
-        time: '13.00',
-        isCompleted: true,
-    },
-    {
-        id: '2',
-        title: 'Maki-maki pemerintah',
-        time: '15.00',
-        isCompleted: false,
-    },
-    {
-        id: '3',
-        title: 'Gila kamu, kamu yang gila',
-        time: '21.00',
-        isCompleted: false,
-    },
-];
 
 function TaskRow({
     item,
@@ -116,9 +103,7 @@ function TaskRow({
                             width: 26 * s,
                             height: 26 * s,
                             borderRadius: 8 * s,
-                            backgroundColor: item.isCompleted
-                                ? '#275c43'
-                                : '#ffffff',
+                            backgroundColor: item.isCompleted ? '#275c43' : '#ffffff',
                         }}
                     >
                         {item.isCompleted && (
@@ -130,28 +115,38 @@ function TaskRow({
                         )}
                     </View>
 
-                    <Text
-                        className="flex-1 font-outfit-bold"
-                        style={{
-                            fontSize: 14.5 * s,
-                            marginLeft: 14 * s,
-                            textDecorationLine: item.isCompleted
-                                ? 'line-through'
-                                : 'none',
-                            color: item.isCompleted
-                                ? '#5e6e63'
-                                : '#1c241e',
-                        }}
-                    >
-                        {item.title}
-                    </Text>
+                    <View className="flex-1" style={{ marginLeft: 14 * s }}>
+                        <Text
+                            className="font-outfit-bold"
+                            style={{
+                                fontSize: 14.5 * s,
+                                textDecorationLine: item.isCompleted ? 'line-through' : 'none',
+                                color: item.isCompleted ? '#5e6e63' : '#1c241e',
+                            }}
+                        >
+                            {item.title}
+                        </Text>
+                        {item.google_calendar_event_id && (
+                            <View className="mt-1 flex-row items-center">
+                                <Ionicons name="calendar-outline" size={11 * s} color="#275c43" />
+                                <Text
+                                    className="ml-1 font-outfit-medium text-[#275c43]"
+                                    style={{ fontSize: 10.5 * s }}
+                                >
+                                    Google Calendar
+                                </Text>
+                            </View>
+                        )}
+                    </View>
 
-                    <Text
-                        className="font-outfit-bold text-[#275c43]"
-                        style={{ fontSize: 13 * s }}
-                    >
-                        {item.time}
-                    </Text>
+                    {item.time ? (
+                        <Text
+                            className="font-outfit-bold text-[#275c43]"
+                            style={{ fontSize: 13 * s }}
+                        >
+                            {item.time}
+                        </Text>
+                    ) : null}
                 </Animated.View>
             </Pressable>
 
@@ -166,10 +161,7 @@ function TaskRow({
                         padding: 4 * s,
                         borderRadius: 14 * s,
                         shadowColor: '#000',
-                        shadowOffset: {
-                            width: 0,
-                            height: 4,
-                        },
+                        shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: 0.15,
                         shadowRadius: 8,
                         elevation: 30,
@@ -184,9 +176,7 @@ function TaskRow({
                                     height: 38 * s,
                                     paddingHorizontal: 10 * s,
                                     borderRadius: 9 * s,
-                                    backgroundColor: pressed
-                                        ? '#edf2ed'
-                                        : '#ffffff',
+                                    backgroundColor: pressed ? '#edf2ed' : '#ffffff',
                                 }}
                             >
                                 <Ionicons
@@ -194,13 +184,9 @@ function TaskRow({
                                     size={18 * s}
                                     color="#275c43"
                                 />
-
                                 <Text
                                     className="font-outfit-bold text-[#275c43]"
-                                    style={{
-                                        fontSize: 13 * s,
-                                        marginLeft: 10 * s,
-                                    }}
+                                    style={{ fontSize: 13 * s, marginLeft: 10 * s }}
                                 >
                                     Edit
                                 </Text>
@@ -218,9 +204,7 @@ function TaskRow({
                                     height: 38 * s,
                                     paddingHorizontal: 10 * s,
                                     borderRadius: 9 * s,
-                                    backgroundColor: pressed
-                                        ? '#fff0ef'
-                                        : '#ffffff',
+                                    backgroundColor: pressed ? '#fff0ef' : '#ffffff',
                                 }}
                             >
                                 <Ionicons
@@ -228,13 +212,9 @@ function TaskRow({
                                     size={18 * s}
                                     color="#d9534f"
                                 />
-
                                 <Text
                                     className="font-outfit-bold text-[#d9534f]"
-                                    style={{
-                                        fontSize: 13 * s,
-                                        marginLeft: 10 * s,
-                                    }}
+                                    style={{ fontSize: 13 * s, marginLeft: 10 * s }}
                                 >
                                     Hapus
                                 </Text>
@@ -249,24 +229,100 @@ function TaskRow({
 
 export function AktivitasCard({
     scale = 1,
-    initialTasks = DEFAULT_TASKS,
-    onPressAdd,
-    onPressEdit,
+    selectedDate: propDate,
+    onTasksUpdated,
 }: AktivitasCardProps) {
     const s = scale;
 
-    const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
-    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+    const todayIso = () => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
 
-    const completedCount = tasks.filter(
-        (t) => t.isCompleted
-    ).length;
+    const targetDate = propDate || todayIso();
 
+    const [tasks, setTasks] = useState<TaskItem[]>([]);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [selectedTaskId, setSelectedTaskId] = useState<string | number | null>(null);
+
+    // Modal Add / Edit
+    const [modalVisible, setModalVisible] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingTaskId, setEditingTaskId] = useState<string | number | null>(null);
+    const [taskTitle, setTaskTitle] = useState('');
+    const [taskTime, setTaskTime] = useState('');
+    const [syncGCal, setSyncGCal] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSyncingGCal, setIsSyncingGCal] = useState(false);
+
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState<{
+        visible: boolean;
+        type?: AlertType;
+        title: string;
+        message: string;
+        confirmText?: string;
+        cancelText?: string;
+        onConfirm?: () => void;
+        onCancel?: () => void;
+    }>({
+        visible: false,
+        title: '',
+        message: '',
+    });
+
+    const showAlert = (
+        title: string,
+        message: string,
+        type: AlertType = 'info',
+        onConfirm?: () => void,
+        confirmText = 'Mengerti',
+        onCancel?: () => void,
+        cancelText = 'Batal'
+    ) => {
+        setAlertConfig({
+            visible: true,
+            type,
+            title,
+            message,
+            confirmText,
+            cancelText,
+            onConfirm: () => {
+                setAlertConfig((prev) => ({ ...prev, visible: false }));
+                onConfirm?.();
+            },
+            onCancel: onCancel
+                ? () => {
+                      setAlertConfig((prev) => ({ ...prev, visible: false }));
+                      onCancel();
+                  }
+                : undefined,
+        });
+    };
+
+    // Load tasks from backend
+    const loadTasks = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetchTasks(targetDate);
+            setTasks(res.tasks);
+        } catch (e) {
+            console.warn('[AktivitasCard] Gagal memuat tasks:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadTasks();
+    }, [targetDate]);
+
+    const completedCount = tasks.filter((t) => t.isCompleted).length;
     const totalCount = tasks.length;
-
-    const progressRatio = totalCount > 0
-        ? completedCount / totalCount
-        : 0;
+    const progressRatio = totalCount > 0 ? completedCount / totalCount : 0;
 
     const progressWidth = useSharedValue(progressRatio);
     const btnScale = useSharedValue(1);
@@ -286,53 +342,144 @@ export function AktivitasCard({
         transform: [{ scale: btnScale.value }],
     }));
 
-    const handleToggle = (id: string) => {
+    const handleToggle = async (task: TaskItem) => {
         if (selectedTaskId) {
             setSelectedTaskId(null);
             return;
         }
 
+        // Optimistic UI update
         setTasks((prev) =>
             prev.map((t) =>
-                t.id === id
-                    ? { ...t, isCompleted: !t.isCompleted }
-                    : t
+                t.id === task.id ? { ...t, isCompleted: !t.isCompleted } : t
             )
         );
+
+        try {
+            await toggleTaskComplete(task.id);
+            onTasksUpdated?.();
+        } catch (e) {
+            console.warn('[AktivitasCard] Gagal toggle task:', e);
+            // Rollback jika gagal
+            loadTasks();
+        }
     };
 
-    const handleDelete = (id: string) => {
-        setTasks((prev) =>
-            prev.filter((t) => t.id !== id)
-        );
-
+    const handleDelete = async (id: string | number) => {
         setSelectedTaskId(null);
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        try {
+            await deleteTask(id);
+            onTasksUpdated?.();
+        } catch (e) {
+            console.warn('[AktivitasCard] Gagal hapus task:', e);
+            loadTasks();
+        }
     };
 
-    const handleEdit = (task: TaskItem) => {
+    const handleOpenAdd = () => {
+        setIsEditing(false);
+        setEditingTaskId(null);
+        setTaskTitle('');
+        setTaskTime('');
+        setSyncGCal(true);
+        setModalVisible(true);
+    };
+
+    const handleOpenEdit = (task: TaskItem) => {
         setSelectedTaskId(null);
-        onPressEdit?.(task);
+        setIsEditing(true);
+        setEditingTaskId(task.id);
+        setTaskTitle(task.title);
+        setTaskTime(task.time || '');
+        setSyncGCal(Boolean(task.google_calendar_event_id));
+        setModalVisible(true);
     };
 
-    const handleLongPress = (id: string) => {
-        setSelectedTaskId(id);
+    const handleSaveTask = async () => {
+        if (!taskTitle.trim()) {
+            showAlert('Perhatian', 'Judul aktivitas tidak boleh kosong.', 'warning');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            let googleEventId: string | null = null;
+
+            if (syncGCal) {
+                // Ekspor ke Google Calendar
+                googleEventId = await createGoogleCalendarEvent({
+                    title: taskTitle.trim(),
+                    date: targetDate,
+                    time: taskTime.trim() || null,
+                });
+            }
+
+            if (isEditing && editingTaskId) {
+                await updateTask(editingTaskId, {
+                    title: taskTitle.trim(),
+                    scheduled_date: targetDate,
+                    scheduled_time: taskTime.trim() || null,
+                    google_calendar_event_id: googleEventId,
+                });
+            } else {
+                await createTask({
+                    title: taskTitle.trim(),
+                    scheduled_date: targetDate,
+                    scheduled_time: taskTime.trim() || null,
+                    google_calendar_event_id: googleEventId,
+                });
+            }
+
+            setModalVisible(false);
+            await loadTasks();
+            onTasksUpdated?.();
+        } catch (e: any) {
+            showAlert('Gagal Menyimpan', e?.message || 'Tidak dapat menyimpan aktivitas.', 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleDismissMenu = () => {
-        setSelectedTaskId(null);
-    };
+    // Sinkronkan event dari Google Calendar untuk tanggal terpilih
+    const handleSyncGoogleCalendar = async () => {
+        setIsSyncingGCal(true);
+        try {
+            const events = await fetchGoogleCalendarEvents(targetDate);
+            if (events.length === 0) {
+                showAlert(
+                    'Agenda Tidak Ditemukan',
+                    'Belum ada agenda pada tanggal ini di Google Calendar, atau izin akses Google Calendar belum disetujui.',
+                    'calendar'
+                );
+                return;
+            }
 
-    const handleAddPressIn = () => {
-        btnScale.value = withTiming(0.9, {
-            duration: 80,
-        });
-    };
+            const eventsToSync = events.map((ev) => {
+                let timeStr: string | null = null;
+                if (ev.start?.dateTime) {
+                    const dt = new Date(ev.start.dateTime);
+                    const hours = String(dt.getHours()).padStart(2, '0');
+                    const mins = String(dt.getMinutes()).padStart(2, '0');
+                    timeStr = `${hours}:${mins}`;
+                }
+                return {
+                    title: ev.summary || 'Agenda Google Calendar',
+                    scheduled_date: targetDate,
+                    scheduled_time: timeStr,
+                    google_calendar_event_id: ev.id,
+                };
+            });
 
-    const handleAddPressOut = () => {
-        btnScale.value = withSpring(1, {
-            duration: 200,
-            dampingRatio: 0.75,
-        });
+            await syncGoogleCalendarTasks(eventsToSync);
+            await loadTasks();
+            onTasksUpdated?.();
+            showAlert('Sukses Sinkronisasi', `${eventsToSync.length} agenda Google Calendar berhasil diimpor!`, 'success');
+        } catch (e: any) {
+            showAlert('Gagal Sinkronisasi', e?.message || 'Gagal sinkronisasi Google Calendar.', 'error');
+        } finally {
+            setIsSyncingGCal(false);
+        }
     };
 
     return (
@@ -355,10 +502,7 @@ export function AktivitasCard({
                         padding: 16 * s,
                         marginRight: 5 * s,
                         shadowColor: '#000',
-                        shadowOffset: {
-                            width: 0,
-                            height: 2,
-                        },
+                        shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.06,
                         shadowRadius: 4,
                         elevation: 2,
@@ -411,10 +555,7 @@ export function AktivitasCard({
                     marginBottom: 10 * s,
                 }}
             >
-                <View
-                    className="flex-1"
-                    style={{ paddingRight: 12 * s }}
-                >
+                <View className="flex-1" style={{ paddingRight: 12 * s }}>
                     <Text
                         className="font-outfit-extrabold text-[#1f2923]"
                         style={{ fontSize: 16 * s }}
@@ -434,9 +575,9 @@ export function AktivitasCard({
                 </View>
 
                 <Pressable
-                    onPressIn={handleAddPressIn}
-                    onPressOut={handleAddPressOut}
-                    onPress={onPressAdd}
+                    onPressIn={() => (btnScale.value = withTiming(0.9, { duration: 80 }))}
+                    onPressOut={() => (btnScale.value = withSpring(1, { duration: 200, dampingRatio: 0.75 }))}
+                    onPress={handleOpenAdd}
                 >
                     <Animated.View
                         className="items-center justify-center bg-[#275c43]"
@@ -449,14 +590,37 @@ export function AktivitasCard({
                             animatedBtnStyle,
                         ]}
                     >
-                        <Ionicons
-                            name="add"
-                            size={28 * s}
-                            color="#ffffff"
-                        />
+                        <Ionicons name="add" size={28 * s} color="#ffffff" />
                     </Animated.View>
                 </Pressable>
             </View>
+
+            {/* Tombol Sinkronisasi Google Calendar */}
+            <TouchableOpacity
+                onPress={handleSyncGoogleCalendar}
+                disabled={isSyncingGCal}
+                activeOpacity={0.8}
+                className="mb-[12px] flex-row items-center justify-center bg-white"
+                style={{
+                    borderRadius: 16 * s,
+                    paddingVertical: 10 * s,
+                    paddingHorizontal: 14 * s,
+                    borderWidth: 1,
+                    borderColor: '#e0e6e1',
+                }}
+            >
+                {isSyncingGCal ? (
+                    <ActivityIndicator size="small" color="#275c43" style={{ marginRight: 8 * s }} />
+                ) : (
+                    <Ionicons name="logo-google" size={16 * s} color="#275c43" style={{ marginRight: 8 * s }} />
+                )}
+                <Text
+                    className="font-outfit-bold text-[#275c43]"
+                    style={{ fontSize: 13 * s }}
+                >
+                    {isSyncingGCal ? 'Menyinkronkan Kalender...' : 'Sinkronkan dari Google Calendar'}
+                </Text>
+            </TouchableOpacity>
 
             <View className="flex-row items-center justify-between">
                 <View
@@ -478,7 +642,7 @@ export function AktivitasCard({
                         className="font-outfit-bold text-[#275c43]"
                         style={{ fontSize: 13 * s }}
                     >
-                        List Pekerjaan Hari Ini
+                        List Pekerjaan ({targetDate})
                     </Text>
                 </View>
 
@@ -521,21 +685,201 @@ export function AktivitasCard({
                 </Animated.View>
             </View>
 
-            <View>
-                {tasks.map((task) => (
-                    <TaskRow
-                        key={task.id}
-                        item={task}
-                        s={s}
-                        menuVisible={selectedTaskId === task.id}
-                        onToggle={() => handleToggle(task.id)}
-                        onLongPress={() => handleLongPress(task.id)}
-                        onEdit={() => handleEdit(task)}
-                        onDelete={() => handleDelete(task.id)}
-                    />
-                ))}
-            </View>
+            {isLoading ? (
+                <View className="py-6 items-center justify-center">
+                    <ActivityIndicator size="small" color="#275c43" />
+                </View>
+            ) : tasks.length === 0 ? (
+                <View
+                    className="items-center justify-center bg-white"
+                    style={{
+                        paddingVertical: 24 * s,
+                        borderRadius: 18 * s,
+                        marginBottom: 10 * s,
+                    }}
+                >
+                    <Ionicons name="clipboard-outline" size={32 * s} color="#a8b8ac" />
+                    <Text
+                        className="mt-2 font-outfit-medium text-[#7a8c80]"
+                        style={{ fontSize: 13 * s }}
+                    >
+                        Belum ada aktivitas di tanggal ini.
+                    </Text>
+                </View>
+            ) : (
+                <View>
+                    {tasks.map((task) => (
+                        <TaskRow
+                            key={task.id}
+                            item={task}
+                            s={s}
+                            menuVisible={selectedTaskId === task.id}
+                            onToggle={() => handleToggle(task)}
+                            onLongPress={() => setSelectedTaskId(task.id)}
+                            onEdit={() => handleOpenEdit(task)}
+                            onDelete={() => handleDelete(task.id)}
+                        />
+                    ))}
+                </View>
+            )}
 
+            {/* Modal Tambah / Edit Task */}
+            <Modal
+                visible={modalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View
+                    className="flex-1 items-center justify-center"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 20 }}
+                >
+                    <View
+                        className="w-full bg-white"
+                        style={{
+                            borderRadius: 24 * s,
+                            padding: 20 * s,
+                            maxWidth: 380,
+                        }}
+                    >
+                        <Text
+                            className="font-outfit-extrabold text-[#1c241e]"
+                            style={{ fontSize: 18 * s, marginBottom: 16 * s }}
+                        >
+                            {isEditing ? 'Edit Aktivitas' : 'Tambah Aktivitas Baru'}
+                        </Text>
+
+                        <Text
+                            className="font-outfit-bold text-[#275c43]"
+                            style={{ fontSize: 12.5 * s, marginBottom: 6 * s }}
+                        >
+                            Judul Aktivitas
+                        </Text>
+                        <TextInput
+                            value={taskTitle}
+                            onChangeText={setTaskTitle}
+                            placeholder="Contoh: Belajar UTBK, Olahraga sore"
+                            placeholderTextColor="#a0aca3"
+                            className="bg-[#f5f8f5] font-outfit-medium text-[#1c241e]"
+                            style={{
+                                borderRadius: 14 * s,
+                                paddingHorizontal: 14 * s,
+                                paddingVertical: 10 * s,
+                                fontSize: 14 * s,
+                                marginBottom: 14 * s,
+                                borderWidth: 1,
+                                borderColor: '#e1eae2',
+                            }}
+                        />
+
+                        <Text
+                            className="font-outfit-bold text-[#275c43]"
+                            style={{ fontSize: 12.5 * s, marginBottom: 6 * s }}
+                        >
+                            Waktu / Jam (Opsional, format HH:mm)
+                        </Text>
+                        <TextInput
+                            value={taskTime}
+                            onChangeText={setTaskTime}
+                            placeholder="14:00"
+                            placeholderTextColor="#a0aca3"
+                            keyboardType="numbers-and-punctuation"
+                            maxLength={5}
+                            className="bg-[#f5f8f5] font-outfit-medium text-[#1c241e]"
+                            style={{
+                                borderRadius: 14 * s,
+                                paddingHorizontal: 14 * s,
+                                paddingVertical: 10 * s,
+                                fontSize: 14 * s,
+                                marginBottom: 16 * s,
+                                borderWidth: 1,
+                                borderColor: '#e1eae2',
+                            }}
+                        />
+
+                        {/* Checkbox integrasi Google Calendar */}
+                        <Pressable
+                            onPress={() => setSyncGCal(!syncGCal)}
+                            className="flex-row items-center"
+                            style={{ marginBottom: 20 * s }}
+                        >
+                            <View
+                                className="items-center justify-center border-2 border-[#275c43]"
+                                style={{
+                                    width: 22 * s,
+                                    height: 22 * s,
+                                    borderRadius: 6 * s,
+                                    backgroundColor: syncGCal ? '#275c43' : '#ffffff',
+                                    marginRight: 10 * s,
+                                }}
+                            >
+                                {syncGCal && (
+                                    <Ionicons name="checkmark" size={15 * s} color="#ffffff" />
+                                )}
+                            </View>
+                            <Text
+                                className="font-outfit-medium text-[#2d3a31]"
+                                style={{ fontSize: 13 * s }}
+                            >
+                                Simpan juga ke Google Calendar
+                            </Text>
+                        </Pressable>
+
+                        <View className="flex-row items-center justify-end">
+                            <TouchableOpacity
+                                onPress={() => setModalVisible(false)}
+                                style={{
+                                    paddingVertical: 10 * s,
+                                    paddingHorizontal: 16 * s,
+                                    marginRight: 8 * s,
+                                }}
+                            >
+                                <Text
+                                    className="font-outfit-bold text-[#728579]"
+                                    style={{ fontSize: 14 * s }}
+                                >
+                                    Batal
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={handleSaveTask}
+                                disabled={isSaving}
+                                className="bg-[#275c43] items-center justify-center"
+                                style={{
+                                    paddingVertical: 10 * s,
+                                    paddingHorizontal: 20 * s,
+                                    borderRadius: 14 * s,
+                                }}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text
+                                        className="font-outfit-bold text-white"
+                                        style={{ fontSize: 14 * s }}
+                                    >
+                                        Simpan
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Custom Alert Modal Yuda */}
+            <YudaAlertModal
+                visible={alertConfig.visible}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                confirmText={alertConfig.confirmText}
+                cancelText={alertConfig.cancelText}
+                onConfirm={alertConfig.onConfirm || (() => setAlertConfig((prev) => ({ ...prev, visible: false })))}
+                onCancel={alertConfig.onCancel}
+                scale={s}
+            />
         </View>
     );
 }

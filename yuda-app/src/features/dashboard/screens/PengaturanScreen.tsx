@@ -1,4 +1,5 @@
 
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import {
@@ -36,6 +37,8 @@ import { BottomNavBar, DashboardTab } from '../components/BottomNavBar';
 import { PengaturanHeaderGreeting } from '../components/pengaturan/PengaturanHeaderGreeting';
 import { PengaturanDasarCard } from '../components/pengaturan/BasicOptionCard';
 import { TautkanAkunCard } from '../components/pengaturan/TautkanAkunCard';
+import { LogoutCard } from '../components/pengaturan/LogoutCard';
+import { YudaAlertModal, AlertType } from '@/components/ui/YudaAlertModal';
 
 const SAGE_BG = '#bccdc0';
 const SHEET_BG = '#F6F3EC';
@@ -72,6 +75,7 @@ export default function PengaturanScreen({
         userToken,
         intervalMinutes: storedInterval,
         setIntervalMinutes: updateStoredInterval,
+        logout,
     } = useAuthStore();
 
     const displayName = userName || user?.name || 'Gathan';
@@ -82,6 +86,51 @@ export default function PengaturanScreen({
     const [intervalMinutes, setIntervalMinutes] = useState(storedInterval || 15);
     const [isIntervalModalOpen, setIsIntervalModalOpen] = useState(false);
     const [isSavingInterval, setIsSavingInterval] = useState(false);
+
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState<{
+        visible: boolean;
+        type?: AlertType;
+        title: string;
+        message: string;
+        confirmText?: string;
+        cancelText?: string;
+        onConfirm?: () => void;
+        onCancel?: () => void;
+    }>({
+        visible: false,
+        title: '',
+        message: '',
+    });
+
+    const showAlert = (
+        title: string,
+        message: string,
+        type: AlertType = 'info',
+        onConfirm?: () => void,
+        confirmText = 'Mengerti',
+        onCancel?: () => void,
+        cancelText = 'Batal'
+    ) => {
+        setAlertConfig({
+            visible: true,
+            type,
+            title,
+            message,
+            confirmText,
+            cancelText,
+            onConfirm: () => {
+                setAlertConfig((prev) => ({ ...prev, visible: false }));
+                onConfirm?.();
+            },
+            onCancel: onCancel
+                ? () => {
+                      setAlertConfig((prev) => ({ ...prev, visible: false }));
+                      onCancel();
+                  }
+                : undefined,
+        });
+    };
 
     useEffect(() => {
         if (storedInterval && storedInterval > 0) {
@@ -213,15 +262,26 @@ export default function PengaturanScreen({
         onTabChange?.(tab);
     };
 
+    const handleLogout = () => {
+        showAlert(
+            'Keluar Akun',
+            'Apakah kamu yakin ingin keluar dari akun? Progress dan data yang belum tersinkronkan mungkin tidak tersimpan.',
+            'logout',
+            async () => {
+                await logout();
+                router.replace('/(auth)/login');
+            },
+            'Keluar',
+            () => {},
+            'Batal'
+        );
+    };
+
     const handleGoogleAuth = () => {
-        Alert.alert(
+        showAlert(
             'Tautkan Akun Google',
             'Fitur penautan akun Google akan menyinkronkan data progres dan konfigurasi kamu ke cloud.',
-            [
-                {
-                    text: 'Oke',
-                },
-            ]
+            'info'
         );
     };
 
@@ -325,6 +385,14 @@ export default function PengaturanScreen({
                             />
                         </>
                     )}
+
+                    <View style={{ height: 14 * s }} />
+
+                    <LogoutCard
+                        scale={s}
+                        email={user?.email}
+                        onLogout={handleLogout}
+                    />
                 </Animated.View>
             </Animated.ScrollView>
 
@@ -512,6 +580,19 @@ export default function PengaturanScreen({
                     </Pressable>
                 </Pressable>
             </Modal>
+
+            {/* Custom Alert Modal Yuda */}
+            <YudaAlertModal
+                visible={alertConfig.visible}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                confirmText={alertConfig.confirmText}
+                cancelText={alertConfig.cancelText}
+                onConfirm={alertConfig.onConfirm || (() => setAlertConfig((prev) => ({ ...prev, visible: false })))}
+                onCancel={alertConfig.onCancel}
+                scale={s}
+            />
         </View>
     );
 }
