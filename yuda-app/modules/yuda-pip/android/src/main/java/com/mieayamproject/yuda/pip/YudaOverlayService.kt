@@ -87,6 +87,7 @@ class YudaOverlayService : Service() {
     private var testMode: Boolean = true
     private var intervalSeconds: Int = 30
     private var pauseStageLevel: Int = 1
+    private var totalPauseCount: Int = 0
     private var lastAccessibilityTriggeredBucket: Int = 0
     private var lastAccessibilityUpdateAt: Long = 0L
     private var lastAccessibilityElapsedSeconds: Int = 0
@@ -562,6 +563,8 @@ class YudaOverlayService : Service() {
     private fun triggerPeekingYuda() {
         if (overlayView != null || pendingRemovalView != null || fadingPeekView != null) return
 
+        totalPauseCount++
+
         val wm = windowManager ?: return
 
         val bmp = loadHandHalfBitmap()
@@ -632,7 +635,7 @@ class YudaOverlayService : Service() {
             peekCapybara.translationY = -targetHeight.toFloat()
             peekCapybara.animate()
                 .translationY(-sunkPx.toFloat())
-                .setDuration(500)
+                .setDuration(350)
                 .setInterpolator(DecelerateInterpolator(1.5f))
                 .start()
 
@@ -640,7 +643,7 @@ class YudaOverlayService : Service() {
                 if (isPeeking && overlayView === root) {
                     transitionToFullModal(root)
                 }
-            }, 3200L)
+            }, 1200L)
 
         } catch (e: Exception) {
             Log.e(TAG, "Gagal triggerPeekingYuda: ${e.message}")
@@ -719,6 +722,7 @@ class YudaOverlayService : Service() {
                     putInt("reminderMinutes", reminderMinutes)
                     putString("pauseType", "biasa")
                     putInt("pauseStage", pauseStageLevel)
+                    putInt("pauseCount", totalPauseCount)
                     putString("actionType", chosenAction)
                     putInt("breathDurationSeconds", 30)
                     putDouble("screenWidth", (screenWidthPx / density).toDouble())

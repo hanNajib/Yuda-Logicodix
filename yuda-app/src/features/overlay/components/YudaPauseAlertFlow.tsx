@@ -27,6 +27,7 @@ export interface YudaPauseAlertFlowProps {
     reminderMinutes?: number;
     pauseType?: PauseType;
     pauseStage?: PauseBiasaStageLevel;
+    pauseCount?: number;
     breathDurationSeconds?: number;
     actionType?: PauseActionType;
     initialStage?: PauseAlertStage;
@@ -47,6 +48,7 @@ export function YudaPauseAlertFlow({
     reminderMinutes = 15,
     pauseType = 'biasa',
     pauseStage = 1,
+    pauseCount = 1,
     breathDurationSeconds = 30,
     actionType,
     initialStage,
@@ -85,6 +87,7 @@ export function YudaPauseAlertFlow({
                     totalElapsedSeconds={totalElapsedSeconds}
                     reminderMinutes={reminderMinutes}
                     pauseStage={pauseStage}
+                    pauseCount={pauseCount}
                     breathDurationSeconds={breathDurationSeconds}
                     actionType={actionType}
                     initialStage={initialStage}
@@ -104,6 +107,7 @@ export function YudaPauseAlertFlow({
                     totalElapsedSeconds={totalElapsedSeconds}
                     reminderMinutes={reminderMinutes}
                     pauseStage={pauseStage}
+                    pauseCount={pauseCount}
                     breathDurationSeconds={breathDurationSeconds}
                     actionType={actionType}
                     initialStage={initialStage}
@@ -122,6 +126,10 @@ export function YudaPauseAlertFlow({
 
 const styles = StyleSheet.create({
     root: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
     },
 });

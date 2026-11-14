@@ -296,7 +296,21 @@ export default function HomeScreen() {
                         animatedSheetStyle,
                     ]}
                 >
-                    <MoodSelectCard userName={displayName} scale={s} />
+                    <MoodSelectCard
+                        userName={displayName}
+                        scale={s}
+                        initialEmotion={todayMatrixData?.emotion}
+                        onEmotionChange={async (newEmotion) => {
+                            try {
+                                await apiClient.post('/api/intervention/matrix', {
+                                    log_date: todayIso,
+                                    emotion: newEmotion,
+                                });
+                            } catch (e) {
+                                console.warn('[BerandaScreen] Gagal update emosi metrik:', e);
+                            }
+                        }}
+                    />
 
                     <View style={{ height: 14 * s }} />
 

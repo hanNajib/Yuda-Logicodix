@@ -22,9 +22,10 @@ import { DOOMSCROLL_APPS, DoomscrollAppDefinition } from '@/constants/apps';
 import { useAuthStore } from '@/stores/useAuthStore';
 import YudaPip from '@/modules/yuda-pip';
 
+const yudaKebalikSource = require('@/assets/images/yuda/yuda-terbalik-tangan.png');
+
 interface PengaturanDasarCardProps {
     scale?: number;
-    hours?: number;
     minutes?: number;
     onEditInterval?: () => void;
 }
@@ -174,7 +175,6 @@ function XLogo({ size = 34 }: { size?: number }) {
 
 export function PengaturanDasarCard({
     scale = 1,
-    hours = 0,
     minutes = 15,
     onEditInterval,
 }: PengaturanDasarCardProps) {
@@ -366,60 +366,62 @@ export function PengaturanDasarCard({
                 </View>
 
                 <View
-                    className="mt-3 bg-[#E6EDE6]/65"
+                    className="mt-3 bg-[#E6EDE6]/65 flex-row items-center justify-between"
                     style={{
                         borderRadius: 16 * s,
-                        padding: 14 * s,
+                        paddingTop: 14 * s,
+                        paddingBottom: 14 * s,
+                        paddingLeft: 18 * s,
+                        paddingRight: 84 * s,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        minHeight: 100 * s,
                     }}
                 >
-                    <View className="flex-row items-baseline">
-                        <Text
-                            className="font-outfit-extrabold text-[#275c43]"
-                            style={{
-                                fontSize: 62 * s,
-                            }}
-                        >
-                            {hours}
-                        </Text>
+                    <View className="flex-1 pr-1 z-10">
+                        <View className="flex-row items-baseline">
+                            <Text
+                                className="font-outfit-extrabold text-[#275c43]"
+                                style={{
+                                    fontSize: 64 * s,
+                                    lineHeight: 70 * s,
+                                }}
+                            >
+                                {minutes}
+                            </Text>
+
+                            <Text
+                                className="ml-2 font-outfit-extrabold text-[#1c241e]"
+                                style={{
+                                    fontSize: 22 * s,
+                                }}
+                            >
+                                Menit
+                            </Text>
+                        </View>
 
                         <Text
-                            className="mr-3 font-outfit-extrabold text-[#1c241e]"
+                            className="font-outfit-semibold text-[#3d4d42]"
                             style={{
-                                fontSize: 21 * s,
+                                fontSize: 12 * s,
+                                marginTop: 4 * s,
                             }}
                         >
-                            Jam
-                        </Text>
-
-                        <Text
-                            className="font-outfit-extrabold text-[#275c43]"
-                            style={{
-                                fontSize: 62 * s,
-                            }}
-                        >
-                            {minutes}
-                        </Text>
-
-                        <Text
-                            className="font-outfit-extrabold text-[#1c241e]"
-                            style={{
-                                fontSize: 21 * s,
-                            }}
-                        >
-                            Menit
+                            Saat doomscroll kamu akan dijeda setiap {minutes} menit.
                         </Text>
                     </View>
 
-                    <Text
-                        className="font-outfit-semibold text-[#3d4d42]"
+                    <Image
+                        source={yudaKebalikSource}
                         style={{
-                            fontSize: 12 * s,
-                            marginTop: 0,
+                            position: 'absolute',
+                            top: 0,
+                            right: 8 * s,
+                            width: 90 * s,
+                            height: 90 * s,
                         }}
-                    >
-                        Saat doomscroll kamu akan dijeda setiap{' '}
-                        {minutes} menit.
-                    </Text>
+                        resizeMode="contain"
+                    />
                 </View>
             </View>
 

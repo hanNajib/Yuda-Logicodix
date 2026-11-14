@@ -8,6 +8,7 @@ export type PauseDismissReason = 'rest' | 'continue' | 'dismiss';
 
 export type PauseAlertStage =
     | 'alert'
+    | 'cukupTau'
     | 'pauseIntro'
     | 'pauseAction'
     | 'missionSuccess'

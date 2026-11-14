@@ -363,8 +363,7 @@ export default function PengaturanScreen({
                 >
                     <PengaturanDasarCard
                         scale={s}
-                        hours={Math.floor(storedInterval / 60)}
-                        minutes={storedInterval % 60}
+                        minutes={storedInterval || 15}
                         onEditInterval={() => {
                             setIntervalMinutes(storedInterval || 15);
                             setIsIntervalModalOpen(true);

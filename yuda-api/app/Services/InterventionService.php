@@ -208,7 +208,8 @@ class InterventionService
         string $logDate,
         array $slots = [],
         int $interventionsTriggered = 0,
-        array $socialTimes = []
+        array $socialTimes = [],
+        ?string $emotion = null
     ): UserDailyScreenTimeMatrix {
         $allowedSlots = self::SLOT_COLUMNS;
 
@@ -245,6 +246,10 @@ class InterventionService
 
         if ($interventionsTriggered > 0) {
             $matrix->interventions_triggered = $interventionsTriggered;
+        }
+
+        if ($emotion !== null && trim($emotion) !== '') {
+            $matrix->emotion = trim($emotion);
         }
 
         $matrix->save();
@@ -397,6 +402,7 @@ class InterventionService
             'prev_screen_time_minutes' => $prevTotalMinutes,
             'diff_minutes' => $diffMinutes,
             'interventions_triggered' => $currentRecord ? (int) $currentRecord->interventions_triggered : 0,
+            'emotion' => $currentRecord?->emotion,
             'slots' => $slots,
             'app_usages' => $appUsages,
         ];

@@ -17,6 +17,7 @@ export interface YudaOverlayRootProps {
     reminderMinutes?: number;
     pauseType?: PauseType;
     pauseStage?: number;
+    pauseCount?: number;
     breathDurationSeconds?: number;
     actionType?: PauseActionType;
     screenWidth?: number;
@@ -37,6 +38,7 @@ export function YudaOverlayRoot({
     reminderMinutes = 15,
     pauseType = 'biasa',
     pauseStage = 1,
+    pauseCount = 1,
     breathDurationSeconds = 30,
     actionType,
     screenWidth,
@@ -75,6 +77,7 @@ export function YudaOverlayRoot({
                 reminderMinutes={reminderMinutes}
                 pauseType={pauseType}
                 pauseStage={normalizeStageLevel(pauseStage)}
+                pauseCount={pauseCount}
                 breathDurationSeconds={breathDurationSeconds}
                 actionType={actionType}
                 screenWidth={resolvedWidth}

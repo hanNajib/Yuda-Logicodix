@@ -49,6 +49,7 @@ class UserDailyScreenTimeMatrix extends Model
         'x',
         'total_screen_time_minutes',
         'interventions_triggered',
+        'emotion',
     ];
 
     protected $casts = [

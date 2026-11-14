@@ -253,7 +253,10 @@ export function AktivitasCard({
     const [isEditing, setIsEditing] = useState(false);
     const [editingTaskId, setEditingTaskId] = useState<string | number | null>(null);
     const [taskTitle, setTaskTitle] = useState('');
-    const [taskTime, setTaskTime] = useState('');
+    const [taskHour, setTaskHour] = useState<number>(() => new Date().getHours());
+    const [taskMinute, setTaskMinute] = useState<number>(0);
+    const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+    const [hasTimeSet, setHasTimeSet] = useState(false);
     const [syncGCal, setSyncGCal] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isSyncingGCal, setIsSyncingGCal] = useState(false);
@@ -377,11 +380,30 @@ export function AktivitasCard({
         }
     };
 
+    const parseTimeToHourMinute = (timeStr?: string | null) => {
+        if (!timeStr) {
+            const now = new Date();
+            return { hour: now.getHours(), minute: 0, hasTime: false };
+        }
+        const parts = timeStr.replace('.', ':').split(':');
+        const h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        return {
+            hour: !isNaN(h) && h >= 0 && h < 24 ? h : 12,
+            minute: !isNaN(m) && m >= 0 && m < 60 ? m : 0,
+            hasTime: true,
+        };
+    };
+
     const handleOpenAdd = () => {
         setIsEditing(false);
         setEditingTaskId(null);
         setTaskTitle('');
-        setTaskTime('');
+        const parsed = parseTimeToHourMinute(null);
+        setTaskHour(parsed.hour);
+        setTaskMinute(parsed.minute);
+        setHasTimeSet(false);
+        setIsTimePickerOpen(false);
         setSyncGCal(true);
         setModalVisible(true);
     };
@@ -391,9 +413,17 @@ export function AktivitasCard({
         setIsEditing(true);
         setEditingTaskId(task.id);
         setTaskTitle(task.title);
-        setTaskTime(task.time || '');
+        const parsed = parseTimeToHourMinute(task.time);
+        setTaskHour(parsed.hour);
+        setTaskMinute(parsed.minute);
+        setHasTimeSet(parsed.hasTime);
+        setIsTimePickerOpen(false);
         setSyncGCal(Boolean(task.google_calendar_event_id));
         setModalVisible(true);
+    };
+
+    const formatHourMinute = (h: number, m: number) => {
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     };
 
     const handleSaveTask = async () => {
@@ -401,6 +431,8 @@ export function AktivitasCard({
             showAlert('Perhatian', 'Judul aktivitas tidak boleh kosong.', 'warning');
             return;
         }
+
+        const scheduledTimeStr = hasTimeSet ? formatHourMinute(taskHour, taskMinute) : null;
 
         setIsSaving(true);
         try {
@@ -411,7 +443,7 @@ export function AktivitasCard({
                 googleEventId = await createGoogleCalendarEvent({
                     title: taskTitle.trim(),
                     date: targetDate,
-                    time: taskTime.trim() || null,
+                    time: scheduledTimeStr,
                 });
             }
 
@@ -419,14 +451,14 @@ export function AktivitasCard({
                 await updateTask(editingTaskId, {
                     title: taskTitle.trim(),
                     scheduled_date: targetDate,
-                    scheduled_time: taskTime.trim() || null,
+                    scheduled_time: scheduledTimeStr,
                     google_calendar_event_id: googleEventId,
                 });
             } else {
                 await createTask({
                     title: taskTitle.trim(),
                     scheduled_date: targetDate,
-                    scheduled_time: taskTime.trim() || null,
+                    scheduled_time: scheduledTimeStr,
                     google_calendar_event_id: googleEventId,
                 });
             }
@@ -772,30 +804,234 @@ export function AktivitasCard({
                             }}
                         />
 
-                        <Text
-                            className="font-outfit-bold text-[#275c43]"
-                            style={{ fontSize: 12.5 * s, marginBottom: 6 * s }}
-                        >
-                            Waktu / Jam (Opsional, format HH:mm)
-                        </Text>
-                        <TextInput
-                            value={taskTime}
-                            onChangeText={setTaskTime}
-                            placeholder="14:00"
-                            placeholderTextColor="#a0aca3"
-                            keyboardType="numbers-and-punctuation"
-                            maxLength={5}
-                            className="bg-[#f5f8f5] font-outfit-medium text-[#1c241e]"
+                        <View className="flex-row items-center justify-between" style={{ marginBottom: 6 * s }}>
+                            <Text
+                                className="font-outfit-bold text-[#275c43]"
+                                style={{ fontSize: 12.5 * s }}
+                            >
+                                Waktu / Jam (Opsional)
+                            </Text>
+                            {hasTimeSet && (
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setHasTimeSet(false);
+                                        setIsTimePickerOpen(false);
+                                    }}
+                                >
+                                    <Text
+                                        className="font-outfit-semibold text-[#8b3a3a]"
+                                        style={{ fontSize: 11.5 * s }}
+                                    >
+                                        Hapus Jam
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* Trigger / Display Jam */}
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => {
+                                if (!hasTimeSet) {
+                                    setHasTimeSet(true);
+                                }
+                                setIsTimePickerOpen(!isTimePickerOpen);
+                            }}
+                            className="bg-[#f5f8f5] flex-row items-center justify-between"
                             style={{
                                 borderRadius: 14 * s,
                                 paddingHorizontal: 14 * s,
-                                paddingVertical: 10 * s,
-                                fontSize: 14 * s,
-                                marginBottom: 16 * s,
+                                paddingVertical: 12 * s,
+                                marginBottom: isTimePickerOpen ? 8 * s : 16 * s,
                                 borderWidth: 1,
-                                borderColor: '#e1eae2',
+                                borderColor: isTimePickerOpen ? '#275c43' : '#e1eae2',
                             }}
-                        />
+                        >
+                            <View className="flex-row items-center">
+                                <Ionicons
+                                    name="time-outline"
+                                    size={18 * s}
+                                    color={hasTimeSet ? '#275c43' : '#8a9b8f'}
+                                    style={{ marginRight: 8 * s }}
+                                />
+                                <Text
+                                    className="font-outfit-bold"
+                                    style={{
+                                        fontSize: 15 * s,
+                                        color: hasTimeSet ? '#1c241e' : '#8a9b8f',
+                                    }}
+                                >
+                                    {hasTimeSet ? formatHourMinute(taskHour, taskMinute) : 'Pilih Jam Aktivitas'}
+                                </Text>
+                            </View>
+
+                            <Ionicons
+                                name={isTimePickerOpen ? 'chevron-up' : 'chevron-down'}
+                                size={18 * s}
+                                color="#275c43"
+                            />
+                        </TouchableOpacity>
+
+                        {/* Interactive Clock/Time Stepper */}
+                        {isTimePickerOpen && (
+                            <View
+                                className="bg-[#eef3ef] items-center"
+                                style={{
+                                    borderRadius: 16 * s,
+                                    paddingVertical: 14 * s,
+                                    paddingHorizontal: 16 * s,
+                                    marginBottom: 16 * s,
+                                    borderWidth: 1,
+                                    borderColor: '#d7e4d9',
+                                }}
+                            >
+                                <View className="flex-row items-center justify-center">
+                                    {/* Jam Control */}
+                                    <View className="items-center">
+                                        <Text
+                                            className="font-outfit-semibold text-[#5c7062]"
+                                            style={{ fontSize: 11 * s, marginBottom: 4 * s }}
+                                        >
+                                            Jam
+                                        </Text>
+                                        <View className="flex-row items-center">
+                                            <TouchableOpacity
+                                                activeOpacity={0.7}
+                                                onPress={() => {
+                                                    setHasTimeSet(true);
+                                                    setTaskHour((prev) => (prev - 1 + 24) % 24);
+                                                }}
+                                                style={{
+                                                    width: 32 * s,
+                                                    height: 32 * s,
+                                                    borderRadius: 10 * s,
+                                                    backgroundColor: '#ffffff',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    borderWidth: 1,
+                                                    borderColor: '#ccd9cf',
+                                                }}
+                                            >
+                                                <Ionicons name="remove" size={16 * s} color="#275c43" />
+                                            </TouchableOpacity>
+
+                                            <View
+                                                style={{
+                                                    width: 48 * s,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                <Text
+                                                    className="font-outfit-extrabold text-[#275c43]"
+                                                    style={{ fontSize: 24 * s }}
+                                                >
+                                                    {String(taskHour).padStart(2, '0')}
+                                                </Text>
+                                            </View>
+
+                                            <TouchableOpacity
+                                                activeOpacity={0.7}
+                                                onPress={() => {
+                                                    setHasTimeSet(true);
+                                                    setTaskHour((prev) => (prev + 1) % 24);
+                                                }}
+                                                style={{
+                                                    width: 32 * s,
+                                                    height: 32 * s,
+                                                    borderRadius: 10 * s,
+                                                    backgroundColor: '#ffffff',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    borderWidth: 1,
+                                                    borderColor: '#ccd9cf',
+                                                }}
+                                            >
+                                                <Ionicons name="add" size={16 * s} color="#275c43" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+
+                                    {/* Separator Titik Dua */}
+                                    <Text
+                                        className="font-outfit-extrabold text-[#275c43]"
+                                        style={{
+                                            fontSize: 22 * s,
+                                            marginHorizontal: 12 * s,
+                                            marginTop: 14 * s,
+                                        }}
+                                    >
+                                        :
+                                    </Text>
+
+                                    {/* Menit Control */}
+                                    <View className="items-center">
+                                        <Text
+                                            className="font-outfit-semibold text-[#5c7062]"
+                                            style={{ fontSize: 11 * s, marginBottom: 4 * s }}
+                                        >
+                                            Menit
+                                        </Text>
+                                        <View className="flex-row items-center">
+                                            <TouchableOpacity
+                                                activeOpacity={0.7}
+                                                onPress={() => {
+                                                    setHasTimeSet(true);
+                                                    setTaskMinute((prev) => (prev - 5 + 60) % 60);
+                                                }}
+                                                style={{
+                                                    width: 32 * s,
+                                                    height: 32 * s,
+                                                    borderRadius: 10 * s,
+                                                    backgroundColor: '#ffffff',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    borderWidth: 1,
+                                                    borderColor: '#ccd9cf',
+                                                }}
+                                            >
+                                                <Ionicons name="remove" size={16 * s} color="#275c43" />
+                                            </TouchableOpacity>
+
+                                            <View
+                                                style={{
+                                                    width: 48 * s,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                <Text
+                                                    className="font-outfit-extrabold text-[#275c43]"
+                                                    style={{ fontSize: 24 * s }}
+                                                >
+                                                    {String(taskMinute).padStart(2, '0')}
+                                                </Text>
+                                            </View>
+
+                                            <TouchableOpacity
+                                                activeOpacity={0.7}
+                                                onPress={() => {
+                                                    setHasTimeSet(true);
+                                                    setTaskMinute((prev) => (prev + 5) % 60);
+                                                }}
+                                                style={{
+                                                    width: 32 * s,
+                                                    height: 32 * s,
+                                                    borderRadius: 10 * s,
+                                                    backgroundColor: '#ffffff',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    borderWidth: 1,
+                                                    borderColor: '#ccd9cf',
+                                                }}
+                                            >
+                                                <Ionicons name="add" size={16 * s} color="#275c43" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
 
                         {/* Checkbox integrasi Google Calendar */}
                         <Pressable

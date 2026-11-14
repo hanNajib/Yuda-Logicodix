@@ -38,6 +38,12 @@ import {
     PauseDismissReason,
     PauseTaskItem,
 } from '../types';
+import { CukupTauCard } from './CukupTauCard';
+import {
+    evaluateCukupTauTrigger,
+    markCukupTauShown,
+    CukupTauCardMessage,
+} from '../services/cukupTauService';
 
 export interface PauseBiasaFlowProps {
     userName: string;
@@ -46,6 +52,7 @@ export interface PauseBiasaFlowProps {
     totalElapsedSeconds?: number;
     reminderMinutes: number;
     pauseStage: PauseBiasaStageLevel;
+    pauseCount?: number;
     breathDurationSeconds: number;
     actionType?: PauseActionType;
     initialStage?: PauseAlertStage;
@@ -200,6 +207,7 @@ export function PauseBiasaFlow({
     totalElapsedSeconds,
     reminderMinutes,
     pauseStage,
+    pauseCount = 1,
     breathDurationSeconds,
     actionType: propActionType,
     initialStage,
@@ -230,11 +238,19 @@ export function PauseBiasaFlow({
         : stageSequence[0];
 
     const [stage, setStage] = useState<PauseAlertStage>(startStage);
+    const [cukupTauDecision, setCukupTauDecision] = useState<{
+        checked: boolean;
+        shouldShow: boolean;
+        reason: 'jam_rawan' | 'scroll_terlalu_lama' | null;
+    }>({ checked: false, shouldShow: false, reason: null });
+
     const [remainingSeconds, setRemainingSeconds] = useState(breathDurationSeconds);
     const [hasTrackWidth, setHasTrackWidth] = useState(false);
 
     const stageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const actionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const hasCompletedActionRef = useRef<boolean>(false);
 
     const trackWidthSV = useSharedValue(0);
     const contentScale = useSharedValue(reducedMotion ? 1 : 0.94);
@@ -256,6 +272,10 @@ export function PauseBiasaFlow({
             clearTimeout(completeTimerRef.current);
             completeTimerRef.current = null;
         }
+        if (actionIntervalRef.current) {
+            clearInterval(actionIntervalRef.current);
+            actionIntervalRef.current = null;
+        }
     };
 
     const goToStage = (nextStage: PauseAlertStage) => {
@@ -268,8 +288,30 @@ export function PauseBiasaFlow({
         }
     };
 
+    useEffect(() => {
+        // Evaluasi apakah kartu Cukup Tau harus muncul (jam rawan atau jeda ke-4 scroll lama)
+        let isMounted = true;
+        evaluateCukupTauTrigger(pauseCount).then((res) => {
+            if (isMounted) {
+                setCukupTauDecision({
+                    checked: true,
+                    shouldShow: res.shouldShow,
+                    reason: res.reason,
+                });
+            }
+        });
+        return () => {
+            isMounted = false;
+        };
+    }, [pauseCount]);
+
     const advanceStage = (fromStage: PauseAlertStage) => {
-        const next = getNextStage(fromStage, pauseStage);
+        if (fromStage === 'alert' && cukupTauDecision.shouldShow && stage !== 'cukupTau') {
+            goToStage('cukupTau');
+            return;
+        }
+
+        const next = getNextStage(fromStage === 'cukupTau' ? 'alert' : fromStage, pauseStage);
         if (next) {
             goToStage(next);
         } else {
@@ -313,9 +355,23 @@ export function PauseBiasaFlow({
         return () => clearStageTimers();
     }, [stage, pauseStage]);
 
+    const handleCompleteAction = () => {
+        if (hasCompletedActionRef.current) return;
+        hasCompletedActionRef.current = true;
+        if (actionIntervalRef.current) {
+            clearInterval(actionIntervalRef.current);
+            actionIntervalRef.current = null;
+        }
+        progressRatio.set(1);
+        setRemainingSeconds(0);
+        onComplete?.();
+        advanceStage('pauseAction');
+    };
+
     useEffect(() => {
         if (stage !== 'pauseAction') return;
 
+        hasCompletedActionRef.current = false;
         setRemainingSeconds(breathDurationSeconds);
         progressRatio.set(0);
         breathScale.set(reducedMotion ? 1 : 1.07);
@@ -329,26 +385,35 @@ export function PauseBiasaFlow({
             );
         }
 
-        const interval = setInterval(() => {
-            setRemainingSeconds((prev) => {
-                if (prev <= 1) {
-                    clearInterval(interval);
-                    if (reducedMotion) {
-                        progressRatio.set(1);
-                    }
-                    completeTimerRef.current = setTimeout(() => {
-                        completeTimerRef.current = null;
-                        onComplete?.();
-                        advanceStage('pauseAction');
-                    }, 500);
-                    return 0;
+        const targetEndTime = Date.now() + breathDurationSeconds * 1000;
+
+        actionIntervalRef.current = setInterval(() => {
+            const now = Date.now();
+            const diffMs = targetEndTime - now;
+            const diffSec = Math.max(0, Math.ceil(diffMs / 1000));
+
+            setRemainingSeconds(diffSec);
+
+            if (diffSec <= 0) {
+                if (actionIntervalRef.current) {
+                    clearInterval(actionIntervalRef.current);
+                    actionIntervalRef.current = null;
                 }
-                return prev - 1;
-            });
-        }, 1000);
+                if (reducedMotion) {
+                    progressRatio.set(1);
+                }
+                completeTimerRef.current = setTimeout(() => {
+                    completeTimerRef.current = null;
+                    handleCompleteAction();
+                }, 400);
+            }
+        }, 500);
 
         return () => {
-            clearInterval(interval);
+            if (actionIntervalRef.current) {
+                clearInterval(actionIntervalRef.current);
+                actionIntervalRef.current = null;
+            }
             if (completeTimerRef.current) {
                 clearTimeout(completeTimerRef.current);
                 completeTimerRef.current = null;
@@ -426,7 +491,7 @@ export function PauseBiasaFlow({
     const totalCount = tasks.length;
     const taskProgressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-    const isCardStage = stage !== 'alert';
+    const isCardStage = stage !== 'alert' && stage !== 'cukupTau';
     const isBottomClippedStage = stage === 'pauseAction' || stage === 'continueConfirm';
 
     return (
@@ -511,6 +576,40 @@ export function PauseBiasaFlow({
                         </Text>
                     </Animated.View>
                 </TouchableOpacity>
+            )}
+
+            {stage === 'cukupTau' && (
+                <View
+                    style={{
+                        width: W,
+                        height: H,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 20,
+                    }}
+                >
+                    <Animated.View
+                        style={[
+                            {
+                                width: cardWidth,
+                                alignItems: 'center',
+                            },
+                            animatedCardWrapperStyle,
+                        ]}
+                    >
+                        <CukupTauCard
+                            userName={userName}
+                            cardWidth={cardWidth}
+                            scale={s}
+                            triggerReason={cukupTauDecision.reason || 'scroll_terlalu_lama'}
+                            onProceedToMission={(_emotion, messageData) => {
+                                markCukupTauShown(cukupTauDecision.reason || 'scroll_terlalu_lama');
+                                // Lanjut ke intro misi jeda
+                                advanceStage('cukupTau');
+                            }}
+                        />
+                    </Animated.View>
+                </View>
             )}
 
             {isCardStage && (
@@ -1335,7 +1434,11 @@ export function PauseBiasaFlow({
 
 const styles = StyleSheet.create({
     root: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
     },
     alertContent: {
         alignItems: 'center',

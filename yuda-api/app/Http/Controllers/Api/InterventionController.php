@@ -50,6 +50,7 @@ class InterventionController extends Controller
             'slots' => ['nullable', 'array'],
             'slots.*' => ['integer', 'min:0', 'max:120'],
             'interventions_triggered' => ['nullable', 'integer', 'min:0'],
+            'emotion' => ['nullable', 'string', 'max:50'],
             'instagram' => ['nullable', 'integer', 'min:0'],
             'tiktok' => ['nullable', 'integer', 'min:0'],
             'facebook' => ['nullable', 'integer', 'min:0'],
@@ -71,6 +72,7 @@ class InterventionController extends Controller
             slots: $validated['slots'] ?? [],
             interventionsTriggered: (int) ($validated['interventions_triggered'] ?? 0),
             socialTimes: $socialTimes,
+            emotion: $validated['emotion'] ?? null,
         );
 
         return response()->json([

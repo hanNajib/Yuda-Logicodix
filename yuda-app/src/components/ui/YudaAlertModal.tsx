@@ -110,168 +110,94 @@ export function YudaAlertModal({
             animationType="fade"
             onRequestClose={onCancel || onConfirm}
         >
-            <View
-                className="flex-1 items-center justify-center"
-                style={{
-                    backgroundColor: 'rgba(28, 36, 30, 0.55)',
-                    paddingHorizontal: 22 * s,
-                }}
+            <Pressable
+                className="flex-1 items-center justify-center bg-[rgba(0,0,0,0.5)] px-6"
+                onPress={onCancel || onConfirm}
             >
-                {/* Outer Sage Border Container matching Yuda Cards */}
-                <View
-                    className="w-full bg-[rgba(206,206,206,0.45)]"
-                    style={{
-                        borderRadius: 28 * s,
-                        padding: 8 * s,
-                        maxWidth: 370,
-                    }}
-                >
-                    <Pressable
-                        className="w-full bg-white relative overflow-hidden"
-                        style={{
-                            borderRadius: 22 * s,
+                <Pressable
+                    className="w-full bg-white"
+                    style={[
+                        {
+                            borderRadius: 24 * s,
                             padding: 20 * s,
+                            maxWidth: 380,
+                        },
+                        {
                             shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.08,
+                            shadowOffset: {
+                                width: 0,
+                                height: 4,
+                            },
+                            shadowOpacity: 0.15,
                             shadowRadius: 12,
                             elevation: 8,
+                        },
+                    ]}
+                    onPress={(e) => e.stopPropagation()}
+                >
+                    {/* Judul Pop-Up */}
+                    <Text
+                        className="font-outfit-extrabold text-[#1f2923]"
+                        style={{
+                            fontSize: 18 * s,
+                            lineHeight: 24 * s,
                         }}
-                        onPress={(e) => e.stopPropagation()}
                     >
-                        {/* Header dengan Maskot Karakter Yuda & Badge Icon */}
-                        <View className="flex-row items-center justify-between mb-4">
-                            <View
-                                className="flex-row items-center"
+                        {title}
+                    </Text>
+
+                    {/* Pesan Pop-Up */}
+                    <Text
+                        className="font-outfit-medium text-[#55685d]"
+                        style={{
+                            fontSize: 12.5 * s,
+                            lineHeight: 18 * s,
+                            marginTop: 6 * s,
+                            marginBottom: 20 * s,
+                        }}
+                    >
+                        {message}
+                    </Text>
+
+                    {/* Tombol Aksi */}
+                    <View className="flex-row items-center gap-3">
+                        {isConfirmType && (
+                            <Pressable
+                                onPress={onCancel}
+                                className="flex-1 items-center justify-center bg-[#e6ede6]"
                                 style={{
-                                    backgroundColor: cfg.badgeBg,
-                                    paddingHorizontal: 12 * s,
-                                    paddingVertical: 6 * s,
-                                    borderRadius: 12 * s,
-                                    borderWidth: 1,
-                                    borderColor: cfg.badgeBorder,
-                                }}
-                            >
-                                <Ionicons
-                                    name={cfg.iconName}
-                                    size={15 * s}
-                                    color={cfg.iconColor}
-                                    style={{ marginRight: 6 * s }}
-                                />
-                                <Text
-                                    className="font-outfit-bold"
-                                    style={{
-                                        fontSize: 12.5 * s,
-                                        color: cfg.iconColor,
-                                    }}
-                                >
-                                    {type === 'logout'
-                                        ? 'Keluar Akun'
-                                        : type === 'calendar'
-                                        ? 'Google Calendar'
-                                        : 'Yuda'}
-                                </Text>
-                            </View>
-
-                            {/* Maskot Avatar Mini Yuda */}
-                            <View
-                                className="items-center justify-center overflow-hidden bg-[#e8efe9]"
-                                style={{
-                                    width: 44 * s,
-                                    height: 44 * s,
-                                    borderRadius: 22 * s,
-                                    borderWidth: 2,
-                                    borderColor: '#ffffff',
-                                }}
-                            >
-                                <Image
-                                    source={cfg.yudaImage}
-                                    style={{
-                                        width: 38 * s,
-                                        height: 38 * s,
-                                    }}
-                                    resizeMode="contain"
-                                />
-                            </View>
-                        </View>
-
-                        {/* Judul Pop-Up */}
-                        <Text
-                            className="font-outfit-extrabold text-[#1c241e]"
-                            style={{
-                                fontSize: 18 * s,
-                                lineHeight: 24 * s,
-                                marginBottom: 6 * s,
-                            }}
-                        >
-                            {title}
-                        </Text>
-
-                        {/* Pesan Pop-Up */}
-                        <Text
-                            className="font-outfit-medium text-[#495a4f]"
-                            style={{
-                                fontSize: 13.5 * s,
-                                lineHeight: 19 * s,
-                                marginBottom: 22 * s,
-                            }}
-                        >
-                            {message}
-                        </Text>
-
-                        {/* Tombol Aksi */}
-                        <View className="flex-row items-center justify-end">
-                            {isConfirmType && (
-                                <TouchableOpacity
-                                    onPress={onCancel}
-                                    activeOpacity={0.7}
-                                    className="bg-[#f0f4f1] items-center justify-center"
-                                    style={{
-                                        paddingVertical: 11 * s,
-                                        paddingHorizontal: 18 * s,
-                                        marginRight: 10 * s,
-                                        borderRadius: 14 * s,
-                                    }}
-                                >
-                                    <Text
-                                        className="font-outfit-bold text-[#55685d]"
-                                        style={{ fontSize: 13.5 * s }}
-                                    >
-                                        {cancelText}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-
-                            <TouchableOpacity
-                                onPress={onConfirm}
-                                activeOpacity={0.85}
-                                className="items-center justify-center"
-                                style={{
-                                    backgroundColor: cfg.confirmBg,
-                                    paddingVertical: 11 * s,
-                                    paddingHorizontal: 22 * s,
                                     borderRadius: 14 * s,
-                                    shadowColor: cfg.confirmBg,
-                                    shadowOffset: { width: 0, height: 2 },
-                                    shadowOpacity: 0.15,
-                                    shadowRadius: 4,
-                                    elevation: 2,
+                                    paddingVertical: 12 * s,
                                 }}
                             >
                                 <Text
-                                    className="font-outfit-bold"
-                                    style={{
-                                        fontSize: 13.5 * s,
-                                        color: cfg.confirmTextColor,
-                                    }}
+                                    className="font-outfit-bold text-[#495a4f]"
+                                    style={{ fontSize: 14 * s }}
                                 >
-                                    {confirmText}
+                                    {cancelText}
                                 </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </Pressable>
-                </View>
-            </View>
+                            </Pressable>
+                        )}
+
+                        <Pressable
+                            onPress={onConfirm}
+                            className="flex-1 items-center justify-center"
+                            style={{
+                                backgroundColor: type === 'logout' ? '#c53030' : '#2e6b4e',
+                                borderRadius: 14 * s,
+                                paddingVertical: 12 * s,
+                            }}
+                        >
+                            <Text
+                                className="font-outfit-bold text-white"
+                                style={{ fontSize: 14 * s }}
+                            >
+                                {confirmText}
+                            </Text>
+                        </Pressable>
+                    </View>
+                </Pressable>
+            </Pressable>
         </Modal>
     );
 }
