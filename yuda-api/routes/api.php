@@ -48,9 +48,9 @@ Route::post('/questionnaire/analyze', [AiController::class, 'analyzeGuest'])->na
 // Fitur Intervensi, Matriks Screen Time & Pesan Cukup Tau
 Route::prefix('intervention')->group(function () {
     // 1. Matriks Harian (Create/Upsert & Read) - Optional Sanctum Auth
+    Route::get('/matrix/daily', [InterventionController::class, 'getDailyMatrix'])->name('api.intervention.matrix.daily');
     Route::post('/matrix', [InterventionController::class, 'upsertMatrix'])->name('api.intervention.matrix.upsert');
     Route::get('/matrix', [InterventionController::class, 'getMonthlyMatrices'])->name('api.intervention.matrix.monthly');
-    Route::get('/matrix/daily', [InterventionController::class, 'getDailyMatrix'])->name('api.intervention.matrix.daily');
 
     // 2. Pesan Kartu Cukup Tau Acak (Personalisasi: emotion, trigger_condition, tone_style)
     Route::get('/random-message', [InterventionController::class, 'getRandomMessage'])->name('api.intervention.random_message');

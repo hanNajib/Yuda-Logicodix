@@ -281,6 +281,12 @@ class InterventionService
                 'slot_18_20',
                 'slot_20_22',
                 'slot_22_00',
+                'instagram',
+                'tiktok',
+                'facebook',
+                'threads',
+                'youtube',
+                'x',
                 'total_screen_time_minutes',
                 'interventions_triggered',
             ];

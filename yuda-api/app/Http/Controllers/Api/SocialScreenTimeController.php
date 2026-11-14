@@ -66,15 +66,25 @@ class SocialScreenTimeController extends Controller
             ], 422);
         }
 
+        // Mode sync/set (replace total akumulasi) atau incremental (+ menit)
+        $mode = $request->input('mode', 'increment'); // 'increment' | 'set'
+
         // firstOrCreate: 1 baris per user/guest
         $record = UserSocialScreenTime::firstOrCreate([
             'user_id'    => $identity['user_id'],
             'guest_uuid' => $identity['guest_uuid'],
         ]);
 
-        // Akumulasi setiap platform yang dikirim
-        foreach ($platformsProvided as $platform) {
-            $record->increment($platform, $validated[$platform]);
+        if ($mode === 'set') {
+            foreach ($platformsProvided as $platform) {
+                $record->{$platform} = (int) $validated[$platform];
+            }
+            $record->save();
+        } else {
+            // Akumulasi setiap platform yang dikirim
+            foreach ($platformsProvided as $platform) {
+                $record->increment($platform, $validated[$platform]);
+            }
         }
 
         // Reload data terbaru
@@ -125,19 +135,65 @@ class SocialScreenTimeController extends Controller
      */
     private function formatResponse(UserSocialScreenTime $record): array
     {
+        $platformLabels = [
+            'instagram' => 'Instagram',
+            'tiktok'    => 'TikTok',
+            'facebook'  => 'Facebook',
+            'threads'   => 'Threads',
+            'youtube'   => 'YouTube',
+            'x'         => 'X (Twitter)',
+        ];
+
+        $platforms = [
+            'instagram' => (int) $record->instagram,
+            'tiktok'    => (int) $record->tiktok,
+            'facebook'  => (int) $record->facebook,
+            'threads'   => (int) $record->threads,
+            'youtube'   => (int) $record->youtube,
+            'x'         => (int) $record->x,
+        ];
+
+        $totalAllMinutes = array_sum($platforms);
+
+        // Cari top app
+        $topPlatformKey = 'instagram';
+        $topPlatformMinutes = 0;
+        foreach ($platforms as $key => $minutes) {
+            if ($minutes > $topPlatformMinutes) {
+                $topPlatformMinutes = $minutes;
+                $topPlatformKey = $key;
+            }
+        }
+
+        // Ranking 1 s.d. 6
+        $ranking = [];
+        $sortedPlatforms = $platforms;
+        arsort($sortedPlatforms);
+
+        $rankIndex = 1;
+        foreach ($sortedPlatforms as $key => $minutes) {
+            $ranking[] = [
+                'rank' => $rankIndex++,
+                'key' => $key,
+                'name' => $platformLabels[$key] ?? ucfirst($key),
+                'minutes' => $minutes,
+                'percentage' => $totalAllMinutes > 0 ? round(($minutes / $totalAllMinutes) * 100, 1) : 0,
+            ];
+        }
+
         return [
-            'id'         => $record->id,
-            'user_id'    => $record->user_id,
-            'guest_uuid' => $record->guest_uuid,
-            'platforms'  => [
-                'instagram' => $record->instagram,
-                'tiktok'    => $record->tiktok,
-                'facebook'  => $record->facebook,
-                'threads'   => $record->threads,
-                'youtube'   => $record->youtube,
-                'x'         => $record->x,
+            'id'                => $record->id,
+            'user_id'           => $record->user_id,
+            'guest_uuid'        => $record->guest_uuid,
+            'total_all_minutes' => $totalAllMinutes,
+            'top_app'           => [
+                'key'     => $topPlatformKey,
+                'name'    => $platformLabels[$topPlatformKey] ?? ucfirst($topPlatformKey),
+                'minutes' => $topPlatformMinutes,
             ],
-            'updated_at' => $record->updated_at?->toIso8601String(),
+            'platforms'         => $platforms,
+            'ranking'           => $ranking,
+            'updated_at'        => $record->updated_at?->toIso8601String(),
         ];
     }
 }

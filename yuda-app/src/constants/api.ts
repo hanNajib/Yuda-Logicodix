@@ -11,6 +11,7 @@ export const API_ENDPOINTS = {
     interventionSettings: `${API_BASE_URL}/api/intervention/settings`,
     interventionMatrix: `${API_BASE_URL}/api/intervention/matrix`,
     interventionMatrixDaily: `${API_BASE_URL}/api/intervention/matrix/daily`,
+    socialScreenTime: `${API_BASE_URL}/api/screen-time/social`,
 };
 
 export const GOOGLE_AUTH_CONFIG = {

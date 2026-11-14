@@ -35,6 +35,9 @@ interface YudaPipNativeModule {
   openAccessibilitySettings(): boolean;
   getTotalReelsDurationSeconds(): number;
   dismissActiveAlert(reason?: string): boolean;
+  hasUsageStatsPermission(): boolean;
+  requestUsageStatsWithPip(): boolean;
+  getAndroidUsageStats(daysBack?: number): Promise<any>;
 }
 
 let NativeModule: any = null;
@@ -192,6 +195,22 @@ export function dismissActiveAlert(reason = 'dismiss'): boolean {
   return safe(() => NativeModule?.dismissActiveAlert(reason) ?? false, false);
 }
 
+export function hasUsageStatsPermission(): boolean {
+  return safe(() => NativeModule?.hasUsageStatsPermission() ?? false, false);
+}
+
+export function requestUsageStatsWithPip(): boolean {
+  return safe(() => NativeModule?.requestUsageStatsWithPip() ?? false, false);
+}
+
+export async function getAndroidUsageStats(daysBack = 7): Promise<any> {
+  try {
+    return (await NativeModule?.getAndroidUsageStats(daysBack)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function addPipModeListener(
   listener: (event: { isInPip: boolean }) => void
 ): Subscription | undefined {
@@ -233,6 +252,9 @@ export default {
   openAccessibilitySettings,
   getTotalReelsDurationSeconds,
   dismissActiveAlert,
+  hasUsageStatsPermission,
+  requestUsageStatsWithPip,
+  getAndroidUsageStats,
   addPipModeListener,
   addPermissionGrantedListener,
 };
