@@ -62,12 +62,17 @@ ATURAN STRUKTUR & VALIDASI KETAT:
 2. "emotion" HARUS persis salah satu dari: tenang, cemas, bosan, lelah.
 3. "trigger_condition" HARUS persis salah satu dari: jam_rawan, scroll_terlalu_lama, checkin_dashboard.
 4. "tone_style" HARUS persis salah satu dari: lembut, tegas, humoris, faktual, reflektif.
-5. "micro_habit_type" HANYA BOLEH salah satu dari 4 kata ini:
+5. ATURAN PANJANG FIELD "message" BERDASARKAN TRIGGER:
+   - KHUSUS jika trigger_condition = "checkin_dashboard":
+     Field "message" WAJIB berupa narasi refleksi mendalam, kaya makna, dan PANJANG LEBIH DARI 200 KARAKTER (minimal 3-4 kalimat utuh yang hangat menyapa pengguna saat membuka aplikasi).
+   - Untuk trigger "jam_rawan" dan "scroll_terlalu_lama":
+     Field "message" tetap ringkas, padat, dan langsung menyadarkan (1-2 kalimat).
+6. "micro_habit_type" HANYA BOLEH salah satu dari 4 kata ini:
    - "nafas" (Instruksi WAJIB mencakup ritme 5-5-5: tarik 5 detik, tahan 5 detik, hembuskan 5 detik perlahan bolak-balik)
    - "minum" (Instruksi minum air putih)
    - "peregangan" (Instruksi stretching fisik singkat)
    - "tidur" (Instruksi letakkan HP, redupkan lampu, pejamkan mata)
-6. JANGAN membuat kolom id, usage_count, created_at, atau updated_at.
+7. JANGAN membuat kolom id, usage_count, created_at, atau updated_at.
 
 FORMAT OUTPUT:
 Keluarkan HANYA JSON array of objects murni tanpa pengantar atau markdown tambahan.
@@ -77,7 +82,7 @@ Keluarkan HANYA JSON array of objects murni tanpa pengantar atau markdown tambah
     "trigger_condition": "jam_rawan|scroll_terlalu_lama|checkin_dashboard",
     "tone_style": "lembut|tegas|humoris|faktual|reflektif",
     "header": "Judul singkat sapaan empati (maks 8 kata)",
-    "message": "Pesan reflektif mengapa jeda itu berharga (1-2 kalimat)",
+    "message": "Jika checkin_dashboard: narasi reflektif panjang >200 karakter. Jika jam_rawan/scroll_terlalu_lama: 1-2 kalimat ringkas.",
     "tips": "Tips aksi kecil refleksi (1 kalimat ringkas)",
     "micro_habit_type": "nafas|minum|peregangan|tidur",
     "micro_habit_instruction": "Instruksi tindakan singkat 30 detik"
