@@ -9,7 +9,7 @@ Dokumen ini merinci dasar ilmiah dari **10 pertanyaan kuisioner onboarding** YUD
 | Jumlah pertanyaan | 10 |
 | Keluaran | Jam rawan, tipe berdasarkan jam rawan, dan afirmasi yang dipersonalisasi |
 | Cara analisis | Jawaban dikirim ke backend (Laravel) dan dianalisis oleh model AI (Google Gemini API) untuk menghasilkan jam rawan, tipe, dan teks afirmasi. Pengguna tamu juga dapat dianalisis tanpa login, dan tersedia umpan balik atas hasil analisis. |
-| Sumber pertanyaan | Dirancang sendiri berdasarkan temuan jurnal; tidak ada butir yang diambil langsung dari instrumen baku. Draf pertanyaan disusun dengan bantuan AI (Claude, Anthropic), sehingga perlu konsisten dengan bagian *Dokumentasi Penggunaan AI* di README utama. |
+| Sumber pertanyaan | Dirancang sendiri berdasarkan temuan jurnal; tidak ada butir yang diambil langsung dari instrumen baku. Draf pertanyaan disusun dengan bantuan AI (Claude, Anthropic). |
 
 ## Tabel Rujukan
 

@@ -27,7 +27,7 @@
 
 ## 5. Deskripsi Solusi
 
-YUDA adalah aplikasi yang membantu pengguna keluar dari kebiasaan doomscrolling, yaitu menggulir layar tanpa henti pada konten negatif atau tidak produktif. Solusi kami bekerja dalam tiga langkah:
+YUDA adalah aplikasi yang membantu pengguna keluar dari kebiasaan doomscrolling, yaitu menggulir layar tanpa henti pada konten negatif atau tidak produktif. Solusi kami bekerja dalam empat langkah:
 
 1. **Mengenali kebiasaan pengguna.** Saat pertama kali memakai aplikasi, pengguna mengisi kuisioner 10 pertanyaan berbasis jurnal untuk memetakan jam rawan doomscrolling dan tipe doomscrolling mereka (misalnya *night owl* untuk pengguna yang rawan menjelang tidur).
 2. **Mengintervensi pada waktu yang tepat.** Pengguna mengatur aplikasi yang dipantau, interval istirahat, dan rencana harian, sehingga pengingat muncul sesuai pola mereka, bukan secara acak.
@@ -104,7 +104,7 @@ Banyak pengguna menyadari kebiasaan ini tetapi tidak tahu **kapan** mereka palin
 | 7 | **Profile Page** | Menampilkan dan mengelola data profil pengguna. | ![Profile Page](docs/screenshots/PROFILE_PAGE.png) |
 | 8 | **Edit Profile Page** | Memungkinkan pengguna untuk memperbarui foto profil, nama panggilan hingga nama lengkap, email, serta tanggal lahir | ![Edit Profile Page](docs/screenshots/EDIT_PROFILE_PAGE.png) |
 | 9 | **Daily Planner Page** | Perencanaan aktivitas harian sebagai alternatif dari scrolling. | ![Daily Planner Page](docs/screenshots/DAILY_PLANNER_PAGE.png) |
-| 10 | **Daily Analytics Dashboard Page** | Visualisasi data penggunaan harian: matriks 12 slot berdurasi 2 jam (rentang minggu) serta total screen time harian dan jumlah intervensi yang terpicu (rentang bulan). [CRUSIAL: verifikasi metrik yang ditampilkan di halaman] | ![Daily Analytics Dashboard Page](docs/screenshots/DAILY_ANALITYCS_DASHBOARD_PAGE.png) |
+| 10 | **Daily Analytics Dashboard Page** | Menampilkan analitik pola penggunaan berdasarkan durasi scrolling melalui visualisasi matriks aktivitas mingguan dengan 12 slot waktu berdurasi 2 jam serta total durasi scrolling harian selama satu bulan. Setiap blok menggunakan gradasi warna untuk merepresentasikan tingkat intensitas scrolling pengguna. | ![Daily Analytics Dashboard Page](docs/screenshots/DAILY_ANALITYCS_DASHBOARD_PAGE.png) |
 | 11 | **Daily Overview Dashboard Page** | Ringkasan kondisi dan progres pengguna hari itu. Panel emosi pengguna yang dirasakan, card informasi jam rawan doomscrolling, metrik penggunaan aplikasi dengan screentime terbanyak, daftar aktivitas harian berdasarkan halaman **Daily Planner Page** | ![Daily Analytics Dashboard Page](docs/screenshots/DAILY_OVERVIEW_DASHBOARD_PAGE.png) |
 | 12 | **Scrolltime Detail Page** | Memungkinkan pengguna mampu melihat detail waktu menggulir(scroll) konten/aplikasi dalam satu hari yang dipilih berdasarkan tanggal | ![Scrolltime Detail Page](docs/screenshots/SCROLLTIME_DETAIL_PAGE.png) |
 | 13 | **Pop Up Jeda Pengingat** | Memberikan pengingat preventif kepada pengguna berdasarkan durasi scrolling melalui sapaan maskot, pilihan aktivitas jeda, pengingat tugas harian, serta pengingat lanjutan setiap 15 menit apabila pengguna memilih untuk tetap scrolling. | ![Preview](docs/screenshots/JEDA_PENGINGAT/POP_UP_MISI.png) [Selengkapnya](docs/features/POP_UP_JEDA_PENGINGAT.md) |
@@ -117,7 +117,7 @@ Banyak pengguna menyadari kebiasaan ini tetapi tidak tahu **kapan** mereka palin
 |----------|-----------|
 | Framework | Mobile APP: React Native, Backend API: Laravel, Style: Nativewind |
 | Bahasa | Typescript, Kotlin, PHP |
-| Library utama | Mobile: Expo Router, Expo Secure Store, Zustand, Google Sign-In · Backend: Laravel Sanctum, Laravel AI SDK (`laravel/ai`) |
+| Library utama | Mobile: Expo Router, Expo Secure Store, Zustand, Google Sign-In, Tanstack Query, Axios · Backend: Laravel Sanctum, Laravel AI SDK (`laravel/ai`) |
 | Database | MySQL (khusus pengguna yang login dengan Google; lihat penyimpanan hybrid di bawah) |
 | Autentikasi | Google Sign-In ( @react-native-google-signin/google-signin: ^17.0.0 ) |
 | API Internal | REST API Laravel dengan autentikasi token Laravel Sanctum (daftar endpoint di bawah) |
@@ -203,13 +203,46 @@ flowchart LR
 **Alur intervensi (semua pengguna)**
  
 1. Aplikasi mengirim matriks screen time harian ke `/api/intervention/matrix`. Total harian dihitung otomatis dari 12 slot.
-2. Setiap minggu, sistem membandingkan total screen time 7 hari terakhir dengan 7 hari sebelumnya, lalu menyesuaikan durasi jeda pengguna (30 sampai 60 detik, langkah 5 detik). [CRUSIAL: konfirmasi bagaimana evaluasi mingguan dijadwalkan]
+2. Setiap minggu, sistem membandingkan total screen time 7 hari terakhir dengan 7 hari sebelumnya, lalu menyesuaikan durasi jeda pengguna (30 sampai 60 detik, langkah 5 detik). Logika ini diimplementasikan di `InterventionService::evaluateWeeklyProgress` yang membandingkan akumulasi `UserDailyScreenTimeMatrix` 7 hari terakhir terhadap 7 hari sebelumnya. Jika screen time meningkat, jeda ditambah 5 detik (maksimal 60 detik); jika menurun, jeda dikurangi 5 detik sebagai reward (minimal 30 detik), lalu mencatat timestamp `last_evaluated_at`. Nilai durasi jeda yang telah diperbarui disinkronkan ke aplikasi mobile melalui endpoint `GET /api/intervention/settings` (field `current_pause_duration`).
 3. Saat pemicu terjadi (jam rawan, scroll terlalu lama, atau *check-in* dashboard), aplikasi memanggil `/api/intervention/random-message` dengan *emotion*, *trigger_condition*, dan *tone_style*. Backend memilih pesan dari pool generasi aktif dengan pencocokan bertingkat, dan memakai pesan bawaan jika pool kosong.
-4. Pool pesan diperbarui setiap minggu (periode ISO, zona waktu Asia/Jakarta): sistem membangun 60 kombinasi (4 emosi × 3 pemicu × 5 nada), membaginya menjadi 12 batch yang diproses lewat Laravel Queue, dan menghasilkan 3 variasi per kombinasi, total 180 pesan. Setelah semua batch selesai dan lolos validasi ketat (field wajib, nilai enum, tepat 180 pesan dan 60 kombinasi), generasi baru diaktifkan secara atomik dalam satu transaksi database dan generasi sebelumnya diarsipkan. Jika ada batch yang gagal, generasi baru tidak diaktifkan dan generasi sebelumnya tetap dipakai. [CRUSIAL: konfirmasi bagaimana generasi mingguan dijadwalkan dan apakah rotasi lama `rotatePoolWithAi` masih dipakai]
+4. Pool pesan diperbarui setiap minggu (periode ISO, zona waktu Asia/Jakarta): sistem membangun 60 kombinasi (4 emosi × 3 pemicu × 5 nada), membaginya menjadi 12 batch yang diproses lewat Laravel Queue, dan menghasilkan 3 variasi per kombinasi, total 180 pesan. Setelah semua batch selesai dan lolos validasi ketat (field wajib, nilai enum, tepat 180 pesan dan 60 kombinasi), generasi baru diaktifkan secara atomik dalam satu transaksi database dan generasi sebelumnya diarsipkan. Jika ada batch yang gagal, generasi baru tidak diaktifkan dan generasi sebelumnya tetap dipakai. Penjadwalan ini dijalankan secara otomatis oleh Laravel Scheduler (`routes/console.php`) melalui command `yuda:generate-weekly-interventions` setiap hari **Senin pukul 02:00 WIB** (`Asia/Jakarta`) dengan proteksi `withoutOverlapping()`. Adapun metode rotasi lama (`rotatePoolWithAi` dan perintah `yuda:rotate-intervention-messages` yang merotasi 10 pesan manual) sudah **berstatus *legacy* dan tidak lagi digunakan oleh *scheduler*** karena sistem pemilihan pesan (`getRandomMessage`) kini terkunci pada `generation_id` generasi aktif mingguan.
 
 > **Catatan privasi:** jawaban kuisioner diproses oleh Google Gemini. Hasil analisis dan jawaban yang dinormalisasi disimpan sebagai cache pola di database tanpa dikaitkan dengan akun maupun `guest_uuid`. Pembuatan pesan intervensi oleh Gemini tidak mengirim data pengguna.
  
-[ISI: sesuaikan jika ada alur lain, mis. sinkronisasi, notifikasi, atau layanan latar belakang]
+**Layanan latar belakang & notifikasi overlay (aplikasi mobile)**
+
+Aplikasi **tidak menggunakan** `expo-notifications` maupun `expo-task-manager`. Sebagai gantinya, seluruh sistem pemantauan dan intervensi dijalankan melalui **modul native Kotlin kustom** (`modules/yuda-pip`) yang terdiri dari dua layanan Android:
+
+1. **`YudaAccessibilityService`** — Layanan aksesibilitas yang berjalan terus-menerus setelah diaktifkan di pengaturan perangkat. Layanan ini:
+   - Mendeteksi aplikasi di latar depan (*foreground*) melalui event `TYPE_WINDOW_STATE_CHANGED` dan `TYPE_VIEW_SCROLLED`.
+   - Mengenali layar feed/reels/shorts pada aplikasi target (Instagram, TikTok, YouTube, Facebook, Threads) lewat inspeksi *resource ID*, *content description*, dan nama kelas UI (misalnya `ViewPager`).
+   - Mengakumulasi durasi scroll dalam `SharedPreferences` (`total_reels_duration_ms`) dan me-reset-nya secara otomatis di awal hari baru.
+   - Memiliki deteksi *idle* (5 menit tanpa event scroll → timer berhenti) dan menjeda timer saat layar komentar atau *share sheet* terbuka.
+   - Mengirimkan pembaruan timer secara real-time ke `YudaOverlayService` melalui intent.
+
+2. **`YudaOverlayService`** — Layanan latar depan (*foreground service*) yang:
+   - Berjalan dengan notifikasi persisten prioritas rendah ("Yuda Pendamping Scrolling — Aktif mendampingi saat kamu membuka …") sebagai syarat Android untuk menjaga layanan tetap hidup.
+   - Menerima pembaruan timer dari `YudaAccessibilityService`, menghitung *bucket* waktu (`rawSecondsElapsed / intervalSeconds`), dan memicu alert overlay saat batas interval terlampaui (misalnya setiap 15 menit sesuai pengaturan pengguna).
+   - Memiliki mekanisme *fallback polling* (`UsageStatsManager`) jika koneksi aksesibilitas terputus.
+   - Dijalankan dengan `START_STICKY` agar bertahan meskipun aplikasi utama di-kill.
+
+**Alur intervensi overlay:**
+
+Saat durasi scroll melewati batas interval, overlay ditampilkan **di atas aplikasi mana pun** menggunakan `WindowManager` + `TYPE_APPLICATION_OVERLAY`:
+
+1. **Fase peeking:** Tangan maskot Yuda muncul dari atas layar secara native (`ImageView`). Otomatis melanjutkan ke modal penuh setelah 3,2 detik, atau langsung jika diketuk.
+2. **Fase modal penuh:** Sebuah `ReactSurface` (`"YudaAlertOverlay"`) di-render di dalam overlay native, menampilkan UI React Native layar penuh (`PauseBiasaFlow`). Jika React Native tidak tersedia, digunakan *fallback* tampilan Android native.
+3. **Eskalasi bertingkat** berdasarkan `pauseStageLevel`:
+   - **Level 1** (pemicu pertama): Sapaan → Pilihan istirahat atau lanjut.
+   - **Level 2** (pengguna memilih "lanjut" sebelumnya): Sapaan → Pengantar jeda → Aktivitas terpandu (latihan pernapasan, minum air, peregangan, atau tidur sesuai waktu) dengan *countdown timer* → Misi sukses → Pilihan.
+   - **Level 3** (masih lanjut): Sama seperti Level 2, ditambah pengingat daftar tugas harian (*Daily Planner*).
+4. **Hasil dismiss:** Memilih "Istirahat Scroll" me-reset level eskalasi ke 1; memilih "Lanjut Scroll" menaikkan level (maks 2) sehingga intervensi berikutnya lebih elaboratif. Timer interval di-reset setelah dismiss.
+
+**Sinkronisasi pengaturan:**
+
+- Saat login Google, pengaturan intervensi lokal (`scroll_interval_minutes`, `tone_style`) dikirim ke `/api/intervention/settings` di server.
+- Perubahan interval disimpan secara paralel di tiga tempat: `SecureStore` (React Native), `SharedPreferences` (diakses oleh layanan native melalui `YudaPip.setIntervalMinutes()`), dan server (jika login).
+- Daftar aplikasi target (`targetPackages`) disimpan di `SecureStore` dan disinkronkan ke layanan native melalui `YudaPip.setTargetPackages()`.
 
 ### d. Panduan Instalasi, Konfigurasi, dan Menjalankan Aplikasi
 
@@ -252,8 +285,8 @@ cp .env.example .env
 | Variabel | Deskripsi | Contoh nilai |
 |----------|-----------|--------------|
 | `EXPO_PUBLIC_API_URL` | Client ID OAuth Google untuk autentikasi | `http://192.xxx.x.x:8000` |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Client secret OAuth Google | `xxxxxxxx.apps.googleusercontent.com` |
-| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | [ISI: koneksi database] | `xxxxxxxx.apps.googleusercontent.com` |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Client ID OAuth 2.0 untuk platform Web yang digunakan dalam konfigurasi autentikasi Google, termasuk proses verifikasi token ID Google pada backend. | `xxxxxxxx.apps.googleusercontent.com` |
+| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Client ID OAuth 2.0 khusus aplikasi Android yang digunakan dalam konfigurasi autentikasi Google pada perangkat Android. | `xxxxxxxx.apps.googleusercontent.com` |
 
 ### f. Daftar Variabel `.env` Backend API
 
@@ -281,29 +314,26 @@ cp .env.example .env
 
 | Jenis akun | Cara masuk |
 |------------|-----------|
-| **Autentikasi Google** | Login dengan akun Google. [CRUSIAL: cantumkan email akun demo yang disediakan untuk juri, jika ada. Jangan cantumkan password di README publik; kirim lewat kanal yang diminta panitia] |
+| **Autentikasi Google** | Disarankan login dengan akun demo (Google); `email: lavimieayam@gmail.com` `pass: lavi-mieayamLOREM_456` (atau akun Google pribadi juri)  |
 | **Akun lokal** | Tidak memerlukan kredensial. Pengguna hanya diminta memasukkan **nama**. |
 
 ### h. Dokumentasi Penggunaan AI
 
 | Tool AI | Digunakan untuk | Bagian proyek | Bagaimana hasilnya diverifikasi/diadaptasi |
 |---------|-----------------|---------------|---------------------------------------------|
-| `Claude (Anthropic)` | Merancang 10 pertanyaan kuisioner onboarding berbasis jurnal beserta kerangka output (jam rawan, tipe, afirmasi) | Kuisioner Page | [CRUSIAL: mis. pertanyaan dicocokkan dengan jurnal rujukan dan disederhanakan agar mudah dipahami] |
+| `Claude (Anthropic)` | Merancang 10 pertanyaan kuisioner onboarding berbasis jurnal beserta kerangka output (jam rawan, tipe, afirmasi) | Kuisioner Page | Pertanyaan dicocokkan dengan jurnal rujukan dan disederhanakan agar mudah dipahami lalu diimplementasikan pada **Kuisioner Page.** |
 | `Claude (Anthropic)` | Menyusun README ini | Dokumentasi | Dilengkapi dan diperiksa ulang oleh tim |
-| `Google Gemini API` | Fitur di dalam produk: menganalisis jawaban kuisioner pengguna | Kuisioner Page (`/api/ai/questionnaire` untuk pengguna login dan `/api/questionnaire/analyze` untuk tamu, keduanya melalui layanan AI yang sama) | Prompt dibangun dari 10 jawaban kuisioner, dan output dipastikan berupa structured output. Jika AI gagal, dipakai generator fallback berbasis aturan. [CRUSIAL: ringkasan isi prompt dan format output] |
+| `Google Gemini API` | Fitur di dalam produk: menganalisis jawaban kuisioner pengguna | Kuisioner Page (`/api/ai/questionnaire` untuk pengguna login dan `/api/questionnaire/analyze` untuk tamu, keduanya melalui layanan AI yang sama) | Prompt dibangun dari 10 jawaban kuisioner, dan output dipastikan berupa structured output. Jika AI gagal, dipakai generator fallback berbasis aturan. |
 | `Google Gemini API` | Fitur di dalam produk: membuat 180 pesan kartu intervensi setiap minggu (60 kombinasi emosi, pemicu, dan nada, masing-masing 3 variasi) | `InterventionGenerationService` dan `ProcessInterventionBatchJob` | Hasil divalidasi ketat (field wajib, nilai enum, tepat 180 pesan dan 60 kombinasi) sebelum diaktifkan secara atomik. Generasi yang gagal tidak diaktifkan sehingga generasi sebelumnya tetap dipakai. |
 | [ISI: tool lain] | [ISI] | [ISI] | [ISI] |
 
-[ISI: tambahkan seluruh penggunaan AI lain secara jujur (kode, desain, aset, teks), termasuk tool dan versinya jika diketahui]
-
-### i. Atribusi Template, Aset, Dataset, dan Kode Pihak Ketiga
+### i. Atribusi
 
 | Jenis | Nama | Sumber / URL | Lisensi |
 |-------|------|--------------|---------|
 | Jurnal rujukan latar belakang dan kuisioner | Lihat docs/references/ | Tautan atau DOI pada tiap referensi | — |
 
+### j. Catatan Bagi Juri
+Seandainya ada kendala dalam membuka Aplikasi YUDA, silahkan menonaktifkan Google Play Protect dan aktifkan pengaturan terbatas.
+
 ---
-
-## Lisensi
-
-[ISI: lisensi proyek, jika ada]
