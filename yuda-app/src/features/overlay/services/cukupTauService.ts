@@ -69,63 +69,55 @@ export async function evaluateCukupTauTrigger(
 ): Promise<CukupTauDecision> {
     const now = Date.now();
     const todayIso = getTodayIsoString();
-
     try {
-        // Ambil data matriks harian & riwayat untuk jam rawan
-        const matrixRes = await apiClient.get('/api/intervention/matrix/daily', {
-            params: { date: todayIso },
-        });
-        const matrixData = matrixRes.data?.data;
-        const slots = matrixData?.slots || {};
-
-        // Cari slot jam rawan dengan pemakaian tertinggi
-        let peakSlot = 'slot_20_22';
-        let maxMinutes = -1;
-        for (const [k, v] of Object.entries(slots)) {
-            const mins = Number(v) || 0;
-            if (mins > maxMinutes) {
-                maxMinutes = mins;
-                peakSlot = k;
-            }
-        }
-
-        const isJamRawan = isCurrentHourInSlot(peakSlot);
-
-        // 1. Cek Jam Rawan (1 kali sehari)
-        if (isJamRawan) {
-            const lastJamRawanDate = await SecureStore.getItemAsync(KEY_LAST_JAM_RAWAN_DATE);
-            if (lastJamRawanDate !== todayIso) {
-                return {
-                    shouldShow: true,
-                    reason: 'jam_rawan',
-                };
-            }
-        }
-
-        // 2. Cek Scroll Terlalu Lama (Jeda ke-4 dst, cooldown 1 jam)
-        // Hitung akumulasi jeda sesi
+        // 1. Prioritaskan Evaluasi Scroll Terlalu Lama (Lokal & Cepat)
         let currentSessionCount = nativePauseCount;
         if (currentSessionCount <= 0) {
             const storedCountStr = await SecureStore.getItemAsync(KEY_PAUSE_COUNT_SESSION);
             currentSessionCount = storedCountStr ? parseInt(storedCountStr, 10) + 1 : 1;
             await SecureStore.setItemAsync(KEY_PAUSE_COUNT_SESSION, currentSessionCount.toString());
         }
-
         const lastLongScrollTimeStr = await SecureStore.getItemAsync(KEY_LAST_LONG_SCROLL_TIME);
         const lastLongScrollTime = lastLongScrollTimeStr ? parseInt(lastLongScrollTimeStr, 10) : 0;
-        const isOneHourPassed = now - lastLongScrollTime >= ONE_HOUR_MS;
-
-        // Jeda ke-4 (atau kelipatan 4 / sudah jeda >= 4 dan sudah lewat 1 jam)
+        
+        // Di mode DEV, bypass cooldown 1 jam untuk testing
+        const isOneHourPassed = __DEV__ ? true : (now - lastLongScrollTime >= ONE_HOUR_MS);
         if (currentSessionCount >= 4 && isOneHourPassed) {
             return {
                 shouldShow: true,
                 reason: 'scroll_terlalu_lama',
             };
         }
+        // 2. Evaluasi Jam Rawan (API Terisolasi)
+        try {
+            const matrixRes = await apiClient.get('/api/intervention/matrix/daily', {
+                params: { date: todayIso },
+            });
+            const slots = matrixRes.data?.data?.slots || {};
+            let peakSlot = 'slot_20_22';
+            let maxMinutes = -1;
+            for (const [k, v] of Object.entries(slots)) {
+                const mins = Number(v) || 0;
+                if (mins > maxMinutes) {
+                    maxMinutes = mins;
+                    peakSlot = k;
+                }
+            }
+            if (isCurrentHourInSlot(peakSlot)) {
+                const lastJamRawanDate = await SecureStore.getItemAsync(KEY_LAST_JAM_RAWAN_DATE);
+                if (lastJamRawanDate !== todayIso) {
+                    return {
+                        shouldShow: true,
+                        reason: 'jam_rawan',
+                    };
+                }
+            }
+        } catch (apiErr) {
+            console.warn('[evaluateCukupTauTrigger] Gagal cek jam rawan API:', apiErr);
+        }
     } catch (e) {
         console.warn('[evaluateCukupTauTrigger] Gagal evaluasi trigger:', e);
     }
-
     return {
         shouldShow: false,
         reason: null,
@@ -155,14 +147,20 @@ export async function markCukupTauShown(reason: 'jam_rawan' | 'scroll_terlalu_la
  */
 export async function fetchCukupTauMessage(
     emotion: string,
-    triggerCondition: 'jam_rawan' | 'scroll_terlalu_lama'
+    triggerCondition: 'jam_rawan' | 'scroll_terlalu_lama' | 'checkin_dashboard',
+    toneStyle?: string
 ): Promise<CukupTauCardMessage> {
     try {
+        const params: Record<string, string> = {
+            emotion,
+            trigger_condition: triggerCondition,
+        };
+        if (toneStyle) {
+            params.tone_style = toneStyle;
+        }
+
         const res = await apiClient.get('/api/intervention/random-message', {
-            params: {
-                emotion,
-                trigger_condition: triggerCondition,
-            },
+            params,
         });
         if (res.data?.data) {
             return res.data.data;
@@ -176,10 +174,10 @@ export async function fetchCukupTauMessage(
         id: 0,
         emotion,
         trigger_condition: triggerCondition,
-        tone_style: 'lembut',
+        tone_style: toneStyle || 'lembut',
         header: `Kamu Merasa ${emotion.charAt(0).toUpperCase() + emotion.slice(1)} Hari Ini Ya?`,
         message:
-            'Yuk, berhenti sejenak. Kamu juga perlu waktu untuk dirimu sendiri. Nggak perlu terus mengikuti semua informasi. Beri pikiranmu ruang untuk beristirahat.',
+            'Yuk, berhenti sejenak. Kamu juga perlu waktu untuk dirimu sendiri. Nggak perlu terus mengikuti semua informasi. Beri pikiranmu ruang untuk beristirahat. Kamu nggak harus mengetahui semuanya hari ini.',
         tips: 'Letakkan ponselmu, tarik nafas perlahan, dan alihkan perhatian ke lingkungan sekitarmu.',
         micro_habit: {
             type: 'nafas',

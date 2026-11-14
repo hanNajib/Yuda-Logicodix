@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import {
     CukupTauCardMessage,
     fetchCukupTauMessage,
@@ -22,6 +23,7 @@ const iconLelah = require('@/assets/images/yuda/yuda-lelah.png');
 
 const yudaHalfBodySource = require('@/assets/images/yuda/yudahalfbody.png');
 const yudaHandHalfSource = require('@/assets/images/yuda/yuda-hand-half.png');
+const yudaTanganKebalikSource = require('@/assets/images/yuda/yuda-tangan-kebalik.png');
 
 const MOOD_ITEMS = [
     { id: 'tenang', label: 'Tenang', icon: iconTenang },
@@ -50,25 +52,73 @@ export function MoodSelectCard({
     const [resultMessage, setResultMessage] = useState<CukupTauCardMessage | null>(null);
 
     const [isPeeking, setIsPeeking] = useState(false);
-    const peekAnim = useRef(new RNAnimated.Value(-120)).current;
+    const peekAnim = useRef(new RNAnimated.Value(-180)).current;
 
+    const getTodayIso = () => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+
+    // Load emosi & pesan tersimpan dari SecureStore jika hari ini sudah check-in
     React.useEffect(() => {
-        if (initialEmotion) {
-            setSelectedMood(initialEmotion);
-        }
+        const loadTodayCheckin = async () => {
+            try {
+                const todayIso = getTodayIso();
+                const savedDate = await SecureStore.getItemAsync('mood_checkin_date');
+                if (savedDate === todayIso) {
+                    const savedMood = await SecureStore.getItemAsync('mood_checkin_emotion');
+                    const savedMsgJson = await SecureStore.getItemAsync('mood_checkin_message');
+                    if (savedMood) {
+                        setSelectedMood(savedMood);
+                    }
+                    if (savedMsgJson) {
+                        try {
+                            setResultMessage(JSON.parse(savedMsgJson));
+                        } catch {
+                            // ignore
+                        }
+                    } else if (savedMood) {
+                        fetchCukupTauMessage(savedMood, 'jam_rawan').then((data) => {
+                            if (data) setResultMessage(data);
+                        });
+                    }
+                } else if (initialEmotion) {
+                    setSelectedMood(initialEmotion);
+                    fetchCukupTauMessage(initialEmotion, 'jam_rawan').then((data) => {
+                        if (data) setResultMessage(data);
+                    });
+                }
+            } catch (err) {
+                console.warn('[MoodSelectCard] Gagal memuat checkin hari ini:', err);
+            }
+        };
+
+        loadTodayCheckin();
     }, [initialEmotion]);
 
     const handleSelectMood = async (moodId: string) => {
+        const todayIso = getTodayIso();
         setSelectedMood(moodId);
         onEmotionChange?.(moodId);
 
-        // 1. Tampilkan animasi Yuda ngintip sebentar secara cepat
+        // Simpan langsung ke SecureStore bahwa hari ini sudah check in
+        try {
+            await SecureStore.setItemAsync('mood_checkin_date', todayIso);
+            await SecureStore.setItemAsync('mood_checkin_emotion', moodId);
+        } catch (_e) {
+            // ignore
+        }
+
+        // 1. Tampilkan animasi Yuda ngintip persis seperti jeda overlay (yuda-tangan-kebalik)
         setIsPeeking(true);
-        peekAnim.setValue(-120);
+        peekAnim.setValue(-180);
 
         RNAnimated.timing(peekAnim, {
-            toValue: -15,
-            duration: 280,
+            toValue: -45 * s,
+            duration: 350,
             useNativeDriver: true,
         }).start();
 
@@ -77,6 +127,9 @@ export function MoodSelectCard({
         fetchCukupTauMessage(moodId, 'jam_rawan').then((data) => {
             setResultMessage(data);
             setIsLoadingMessage(false);
+            if (data) {
+                SecureStore.setItemAsync('mood_checkin_message', JSON.stringify(data)).catch(() => {});
+            }
         });
 
         // 3. Transisi cepat dari ngintip ke pop up modal kartu
@@ -104,7 +157,10 @@ export function MoodSelectCard({
             >
                 {/* Jika sudah check in / ada result message, ubah tampilan card */}
                 {selectedMood && resultMessage ? (
-                    <View>
+                    <TouchableOpacity
+                        activeOpacity={0.88}
+                        onPress={() => setModalVisible(true)}
+                    >
                         <View className="flex-row items-center justify-between">
                             <View className="flex-1 pr-2">
                                 <Text
@@ -147,38 +203,7 @@ export function MoodSelectCard({
                         >
                             {resultMessage.message}
                         </Text>
-
-                        {/* Tombol Lihat Pesan Refleksi & Ubah Emosi */}
-                        <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-[#f0f3f1]">
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                onPress={() => setModalVisible(true)}
-                                className="flex-row items-center"
-                            >
-                                <Ionicons name="sparkles" size={14 * s} color="#275c43" style={{ marginRight: 5 * s }} />
-                                <Text
-                                    className="font-outfit-bold text-[#275c43]"
-                                    style={{ fontSize: 12 * s }}
-                                >
-                                    Lihat Refleksi & Tips
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                onPress={() => {
-                                    setResultMessage(null);
-                                }}
-                            >
-                                <Text
-                                    className="font-outfit-medium text-[#7c8b81]"
-                                    style={{ fontSize: 12 * s }}
-                                >
-                                    Ubah Emosi
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                    </TouchableOpacity>
                 ) : (
                     /* Default: Pilih Emosi */
                     <View>
@@ -263,16 +288,16 @@ export function MoodSelectCard({
                 onRequestClose={() => setModalVisible(false)}
             >
                 <Pressable
-                    className="flex-1 items-center justify-center bg-[rgba(0,0,0,0.65)] px-5"
+                    className="flex-1 items-center justify-center bg-[rgba(0,0,0,0.65)] px-6"
                     onPress={() => setModalVisible(false)}
                 >
                     <Pressable
                         style={{
                             width: '100%',
-                            maxWidth: 350 * s,
+                            maxWidth: 340 * s,
                             alignItems: 'center',
                         }}
-                        onPress={(e) => e.stopPropagation()}
+                        onPress={() => setModalVisible(false)}
                     >
                         {/* Karakter Yuda mengintip di atas kartu */}
                         <View
@@ -280,8 +305,8 @@ export function MoodSelectCard({
                             style={{
                                 position: 'absolute',
                                 bottom: '100%',
-                                width: 240 * s,
-                                height: 180 * s,
+                                width: 245 * s,
+                                height: Math.round(245 * s / 1.22),
                                 zIndex: 1,
                             }}
                         >
@@ -296,7 +321,7 @@ export function MoodSelectCard({
                         <View
                             style={{
                                 width: '100%',
-                                minHeight: 330 * s,
+                                minHeight: 380 * s,
                                 backgroundColor: '#F7F5EE',
                                 borderRadius: 26 * s,
                                 paddingTop: 32 * s,
@@ -309,6 +334,7 @@ export function MoodSelectCard({
                                 elevation: 12,
                                 zIndex: 2,
                                 alignItems: 'center',
+                                justifyContent: 'space-between',
                             }}
                         >
                             {/* Tangan Yuda mencengkeram tepi kartu */}
@@ -316,9 +342,9 @@ export function MoodSelectCard({
                                 pointerEvents="none"
                                 style={{
                                     position: 'absolute',
-                                    top: -18 * s,
-                                    width: 210 * s,
-                                    height: 44 * s,
+                                    top: -Math.round((245 * s * 0.9 / 4.8) * 0.5),
+                                    width: 245 * s * 0.9,
+                                    height: Math.round(245 * s * 0.9 / 4.8),
                                     alignSelf: 'center',
                                     zIndex: 5,
                                 }}
@@ -331,44 +357,54 @@ export function MoodSelectCard({
                             </View>
 
                             {isLoadingMessage ? (
-                                <View style={{ paddingVertical: 40 * s, alignItems: 'center' }}>
+                                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 * s }}>
                                     <ActivityIndicator size="large" color="#2B6247" />
                                     <Text
                                         className="font-outfit-medium text-[#495a4f]"
-                                        style={{ marginTop: 12 * s, fontSize: 13 * s }}
+                                        style={{ marginTop: 14 * s, fontSize: 13 * s }}
                                     >
                                         Yuda sedang menyiapkan pesan untukmu...
                                     </Text>
                                 </View>
                             ) : (
-                                <View style={{ width: '100%', alignItems: 'center' }}>
-                                    <Text
-                                        style={{
-                                            fontSize: 20 * s,
-                                            fontWeight: '800',
-                                            color: '#1A1F1B',
-                                            textAlign: 'center',
-                                            lineHeight: 26 * s,
-                                        }}
-                                    >
-                                        {resultMessage?.header ||
-                                            `Kamu Merasa ${selectedMood ? selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1) : 'Lelah'} Hari Ini Ya?`}
-                                    </Text>
+                                <View
+                                    style={{
+                                        width: '100%',
+                                        flex: 1,
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <View style={{ width: '100%', alignItems: 'center', paddingTop: 4 * s }}>
+                                        <Text
+                                            style={{
+                                                fontSize: 21 * s,
+                                                fontWeight: '800',
+                                                color: '#1A1F1B',
+                                                textAlign: 'center',
+                                                lineHeight: 27 * s,
+                                            }}
+                                        >
+                                            {resultMessage?.header ||
+                                                `Kamu Merasa ${selectedMood ? selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1) : 'Lelah'}\nHari Ini Ya?`}
+                                        </Text>
 
-                                    <Text
-                                        style={{
-                                            fontSize: 12 * s,
-                                            fontWeight: '500',
-                                            color: '#3B453E',
-                                            textAlign: 'center',
-                                            marginTop: 10 * s,
-                                            marginBottom: 14 * s,
-                                            lineHeight: 18 * s,
-                                        }}
-                                    >
-                                        {resultMessage?.message ||
-                                            'Yuk, berhenti sejenak. Kamu juga perlu waktu untuk dirimu sendiri. Nggak perlu terus mengikuti semua informasi. Beri pikiranmu ruang untuk beristirahat.'}
-                                    </Text>
+                                        <Text
+                                            style={{
+                                                fontSize: 13.5 * s,
+                                                fontWeight: '500',
+                                                color: '#2B362E',
+                                                textAlign: 'center',
+                                                marginTop: 18 * s,
+                                                marginBottom: 16 * s,
+                                                lineHeight: 21 * s,
+                                                paddingHorizontal: 4 * s,
+                                            }}
+                                        >
+                                            {resultMessage?.message ||
+                                                'Yuk, berhenti sejenak. Kamu juga perlu waktu untuk dirimu sendiri.\nNggak perlu terus mengikuti semua informasi. Beri pikiranmu ruang untuk beristirahat. Kamu nggak harus mengetahui semuanya hari ini.'}
+                                        </Text>
+                                    </View>
 
                                     {/* Kotak Tips Mini */}
                                     <View
@@ -376,16 +412,17 @@ export function MoodSelectCard({
                                             width: '100%',
                                             flexDirection: 'row',
                                             backgroundColor: '#F8EED7',
-                                            borderRadius: 14 * s,
-                                            padding: 12 * s,
+                                            borderRadius: 16 * s,
+                                            paddingVertical: 12 * s,
+                                            paddingHorizontal: 12 * s,
                                             alignItems: 'center',
-                                            marginBottom: 16 * s,
+                                            marginTop: 12 * s,
                                         }}
                                     >
                                         <View
                                             style={{
-                                                width: 36 * s,
-                                                height: 36 * s,
+                                                width: 40 * s,
+                                                height: 40 * s,
                                                 borderRadius: 12 * s,
                                                 backgroundColor: '#F5B938',
                                                 alignItems: 'center',
@@ -393,12 +430,12 @@ export function MoodSelectCard({
                                                 marginRight: 10 * s,
                                             }}
                                         >
-                                            <Ionicons name="bulb" size={20 * s} color="#FFFFFF" />
+                                            <Ionicons name="bulb" size={22 * s} color="#FFFFFF" />
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <Text
                                                 style={{
-                                                    fontSize: 11.5 * s,
+                                                    fontSize: 12 * s,
                                                     fontWeight: '800',
                                                     color: '#3A2E19',
                                                 }}
@@ -407,42 +444,18 @@ export function MoodSelectCard({
                                             </Text>
                                             <Text
                                                 style={{
-                                                    fontSize: 10.5 * s,
+                                                    fontSize: 11 * s,
                                                     fontWeight: '500',
                                                     color: '#5E4E32',
-                                                    lineHeight: 14.5 * s,
+                                                    lineHeight: 15.5 * s,
                                                     marginTop: 2 * s,
                                                 }}
                                             >
                                                 {resultMessage?.tips ||
-                                                    'Letakkan ponselmu, tarik nafas perlahan, dan alihkan perhatian ke lingkungan sekitarmu.'}
+                                                    'Letakkan ponselmu, tarik napas perlahan, dan alihkan perhatian ke lingkungan sekitarmu.'}
                                             </Text>
                                         </View>
                                     </View>
-
-                                    {/* Tombol Tutup / Selesai */}
-                                    <TouchableOpacity
-                                        activeOpacity={0.85}
-                                        onPress={() => setModalVisible(false)}
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: '#2B6247',
-                                            borderRadius: 14 * s,
-                                            paddingVertical: 12 * s,
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                        }}
-                                    >
-                                        <Text
-                                            style={{
-                                                fontSize: 14 * s,
-                                                fontWeight: '700',
-                                                color: '#FFFFFF',
-                                            }}
-                                        >
-                                            Mengerti
-                                        </Text>
-                                    </TouchableOpacity>
                                 </View>
                             )}
                         </View>
@@ -463,15 +476,15 @@ export function MoodSelectCard({
                         style={{
                             position: 'absolute',
                             top: 0,
-                            left: 20 * s,
-                            width: 140 * s,
-                            height: 120 * s,
+                            left: 18 * s,
+                            width: 132 * s,
+                            height: 182 * s,
                             transform: [{ translateY: peekAnim }],
                             zIndex: 999,
                         }}
                     >
                         <Image
-                            source={yudaHandHalfSource}
+                            source={yudaTanganKebalikSource}
                             style={{
                                 width: '100%',
                                 height: '100%',

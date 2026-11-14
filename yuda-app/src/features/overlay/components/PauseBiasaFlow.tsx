@@ -42,8 +42,10 @@ import { CukupTauCard } from './CukupTauCard';
 import {
     evaluateCukupTauTrigger,
     markCukupTauShown,
+    fetchCukupTauMessage,
     CukupTauCardMessage,
 } from '../services/cukupTauService';
+import { fetchTasks } from '@/features/dashboard/services/taskService';
 
 export interface PauseBiasaFlowProps {
     userName: string;
@@ -86,6 +88,7 @@ interface ActionConfig {
     introActionTitle: string;
     introDesc: string;
     missionTitle: string;
+    successMessage: string;
     actionImage: ImageSourcePropType;
     getGuideLabel: (remaining: number, total: number) => string;
 }
@@ -111,6 +114,7 @@ const ACTION_CONFIGS: Record<PauseActionType, ActionConfig> = {
         introActionTitle: 'Tarik Nafas',
         introDesc: 'agar pikiranmu tenang dan rileks',
         missionTitle: 'Misi Tarik Nafas',
+        successMessage: 'Tarik nafas selesai',
         actionImage: yudaNafasSource,
         getGuideLabel: (remaining: number, total: number) => {
             if (remaining <= 0) return 'Selesai!';
@@ -125,6 +129,7 @@ const ACTION_CONFIGS: Record<PauseActionType, ActionConfig> = {
         introActionTitle: 'Minum Air',
         introDesc: 'teguk air putih agar tubuhmu tetap segar',
         missionTitle: 'Misi Minum Air',
+        successMessage: 'Minum air selesai',
         actionImage: yudaMinumSource,
         getGuideLabel: (remaining: number, total: number) => {
             if (remaining <= 0) return 'Tubuh kembali segar!';
@@ -138,6 +143,7 @@ const ACTION_CONFIGS: Record<PauseActionType, ActionConfig> = {
         introActionTitle: 'Peregangan',
         introDesc: 'lemaskan otot leher dan pundak yang kaku',
         missionTitle: 'Misi Peregangan Tubuh',
+        successMessage: 'Peregangan selesai',
         actionImage: yudaPereganganSource,
         getGuideLabel: (remaining: number, total: number) => {
             if (remaining <= 0) return 'Ototmu sudah lebih santai!';
@@ -151,6 +157,7 @@ const ACTION_CONFIGS: Record<PauseActionType, ActionConfig> = {
         introActionTitle: 'Pejamkan Mata',
         introDesc: 'sudah larut malam, istirahatkan matamu',
         missionTitle: 'Misi Istirahat & Pejamkan Mata',
+        successMessage: 'Istirahat sejenak selesai',
         actionImage: yudaTidurSource,
         getGuideLabel: (remaining: number, total: number) => {
             if (remaining <= 0) return 'Waktunya tidur nyenyak!';
@@ -222,8 +229,15 @@ export function PauseBiasaFlow({
     const s = Math.min(W / 400, 1.15);
     const reducedMotion = useReducedMotion();
 
-    const [activeActionType] = useState<PauseActionType>(() => resolveActionType(propActionType));
+    const [activeActionType, setActiveActionType] = useState<PauseActionType>(() => resolveActionType(propActionType));
     const actionConfig = ACTION_CONFIGS[activeActionType] ?? ACTION_CONFIGS.nafas;
+
+    // Jika ada actionType yang diberikan secara eksplisit melalui props, sinkronkan ke activeActionType
+    useEffect(() => {
+        if (propActionType && (propActionType === 'nafas' || propActionType === 'minum' || propActionType === 'peregangan' || propActionType === 'tidur')) {
+            setActiveActionType(propActionType);
+        }
+    }, [propActionType]);
 
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
@@ -242,10 +256,66 @@ export function PauseBiasaFlow({
         checked: boolean;
         shouldShow: boolean;
         reason: 'jam_rawan' | 'scroll_terlalu_lama' | null;
-    }>({ checked: false, shouldShow: false, reason: null });
+    }>({
+        checked: false,
+        shouldShow: pauseCount >= 4,
+        reason: pauseCount >= 4 ? 'scroll_terlalu_lama' : null,
+    });
 
     const [remainingSeconds, setRemainingSeconds] = useState(breathDurationSeconds);
     const [hasTrackWidth, setHasTrackWidth] = useState(false);
+    const [liveTasks, setLiveTasks] = useState<PauseTaskItem[]>(tasks);
+    const [upcomingTasks, setUpcomingTasks] = useState<PauseTaskItem[]>([]);
+    const [interventionMsg, setInterventionMsg] = useState<CukupTauCardMessage | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${y}-${m}-${d}`;
+
+        fetchTasks(todayStr)
+            .then((res) => {
+                if (!isMounted) return;
+                const fetched = (res.tasks || []).map((t) => ({
+                    id: String(t.id),
+                    title: t.title,
+                    time: t.time || (t.scheduled_time ? t.scheduled_time.substring(0, 5) : ''),
+                    isCompleted: t.isCompleted,
+                }));
+
+                if (fetched.length > 0) {
+                    setLiveTasks(fetched);
+                }
+
+                // Filter task yang belum tercentang dan dalam waktu 30 menit ke depan (0 sampai +30 menit)
+                const currentMinutesOfDay = now.getHours() * 60 + now.getMinutes();
+                const filteredUpcoming = fetched.filter((t) => {
+                    if (t.isCompleted) return false;
+                    if (!t.time) return false;
+                    const parts = t.time.replace('.', ':').split(':');
+                    const taskH = parseInt(parts[0], 10);
+                    const taskM = parseInt(parts[1], 10);
+                    if (isNaN(taskH) || isNaN(taskM)) return false;
+
+                    const taskMinutesOfDay = taskH * 60 + taskM;
+                    const diff = taskMinutesOfDay - currentMinutesOfDay;
+                    // Berada dalam rentang waktu 0 sampai 30 menit ke depan
+                    return diff >= 0 && diff <= 30;
+                });
+
+                setUpcomingTasks(filteredUpcoming);
+            })
+            .catch((_err) => {
+                // Gunakan tasks prop sebagai fallback jika gagal fetch
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     const stageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -305,13 +375,56 @@ export function PauseBiasaFlow({
         };
     }, [pauseCount]);
 
+    useEffect(() => {
+        // Ambil pesan personalisasi dari InterventionMessage untuk flow jeda
+        let isMounted = true;
+        const trigger = cukupTauDecision.reason || 'scroll_terlalu_lama';
+        fetchCukupTauMessage('lelah', trigger).then((msg) => {
+            if (isMounted && msg) {
+                setInterventionMsg(msg);
+                const habitType = msg.micro_habit?.type?.toLowerCase();
+                // Hanya timpa activeActionType jika tidak ada actionType eksplisit dari props
+                if (!propActionType && habitType && (habitType === 'nafas' || habitType === 'minum' || habitType === 'peregangan' || habitType === 'tidur')) {
+                    setActiveActionType(habitType as PauseActionType);
+                }
+            }
+        });
+        return () => {
+            isMounted = false;
+        };
+    }, [cukupTauDecision.reason, propActionType]);
+
     const advanceStage = (fromStage: PauseAlertStage) => {
-        if (fromStage === 'alert' && cukupTauDecision.shouldShow && stage !== 'cukupTau') {
+        // Prioritas 1: Jika kartu Cukup Tau harus muncul setelah alert (atau pauseCount >= 4)
+        const isCukupTau = cukupTauDecision.shouldShow || pauseCount >= 4;
+        if (fromStage === 'alert' && isCukupTau && stage !== 'cukupTau') {
             goToStage('cukupTau');
             return;
         }
 
-        const next = getNextStage(fromStage === 'cukupTau' ? 'alert' : fromStage, pauseStage);
+        // Prioritas 2: Setelah cukupTau selesai, lanjut ke misi jeda biasa (pauseIntro)
+        if (fromStage === 'cukupTau') {
+            goToStage('pauseIntro');
+            return;
+        }
+
+        // Prioritas 3: Setelah misi jeda selesai (missionSuccess)
+        // Cek apakah ada task yang belum tercentang dalam 30 menit ke depan
+        if (fromStage === 'missionSuccess') {
+            if (upcomingTasks.length > 0) {
+                goToStage('taskReminder');
+                return;
+            }
+            goToStage('breakChoice');
+            return;
+        }
+
+        if (fromStage === 'taskReminder') {
+            goToStage('breakChoice');
+            return;
+        }
+
+        const next = getNextStage(fromStage, pauseStage);
         if (next) {
             goToStage(next);
         } else {
@@ -423,7 +536,9 @@ export function PauseBiasaFlow({
 
     useEffect(() => {
         if (stage !== 'pauseAction') return;
-        const { targetScale } = getBreathGuide(remainingSeconds, breathDurationSeconds);
+        const targetScale = activeActionType === 'nafas'
+            ? getBreathGuide(remainingSeconds, breathDurationSeconds).targetScale
+            : 1;
         if (reducedMotion) {
             breathScale.set(1);
             progressRatio.set(
@@ -434,7 +549,7 @@ export function PauseBiasaFlow({
         } else {
             breathScale.set(withTiming(targetScale, { duration: 1400, easing: Easing.inOut(Easing.ease) }));
         }
-    }, [remainingSeconds, stage, breathDurationSeconds, reducedMotion]);
+    }, [remainingSeconds, stage, breathDurationSeconds, reducedMotion, activeActionType]);
 
     const animatedAlertStyle = useAnimatedStyle(() => ({
         transform: [{ scale: contentScale.get() }],
@@ -487,9 +602,10 @@ export function PauseBiasaFlow({
 
     const actionGuideLabel = actionConfig.getGuideLabel(remainingSeconds, breathDurationSeconds);
 
-    const completedCount = tasks.filter((t) => t.isCompleted).length;
-    const totalCount = tasks.length;
+    const completedCount = liveTasks.filter((t) => t.isCompleted).length;
+    const totalCount = liveTasks.length;
     const taskProgressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    const displayReminderTasks = upcomingTasks.length > 0 ? upcomingTasks : liveTasks.filter((t) => !t.isCompleted);
 
     const isCardStage = stage !== 'alert' && stage !== 'cukupTau';
     const isBottomClippedStage = stage === 'pauseAction' || stage === 'continueConfirm';
@@ -604,6 +720,13 @@ export function PauseBiasaFlow({
                             triggerReason={cukupTauDecision.reason || 'scroll_terlalu_lama'}
                             onProceedToMission={(_emotion, messageData) => {
                                 markCukupTauShown(cukupTauDecision.reason || 'scroll_terlalu_lama');
+                                if (messageData) {
+                                    setInterventionMsg(messageData);
+                                    const habitType = messageData.micro_habit?.type?.toLowerCase();
+                                    if (habitType && (habitType === 'nafas' || habitType === 'minum' || habitType === 'peregangan' || habitType === 'tidur')) {
+                                        setActiveActionType(habitType as PauseActionType);
+                                    }
+                                }
                                 // Lanjut ke intro misi jeda
                                 advanceStage('cukupTau');
                             }}
@@ -711,17 +834,23 @@ export function PauseBiasaFlow({
                                             marginTop: 8 * s,
                                         }}
                                     >
-                                        Mulai dengan hal sederhana seperti{'\n'}
-                                        <Text
-                                            style={{
-                                                fontFamily: font800,
-                                                fontWeight: font800 ? undefined : '800',
-                                                color: '#1A1F1B',
-                                            }}
-                                        >
-                                            {actionConfig.introActionTitle}
-                                        </Text>{' '}
-                                        {actionConfig.introDesc}
+                                        {interventionMsg?.micro_habit?.type?.toLowerCase() === activeActionType && interventionMsg.micro_habit.instruction ? (
+                                            interventionMsg.micro_habit.instruction
+                                        ) : (
+                                            <>
+                                                Mulai dengan hal sederhana seperti{'\n'}
+                                                <Text
+                                                    style={{
+                                                        fontFamily: font800,
+                                                        fontWeight: font800 ? undefined : '800',
+                                                        color: '#1A1F1B',
+                                                    }}
+                                                >
+                                                    {actionConfig.introActionTitle}
+                                                </Text>{' '}
+                                                {actionConfig.introDesc}
+                                            </>
+                                        )}
                                     </Text>
 
                                     <View
@@ -1018,7 +1147,7 @@ export function PauseBiasaFlow({
                                             marginTop: 6 * s,
                                         }}
                                     >
-                                        Tarik nafas selama {breathDurationSeconds} detik
+                                        {actionConfig.introActionTitle} selama {breathDurationSeconds} detik
                                     </Text>
                                 </TouchableOpacity>
                             )}
@@ -1143,7 +1272,7 @@ export function PauseBiasaFlow({
                                         </View>
 
                                         <View style={{ width: '100%', marginTop: 10 * s, gap: 7 * s }}>
-                                            {tasks.slice(0, 3).map((task) => (
+                                            {displayReminderTasks.slice(0, 3).map((task) => (
                                                 <View
                                                     key={task.id}
                                                     style={{
@@ -1279,7 +1408,8 @@ export function PauseBiasaFlow({
                                                         color: '#FFFFFF',
                                                     }}
                                                 >
-                                                    {userName}, semua kendali ada di kamu. pilih berhenti atau lanjut scroll nih
+                                                    {interventionMsg?.message ||
+                                                        `${userName}, semua kendali ada di kamu. pilih berhenti atau lanjut scroll nih`}
                                                 </Text>
                                             </View>
                                         </View>

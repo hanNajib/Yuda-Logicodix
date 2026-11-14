@@ -49,6 +49,7 @@ interface AuthState {
     setSelectedTargetPackages: (packages: string[]) => Promise<void>;
     setAppDetectionMode: (appId: string, mode: 'all' | 'trigger_only') => Promise<void>;
     setIntervalMinutes: (minutes: number) => Promise<void>;
+    setPauseDuration: (seconds: number) => Promise<void>;
     saveInterventionSettingsLocally: (settings: {
         tone_style?: string;
         scroll_interval_minutes?: number;
@@ -344,6 +345,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 scroll_interval_minutes: minutes,
             }).catch((err) => {
                 console.warn("Gagal menyinkronkan scroll_interval_minutes ke server:", err);
+            });
+        }
+    },
+
+    setPauseDuration: async (seconds: number) => {
+        try {
+            await SecureStore.setItemAsync(PAUSE_DURATION_KEY, seconds.toString());
+            if (typeof YudaPip.setPauseDurationSeconds === 'function') {
+                YudaPip.setPauseDurationSeconds(seconds);
+            }
+        } catch (e) {
+            console.warn("Gagal menyimpan durasi jeda:", e);
+        }
+        set({ pauseDuration: seconds });
+
+        const token = get().userToken;
+        if (token) {
+            apiClient.post('/api/intervention/settings', {
+                current_pause_duration: seconds,
+            }).catch((err) => {
+                console.warn("Gagal menyinkronkan current_pause_duration ke server:", err);
             });
         }
     },

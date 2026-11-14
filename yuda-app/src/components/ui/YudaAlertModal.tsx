@@ -135,24 +135,48 @@ export function YudaAlertModal({
                     ]}
                     onPress={(e) => e.stopPropagation()}
                 >
-                    {/* Judul Pop-Up */}
-                    <Text
-                        className="font-outfit-extrabold text-[#1f2923]"
-                        style={{
-                            fontSize: 18 * s,
-                            lineHeight: 24 * s,
-                        }}
-                    >
-                        {title}
-                    </Text>
+                    {/* Header Yuda Avatar & Judul Pop-Up */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 * s }}>
+                        {cfg.yudaImage && (
+                            <View
+                                style={{
+                                    width: 48 * s,
+                                    height: 48 * s,
+                                    borderRadius: 16 * s,
+                                    backgroundColor: cfg.badgeBg,
+                                    borderWidth: 1,
+                                    borderColor: cfg.badgeBorder,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: 12 * s,
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <Image
+                                    source={cfg.yudaImage}
+                                    style={{ width: '85%', height: '85%' }}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                        )}
+                        <Text
+                            className="font-outfit-extrabold text-[#1f2923]"
+                            style={{
+                                flex: 1,
+                                fontSize: 18 * s,
+                                lineHeight: 24 * s,
+                            }}
+                        >
+                            {title}
+                        </Text>
+                    </View>
 
                     {/* Pesan Pop-Up */}
                     <Text
                         className="font-outfit-medium text-[#55685d]"
                         style={{
-                            fontSize: 12.5 * s,
-                            lineHeight: 18 * s,
-                            marginTop: 6 * s,
+                            fontSize: 13 * s,
+                            lineHeight: 19 * s,
                             marginBottom: 20 * s,
                         }}
                     >

@@ -34,8 +34,10 @@ class YudaPipModule : Module() {
         const val PREFS_NAME = "yuda_overlay_prefs"
         const val KEY_TARGET_PACKAGES = "target_packages"
         const val KEY_INTERVAL_MINUTES = "interval_minutes"
+        const val KEY_PAUSE_DURATION_SECONDS = "pause_duration_seconds"
         const val KEY_APP_DETECTION_MODE_PREFIX = "app_detection_mode_" // "trigger_only" (default) or "all"
         const val DEFAULT_INTERVAL_MINUTES = 15
+        const val DEFAULT_PAUSE_DURATION_SECONDS = 30
         const val KEY_APP_FIRST_INSTALLED_AT = "app_first_installed_at"
 
         fun getAppInstalledTime(context: Context): Long {
@@ -94,6 +96,16 @@ class YudaPipModule : Module() {
         fun setIntervalMinutes(context: Context, minutes: Int) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().putInt(KEY_INTERVAL_MINUTES, minutes).apply()
+        }
+
+        fun getPauseDurationSeconds(context: Context): Int {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getInt(KEY_PAUSE_DURATION_SECONDS, DEFAULT_PAUSE_DURATION_SECONDS)
+        }
+
+        fun setPauseDurationSeconds(context: Context, seconds: Int) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putInt(KEY_PAUSE_DURATION_SECONDS, seconds).apply()
         }
     }
 
@@ -655,6 +667,17 @@ class YudaPipModule : Module() {
         Function("getIntervalMinutes") {
             val context = ctx() ?: return@Function DEFAULT_INTERVAL_MINUTES
             getIntervalMinutes(context)
+        }
+
+        Function("setPauseDurationSeconds") { seconds: Int ->
+            val context = ctx() ?: return@Function false
+            setPauseDurationSeconds(context, seconds)
+            true
+        }
+
+        Function("getPauseDurationSeconds") {
+            val context = ctx() ?: return@Function DEFAULT_PAUSE_DURATION_SECONDS
+            getPauseDurationSeconds(context)
         }
 
         Function("startOverlayMonitor") { userName: String?, targetPackages: List<String>?, testMode: Boolean?, intervalSeconds: Int? ->

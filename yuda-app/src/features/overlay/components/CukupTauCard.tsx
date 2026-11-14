@@ -35,6 +35,7 @@ interface CukupTauCardProps {
     cardWidth: number;
     scale?: number;
     triggerReason: 'jam_rawan' | 'scroll_terlalu_lama';
+    toneStyle?: string;
     onProceedToMission: (selectedEmotion: string, messageData?: CukupTauCardMessage) => void;
 }
 
@@ -43,6 +44,7 @@ export function CukupTauCard({
     cardWidth,
     scale = 1,
     triggerReason,
+    toneStyle,
     onProceedToMission,
 }: CukupTauCardProps) {
     const s = scale;
@@ -63,8 +65,8 @@ export function CukupTauCard({
         // 1. Simpan/Update emosi ke metrik user di backend
         updateDailyMatrixEmotion(emotionId);
 
-        // 2. Ambil pesan kartu cukup tau terpersonalisasi
-        const data = await fetchCukupTauMessage(emotionId, triggerReason);
+        // 2. Ambil pesan kartu cukup tau terpersonalisasi dari InterventionMessage
+        const data = await fetchCukupTauMessage(emotionId, triggerReason, toneStyle);
         setMessageData(data);
         setIsLoadingMessage(false);
         setStep('reflection');
@@ -76,7 +78,15 @@ export function CukupTauCard({
             : 'Kamu sudah scrolling cukup lama nih. Apa yang lagi kamu alamin sekarang hingga terus scrolling?';
 
     return (
-        <View style={{ width: cardWidth, alignItems: 'center' }}>
+        <TouchableOpacity
+            activeOpacity={step === 'reflection' ? 0.95 : 1}
+            onPress={() => {
+                if (step === 'reflection') {
+                    onProceedToMission(selectedEmotion || 'lelah', messageData || undefined);
+                }
+            }}
+            style={{ width: cardWidth, alignItems: 'center' }}
+        >
             {/* Karakter Yuda di atas kartu (peek behind card) */}
             <View
                 pointerEvents="none"
@@ -240,51 +250,62 @@ export function CukupTauCard({
                         )}
                     </View>
                 ) : (
-                    /* Step 2: Pesan Refleksi & Tips Cukup Tau */
-                    <View style={{ width: '100%', alignItems: 'center' }}>
-                        <Text
-                            style={{
-                                fontSize: 20 * s,
-                                fontWeight: '800',
-                                color: '#1A1F1B',
-                                textAlign: 'center',
-                                lineHeight: 26 * s,
-                            }}
-                        >
-                            {messageData?.header || `Kamu Merasa Lelah Hari Ini Ya?`}
-                        </Text>
+                    /* Step 2: Pesan Refleksi & Tips Cukup Tau (Mengisi Penuh & Presisi) */
+                    <View
+                        style={{
+                            width: '100%',
+                            flex: 1,
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <View style={{ width: '100%', alignItems: 'center', paddingTop: 4 * s }}>
+                            <Text
+                                style={{
+                                    fontSize: 21 * s,
+                                    fontWeight: '800',
+                                    color: '#1A1F1B',
+                                    textAlign: 'center',
+                                    lineHeight: 27 * s,
+                                }}
+                            >
+                                {messageData?.header || `Kamu Merasa Lelah\nHari Ini Ya?`}
+                            </Text>
 
-                        <Text
-                            style={{
-                                fontSize: 12 * s,
-                                fontWeight: '500',
-                                color: '#3B453E',
-                                textAlign: 'center',
-                                marginTop: 10 * s,
-                                marginBottom: 14 * s,
-                                lineHeight: 18 * s,
-                            }}
-                        >
-                            {messageData?.message ||
-                                'Yuk, berhenti sejenak. Kamu juga perlu waktu untuk dirimu sendiri. Nggak perlu terus mengikuti semua informasi. Beri pikiranmu ruang untuk beristirahat. Kamu nggak harus mengetahui semuanya hari ini.'}
-                        </Text>
+                            <Text
+                                style={{
+                                    fontSize: 13.5 * s,
+                                    fontWeight: '500',
+                                    color: '#2B362E',
+                                    textAlign: 'center',
+                                    marginTop: 18 * s,
+                                    marginBottom: 16 * s,
+                                    lineHeight: 21 * s,
+                                    paddingHorizontal: 4 * s,
+                                }}
+                            >
+                                {messageData?.message ||
+                                    'Yuk, berhenti sejenak. Kamu juga perlu waktu untuk dirimu sendiri.\nNggak perlu terus mengikuti semua informasi. Beri pikiranmu ruang untuk beristirahat. Kamu nggak harus mengetahui semuanya hari ini.'}
+                            </Text>
+                        </View>
 
-                        {/* Kotak Tips Mini */}
+                        {/* Kotak Tips Mini di Bagian Bawah */}
                         <View
                             style={{
                                 width: '100%',
                                 flexDirection: 'row',
                                 backgroundColor: '#F8EED7',
-                                borderRadius: 14 * s,
-                                padding: 12 * s,
+                                borderRadius: 16 * s,
+                                paddingVertical: 12 * s,
+                                paddingHorizontal: 12 * s,
                                 alignItems: 'center',
-                                marginBottom: 16 * s,
+                                marginTop: 12 * s,
                             }}
                         >
                             <View
                                 style={{
-                                    width: 38 * s,
-                                    height: 38 * s,
+                                    width: 40 * s,
+                                    height: 40 * s,
                                     borderRadius: 12 * s,
                                     backgroundColor: '#F5B938',
                                     alignItems: 'center',
@@ -292,12 +313,12 @@ export function CukupTauCard({
                                     marginRight: 10 * s,
                                 }}
                             >
-                                <Ionicons name="bulb" size={20 * s} color="#FFFFFF" />
+                                <Ionicons name="bulb" size={22 * s} color="#FFFFFF" />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text
                                     style={{
-                                        fontSize: 11.5 * s,
+                                        fontSize: 12 * s,
                                         fontWeight: '800',
                                         color: '#3A2E19',
                                     }}
@@ -306,45 +327,21 @@ export function CukupTauCard({
                                 </Text>
                                 <Text
                                     style={{
-                                        fontSize: 10.5 * s,
+                                        fontSize: 11 * s,
                                         fontWeight: '500',
                                         color: '#5E4E32',
-                                        lineHeight: 14.5 * s,
+                                        lineHeight: 15.5 * s,
                                         marginTop: 2 * s,
                                     }}
                                 >
                                     {messageData?.tips ||
-                                        'Letakkan ponselmu, tarik nafas perlahan, dan alihkan perhatian ke lingkungan sekitarmu.'}
+                                        'Letakkan ponselmu, tarik napas perlahan, dan alihkan perhatian ke lingkungan sekitarmu.'}
                                 </Text>
                             </View>
                         </View>
-
-                        {/* Tombol Lanjut ke Misi */}
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            onPress={() => onProceedToMission(selectedEmotion || 'lelah', messageData || undefined)}
-                            style={{
-                                width: '100%',
-                                backgroundColor: '#2B6247',
-                                borderRadius: 14 * s,
-                                paddingVertical: 12 * s,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    fontSize: 14 * s,
-                                    fontWeight: '700',
-                                    color: '#FFFFFF',
-                                }}
-                            >
-                                Lanjut Misi Jeda
-                            </Text>
-                        </TouchableOpacity>
                     </View>
                 )}
             </View>
-        </View>
+        </TouchableOpacity>
     );
 }

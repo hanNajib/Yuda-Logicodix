@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     Outfit_500Medium,
     Outfit_600SemiBold,
@@ -35,6 +35,12 @@ import { ToDoListCard } from '../components/beranda/ToDoListCard';
 import { OverlayQuickControlCard } from '../components/beranda/OverlayQuickControlCard';
 import YudaPip from '@/modules/yuda-pip';
 import { syncScreenTimeIfDue } from '../services/screenTimeSyncService';
+import { YudaAlertModal } from '@/components/ui/YudaAlertModal';
+import {
+    evaluateWeeklyProgress,
+    markWeeklyEvaluationPrompted,
+    WeeklyEvaluationResult,
+} from '../services/weeklyEvaluationService';
 
 const SAGE_BG = '#bccdc0';
 const SHEET_BG = '#F6F3EC';
@@ -50,15 +56,24 @@ function getTodayIsoString(): string {
 
 export default function HomeScreen() {
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const insets = useSafeAreaInsets();
     const { width: W } = useWindowDimensions();
     const s = Math.min(W / REF_W, 1.15);
 
-    const { user, userName } = useAuthStore();
+    const {
+        user,
+        userName,
+        intervalMinutes: storedInterval,
+        pauseDuration: storedPauseDuration,
+        setIntervalMinutes: updateStoredInterval,
+        setPauseDuration: updateStoredPauseDuration,
+    } = useAuthStore();
     const displayName = userName || user?.name || 'Gathan';
 
     const [activeTab, setActiveTab] = useState<DashboardTab>('home');
+    const [weeklyEvalResult, setWeeklyEvalResult] = useState<WeeklyEvaluationResult | null>(null);
 
     const todayIso = useMemo(() => getTodayIsoString(), []);
 
@@ -101,6 +116,20 @@ export default function HomeScreen() {
         syncScreenTimeIfDue({ reason: 'app_active' });
     }, [todayIso]);
 
+    // Evaluasi Mingguan (setiap minggu / hari Senin saat buka aplikasi)
+    useEffect(() => {
+        const checkWeeklyProgress = async () => {
+            const currentInterval = storedInterval || 15;
+            const currentPauseDuration = storedPauseDuration || 30;
+            const result = await evaluateWeeklyProgress(currentInterval, currentPauseDuration);
+            if (result && result.shouldPrompt) {
+                setWeeklyEvalResult(result);
+            }
+        };
+
+        checkWeeklyProgress();
+    }, [storedInterval, storedPauseDuration]);
+
     // Beranda: Utamakan 100% dari DB Yuda (user_social_screen_times & user_daily_screen_time_matrices)
     const topApp = socialData?.top_app?.name || androidStats?.top_app?.name || 'Instagram';
     const topAppKey = socialData?.top_app?.key || androidStats?.top_app?.key || 'instagram';
@@ -109,10 +138,16 @@ export default function HomeScreen() {
     const topAppMinsPart = topAppMinutes % 60;
     const topAppTimeFormatted = `${topAppHoursPart} Jam ${topAppMinsPart} Menit`;
 
-    // Kalkulasi Screen Time hari ini dari DB Yuda (fallback ke android jika baru pertama kali buka)
+    // Kalkulasi Screen Time & Waktu Bebas Layar hari ini
     const todayTotalMinutes = Number(todayMatrixData?.total_screen_time_minutes ?? androidStats?.today_total_minutes ?? 0);
-    const screenTimeHours = Math.floor(todayTotalMinutes / 60);
-    const screenTimeMinutes = todayTotalMinutes % 60;
+
+    // Waktu bebas layar: total waktu dari jam 00:00 sampai saat ini dikurangi total screen time
+    const now = new Date();
+    const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+    const screenFreeMinutesTotal = Math.max(0, minutesSinceMidnight - todayTotalMinutes);
+
+    const screenTimeHours = Math.floor(screenFreeMinutesTotal / 60);
+    const screenTimeMinutes = screenFreeMinutesTotal % 60;
     const pausesCount = Number(todayMatrixData?.interventions_triggered ?? 0);
 
     const activeSlots = todayMatrixData?.slots || androidStats?.slots;
@@ -306,6 +341,7 @@ export default function HomeScreen() {
                                     log_date: todayIso,
                                     emotion: newEmotion,
                                 });
+                                queryClient.invalidateQueries({ queryKey: ['dailyScreenTimeMatrix', todayIso] });
                             } catch (e) {
                                 console.warn('[BerandaScreen] Gagal update emosi metrik:', e);
                             }
@@ -349,6 +385,33 @@ export default function HomeScreen() {
                     scale={s}
                 />
             </View>
+
+            {/* Pop Up Evaluasi Progres Mingguan */}
+            {weeklyEvalResult && (
+                <YudaAlertModal
+                    visible={Boolean(weeklyEvalResult)}
+                    type={weeklyEvalResult.trend === 'improved' ? 'success' : 'warning'}
+                    title={weeklyEvalResult.title}
+                    message={weeklyEvalResult.message}
+                    confirmText="Terapkan Penyesuaian"
+                    cancelText="Nanti Saja"
+                    scale={s}
+                    onConfirm={async () => {
+                        const nextInterval = weeklyEvalResult.suggestedInterval;
+                        const nextPause = weeklyEvalResult.suggestedPauseDuration;
+                        await Promise.all([
+                            updateStoredInterval(nextInterval),
+                            updateStoredPauseDuration(nextPause),
+                            markWeeklyEvaluationPrompted(weeklyEvalResult.weekKey),
+                        ]);
+                        setWeeklyEvalResult(null);
+                    }}
+                    onCancel={async () => {
+                        await markWeeklyEvaluationPrompted(weeklyEvalResult.weekKey);
+                        setWeeklyEvalResult(null);
+                    }}
+                />
+            )}
         </View>
     );
 }

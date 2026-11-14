@@ -113,22 +113,19 @@ export const Q6_OPTIONS: QuizOptionItem[] = [
 ];
 
 export const Q7_OPTIONS: QuizOptionItem[] = [
-    { id: 'A', badge: 'A', text: 'Ingin selalu tahu kabar terbaru' },
-    { id: 'B', badge: 'B', text: 'Merasa lebih siap dan terkendali jika tahu' },
-    { id: 'C', badge: 'C', text: 'Takut ketinggalan obrolan atau kejadian penting' },
-    { id: 'D', badge: 'D', text: 'Tertarik pada hal yang mengejutkan atau dramatis' },
-    { id: 'E', badge: 'E', text: 'Terseret otomatis oleh beranda atau rekomendasi' },
-    { id: 'F', badge: 'F', text: 'Ingin ikut membaca atau berdiskusi di kolom komentar' },
+    { id: 'A', badge: 'A', text: 'Ingin selalu mengikuti informasi atau berita terbaru' },
+    { id: 'B', badge: 'B', text: 'Takut tertinggal tren atau info yang sedang ramai dibicarakan' },
+    { id: 'C', badge: 'C', text: 'Tertarik pada konten mengejutkan, kontroversial, atau bikin penasaran' },
+    { id: 'D', badge: 'D', text: 'Terus menemukan konten menarik lewat FYP atau rekomendasi' },
+    { id: 'E', badge: 'E', text: 'Tertarik baca komentar atau ikut berinteraksi dalam diskusi' },
 ];
 
 export const Q8_OPTIONS: QuizOptionItem[] = [
-    { id: 'A', badge: 'A', text: 'Keluarga dan orang terdekat' },
-    { id: 'B', badge: 'B', text: 'Belajar dan karier' },
+    { id: 'A', badge: 'A', text: 'Keluarga dan pertemanan' },
+    { id: 'B', badge: 'B', text: 'Karier dan kebebasan finansial' },
     { id: 'C', badge: 'C', text: 'Kesehatan fisik dan mental' },
     { id: 'D', badge: 'D', text: 'Iman dan spiritualitas' },
     { id: 'E', badge: 'E', text: 'Kreativitas dan hobi' },
-    { id: 'F', badge: 'F', text: 'Kebebasan finansial dan kemandirian' },
-    { id: 'G', badge: 'G', text: 'Pertemanan dan komunitas' },
 ];
 
 export const Q9_OPTIONS: QuizOptionItem[] = [

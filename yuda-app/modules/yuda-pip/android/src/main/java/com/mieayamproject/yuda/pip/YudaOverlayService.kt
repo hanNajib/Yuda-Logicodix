@@ -724,7 +724,8 @@ class YudaOverlayService : Service() {
                     putInt("pauseStage", pauseStageLevel)
                     putInt("pauseCount", totalPauseCount)
                     putString("actionType", chosenAction)
-                    putInt("breathDurationSeconds", 30)
+                    val configuredPauseDuration = YudaPipModule.getPauseDurationSeconds(this@YudaOverlayService)
+                    putInt("breathDurationSeconds", configuredPauseDuration.coerceAtLeast(15))
                     putDouble("screenWidth", (screenWidthPx / density).toDouble())
                     putDouble("screenHeight", (screenHeightPx / density).toDouble())
                 }
