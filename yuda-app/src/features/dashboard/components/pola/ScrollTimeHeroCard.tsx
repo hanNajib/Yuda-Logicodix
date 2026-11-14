@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import Svg, {
     Circle,
@@ -16,14 +16,35 @@ interface ScrollTimeHeroCardProps {
     scale?: number;
     hours?: number;
     minutes?: number;
+    diffMinutes?: number;
+    interventionsTriggered?: number;
+    slots?: Record<string, number | undefined>;
     onViewMore?: () => void;
 }
+
+const SLOT_KEYS = [
+    'slot_00_02',
+    'slot_02_04',
+    'slot_04_06',
+    'slot_06_08',
+    'slot_08_10',
+    'slot_10_12',
+    'slot_12_14',
+    'slot_14_16',
+    'slot_16_18',
+    'slot_18_20',
+    'slot_20_22',
+    'slot_22_00',
+];
 
 export function ScrollTimeHeroCard({
     userName,
     scale = 1,
-    hours = 3,
-    minutes = 15,
+    hours = 0,
+    minutes = 0,
+    diffMinutes = 0,
+    interventionsTriggered = 0,
+    slots = {},
     onViewMore,
 }: ScrollTimeHeroCardProps) {
     const s = scale;
@@ -31,24 +52,50 @@ export function ScrollTimeHeroCard({
     const chartW = 300 * s;
     const chartH = 85 * s;
 
-    const points = [
-        { x: 0, y: chartH * 0.45 },
-        { x: chartW * 0.25, y: chartH * 0.78 },
-        { x: chartW * 0.5, y: chartH * 0.18 },
-        { x: chartW * 0.75, y: chartH * 0.65 },
-        { x: chartW, y: chartH * 0.32 },
-    ];
+    const slotValues = useMemo(() => {
+        return SLOT_KEYS.map((k) => Math.max(0, slots[k] ?? 0));
+    }, [slots]);
 
-    const pathLine = `M ${points[0].x} ${points[0].y} ` +
-        `L ${points[1].x} ${points[1].y} ` +
-        `L ${points[2].x} ${points[2].y} ` +
-        `L ${points[3].x} ${points[3].y} ` +
-        `L ${points[4].x} ${points[4].y}`;
+    const maxVal = Math.max(1, ...slotValues);
+
+    const points = useMemo(() => {
+        const stepX = chartW / (slotValues.length - 1);
+        return slotValues.map((val, idx) => {
+            const x = idx * stepX;
+            const normalized = val / maxVal;
+            // Map to vertical height (padding 12% bottom & top)
+            const y = chartH * 0.85 - normalized * (chartH * 0.7);
+            return { x, y };
+        });
+    }, [slotValues, maxVal, chartW, chartH]);
+
+    const pathLine = points
+        .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+        .join(' ');
 
     const pathArea = `${pathLine} L ${chartW} ${chartH} L 0 ${chartH} Z`;
 
     const charWidth = 105 * s;
     const charHeight = 105 * s;
+
+    const comparisonText = useMemo(() => {
+        if (diffMinutes === 0) return 'Sama dengan kemarin';
+        const absMin = Math.abs(diffMinutes);
+        let timeStr = `${absMin} menit`;
+        if (absMin >= 60) {
+            const h = Math.floor(absMin / 60);
+            const m = absMin % 60;
+            timeStr = m === 0 ? `${h} jam` : `${h} jam ${m} menit`;
+        }
+        return diffMinutes > 0
+            ? `Bertambah ${timeStr} dibanding kemarin`
+            : `Berkurang ${timeStr} dibanding kemarin`;
+    }, [diffMinutes]);
+
+    const jedaText = useMemo(() => {
+        if (interventionsTriggered <= 0) return 'Belum ada jeda yang diambil hari ini';
+        return `Kamu sudah mendapatkan ${interventionsTriggered} jeda hari ini`;
+    }, [interventionsTriggered]);
 
     return (
         <View
@@ -227,7 +274,7 @@ export function ScrollTimeHeroCard({
                                 marginTop: 2 * s,
                             }}
                         >
-                            Berkurang 45 menit dibanding kemarin
+                            {comparisonText}
                         </Text>
                     </View>
                 </View>
@@ -265,7 +312,7 @@ export function ScrollTimeHeroCard({
                                 marginTop: 2 * s,
                             }}
                         >
-                            Kamu mendapat lebih banyak 1 jeda dari kemarin
+                            {jedaText}
                         </Text>
                     </View>
                 </View>
@@ -363,4 +410,3 @@ export function ScrollTimeHeroCard({
         </View>
     );
 }
-

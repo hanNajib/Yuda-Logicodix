@@ -18,6 +18,12 @@ class InterventionService
     public const VALID_TONE_STYLES = ['lembut', 'tegas', 'humoris', 'faktual', 'reflektif'];
     public const VALID_MICRO_HABITS = ['minum', 'tidur', 'nafas', 'peregangan'];
 
+    public const SLOT_COLUMNS = [
+        'slot_00_02', 'slot_02_04', 'slot_04_06', 'slot_06_08',
+        'slot_08_10', 'slot_10_12', 'slot_12_14', 'slot_14_16',
+        'slot_16_18', 'slot_18_20', 'slot_20_22', 'slot_22_00',
+    ];
+
     private const MIN_PAUSE_DURATION = 30; 
     private const MAX_PAUSE_DURATION = 60; 
     private const DURATION_STEP = 5;       
@@ -202,13 +208,10 @@ class InterventionService
         string $logDate,
         array $slots = [],
         int $interventionsTriggered = 0,
-        array $socialTimes = []
+        array $socialTimes = [],
+        ?string $emotion = null
     ): UserDailyScreenTimeMatrix {
-        $allowedSlots = [
-            'slot_00_02', 'slot_02_04', 'slot_04_06', 'slot_06_08',
-            'slot_08_10', 'slot_10_12', 'slot_12_14', 'slot_14_16',
-            'slot_16_18', 'slot_18_20', 'slot_20_22', 'slot_22_00',
-        ];
+        $allowedSlots = self::SLOT_COLUMNS;
 
         $socialPlatforms = ['instagram', 'tiktok', 'facebook', 'threads', 'youtube', 'x'];
 
@@ -243,6 +246,10 @@ class InterventionService
 
         if ($interventionsTriggered > 0) {
             $matrix->interventions_triggered = $interventionsTriggered;
+        }
+
+        if ($emotion !== null && trim($emotion) !== '') {
+            $matrix->emotion = trim($emotion);
         }
 
         $matrix->save();
@@ -281,6 +288,12 @@ class InterventionService
                 'slot_18_20',
                 'slot_20_22',
                 'slot_22_00',
+                'instagram',
+                'tiktok',
+                'facebook',
+                'threads',
+                'youtube',
+                'x',
                 'total_screen_time_minutes',
                 'interventions_triggered',
             ];
@@ -322,6 +335,77 @@ class InterventionService
     public function getMonthlyMatrices(?User $user, ?string $guestUuid, ?string $yearMonth = null): Collection
     {
         return $this->getMatricesByRange($user, $guestUuid, 'month', $yearMonth ? $yearMonth . '-01' : null);
+    }
+
+    /**
+     * Ambil detail data matriks harian untuk tanggal spesifik,
+     * termasuk 12 slot, perbandingan dengan hari sebelumnya,
+     * dan rincian penggunaan aplikasi beserta persentasenya.
+     */
+    public function getDailyMatrixDetail(?User $user, ?string $guestUuid, ?string $targetDateStr = null): array
+    {
+        $targetDate = $targetDateStr ? Carbon::parse($targetDateStr) : Carbon::today();
+        $targetDateFormatted = $targetDate->toDateString();
+        $prevDateFormatted = $targetDate->copy()->subDay()->toDateString();
+
+        $query = UserDailyScreenTimeMatrix::query();
+        if ($user instanceof User) {
+            $query->where('user_id', $user->id);
+        } else {
+            $query->where('guest_uuid', $guestUuid ?: 'guest-default');
+        }
+
+        $records = (clone $query)
+            ->whereIn('log_date', [$targetDateFormatted, $prevDateFormatted])
+            ->get()
+            ->keyBy(fn ($item) => Carbon::parse($item->log_date)->toDateString());
+
+        $currentRecord = $records->get($targetDateFormatted);
+        $prevRecord = $records->get($prevDateFormatted);
+
+        $totalScreenTimeMinutes = $currentRecord ? (int) $currentRecord->total_screen_time_minutes : 0;
+        $prevTotalMinutes = $prevRecord ? (int) $prevRecord->total_screen_time_minutes : 0;
+        $diffMinutes = $totalScreenTimeMinutes - $prevTotalMinutes;
+
+        $slots = [];
+        foreach (self::SLOT_COLUMNS as $slotCol) {
+            $slots[$slotCol] = $currentRecord ? (int) $currentRecord->{$slotCol} : 0;
+        }
+
+        $appKeys = [
+            'instagram' => 'Instagram',
+            'tiktok' => 'TikTok',
+            'facebook' => 'Facebook',
+            'threads' => 'Threads',
+            'youtube' => 'YouTube',
+            'x' => 'X (Twitter)',
+        ];
+
+        $appUsages = [];
+        foreach ($appKeys as $key => $label) {
+            $minutes = $currentRecord ? (int) ($currentRecord->{$key} ?? 0) : 0;
+            $percentage = $totalScreenTimeMinutes > 0
+                ? round(($minutes / $totalScreenTimeMinutes) * 100, 1)
+                : 0.0;
+
+            $appUsages[] = [
+                'key' => $key,
+                'name' => $label,
+                'minutes' => $minutes,
+                'percentage' => $percentage,
+            ];
+        }
+
+        return [
+            'log_date' => $targetDateFormatted,
+            'total_screen_time_minutes' => $totalScreenTimeMinutes,
+            'prev_screen_time_minutes' => $prevTotalMinutes,
+            'diff_minutes' => $diffMinutes,
+            'interventions_triggered' => $currentRecord ? (int) $currentRecord->interventions_triggered : 0,
+            'emotion' => $currentRecord?->emotion,
+            'slots' => $slots,
+            'app_usages' => $appUsages,
+        ];
     }
 
     /**

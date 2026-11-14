@@ -56,6 +56,7 @@ class YudaOverlayService : Service() {
         const val ACTION_SCROLL_TICK = "com.mieayamproject.yuda.pip.SCROLL_TICK"
         const val ACTION_REELS_TIMER_UPDATE = "com.mieayamproject.yuda.pip.REELS_TIMER_UPDATE"
         const val ACTION_DISMISS_ALERT = "com.mieayamproject.yuda.pip.DISMISS_ALERT"
+        const val ACTION_UPDATE_INTERVAL = "com.mieayamproject.yuda.pip.UPDATE_INTERVAL"
 
         const val EXTRA_USER_NAME = "extra_user_name"
         const val EXTRA_TARGET_PACKAGE = "extra_target_package"
@@ -86,6 +87,7 @@ class YudaOverlayService : Service() {
     private var testMode: Boolean = true
     private var intervalSeconds: Int = 30
     private var pauseStageLevel: Int = 1
+    private var totalPauseCount: Int = 0
     private var lastAccessibilityTriggeredBucket: Int = 0
     private var lastAccessibilityUpdateAt: Long = 0L
     private var lastAccessibilityElapsedSeconds: Int = 0
@@ -183,9 +185,10 @@ class YudaOverlayService : Service() {
                 val timeStr = if (totalMins > 0) "${totalMins}m ${totalSecs}s" else "${totalSecs}s"
 
                 if (isTimerRunning) {
-                    updateTimerBubbleText("🔥 $appLabel: $timeStr")
+                    val contextTag = if (isCurrentlyInReels) "Reels" else "Feed"
+                    updateTimerBubbleText("🔥 $appLabel ($contextTag): $timeStr")
                 } else {
-                    updateTimerBubbleText("⏸️ Yuda: $timeStr (Diam/Idle)")
+                    updateTimerBubbleText("⏸️ $appLabel: $timeStr (Diam)")
                 }
 
                 if (bucket > lastAccessibilityTriggeredBucket && rawSecondsElapsed > 0 && !isPeeking && !isFullModal) {
@@ -204,12 +207,36 @@ class YudaOverlayService : Service() {
                     if (pauseStageLevel < 2) {
                         pauseStageLevel++
                     }
+                    lastScrollTime = SystemClock.elapsedRealtime()
+                    lastAccessibilityUpdateAt = SystemClock.elapsedRealtime()
+                    YudaAccessibilityService.forceResumeReelsSession()
+                } else if (reason == "rest") {
+                    pauseStageLevel = 1
+                    try {
+                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_HOME)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(homeIntent)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Gagal mengarahkan ke Home Screen Android: ${e.message}")
+                    }
                 } else {
                     pauseStageLevel = 1
                 }
                 lastAccessibilityTriggeredBucket = lastAccessibilityElapsedSeconds / intervalSeconds.coerceAtLeast(1)
                 remainingSeconds = intervalSeconds
                 dismissOverlay()
+                return START_STICKY
+            }
+            ACTION_UPDATE_INTERVAL -> {
+                val newInterval = intent.getIntExtra(EXTRA_INTERVAL_SECONDS, 0)
+                if (newInterval > 0) {
+                    intervalSeconds = newInterval
+                    lastAccessibilityTriggeredBucket = lastAccessibilityElapsedSeconds / intervalSeconds.coerceAtLeast(1)
+                    remainingSeconds = intervalSeconds
+                    Log.d(TAG, "Interval waktu jeda diperbarui menjadi: $intervalSeconds detik")
+                }
                 return START_STICKY
             }
         }
@@ -421,12 +448,12 @@ class YudaOverlayService : Service() {
         val lower = pkg.lowercase()
         return when {
             lower.contains("barcelona") -> "Threads"
-            lower.contains("twitter") -> "X"
-            lower.contains("instagram") -> "IG"
+            lower.contains("twitter") -> "X (Twitter)"
+            lower.contains("instagram") -> "Instagram"
             lower.contains("tiktok") || lower.contains("musically") || lower.contains("trill") -> "TikTok"
-            lower.contains("youtube") -> "Shorts"
-            lower.contains("facebook") || lower.contains("katana") -> "FB"
-            else -> "Video"
+            lower.contains("youtube") -> "YouTube"
+            lower.contains("facebook") || lower.contains("katana") -> "Facebook"
+            else -> "Media Sosial"
         }
     }
 
@@ -455,7 +482,7 @@ class YudaOverlayService : Service() {
                 }
 
                 val hasRecentAccessibilityTick = (now - lastAccessibilityUpdateAt) < 2500L
-                val isActivelyScrolling = (now - lastScrollTime < 6000L) && isTargetAppInForeground && isCurrentlyInReels
+                val isActivelyScrolling = (now - lastScrollTime < 5 * 60 * 1000L) && isTargetAppInForeground && isCurrentlyInReels
 
                 val shouldCount = if (YudaAccessibilityService.isServiceConnected) {
                     isActivelyScrolling && !hasRecentAccessibilityTick
@@ -471,7 +498,7 @@ class YudaOverlayService : Service() {
                     val totalMins = lastAccessibilityElapsedSeconds / 60
                     val totalSecs = lastAccessibilityElapsedSeconds % 60
                     val timeStr = if (totalMins > 0) "${totalMins}m ${totalSecs}s" else "${totalSecs}s"
-                    val tag = if (isCurrentlyInReels) "🔥 $appLabel Reels" else "🔥 $appLabel"
+                    val tag = if (isCurrentlyInReels) "🔥 $appLabel (Reels)" else "🔥 $appLabel"
                     updateTimerBubbleText("$tag: $timeStr")
 
                     if (remainingSeconds <= 0) {
@@ -480,7 +507,7 @@ class YudaOverlayService : Service() {
                     }
                 } else if (!hasRecentAccessibilityTick) {
                     val statusDesc = if (!YudaAccessibilityService.isServiceConnected) {
-                        "Aktifkan Aksesibilitas"
+                        "Nyalakan Aksesibilitas"
                     } else if (isTargetAppInForeground) {
                         if (isCurrentlyInReels) "Diam" else "Bukan Feed"
                     } else {
@@ -489,7 +516,8 @@ class YudaOverlayService : Service() {
                     val totalMins = lastAccessibilityElapsedSeconds / 60
                     val totalSecs = lastAccessibilityElapsedSeconds % 60
                     val timeStr = if (totalMins > 0) "${totalMins}m ${totalSecs}s" else "${totalSecs}s"
-                    updateTimerBubbleText("⏸️ Yuda: $timeStr ($statusDesc)")
+                    val prefix = if (isTargetAppInForeground) "⏸️ $appLabel" else "⏸️ Standby"
+                    updateTimerBubbleText("$prefix: $timeStr ($statusDesc)")
                 }
 
                 handler.postDelayed(this, 1000L)
@@ -534,6 +562,8 @@ class YudaOverlayService : Service() {
 
     private fun triggerPeekingYuda() {
         if (overlayView != null || pendingRemovalView != null || fadingPeekView != null) return
+
+        totalPauseCount++
 
         val wm = windowManager ?: return
 
@@ -605,7 +635,7 @@ class YudaOverlayService : Service() {
             peekCapybara.translationY = -targetHeight.toFloat()
             peekCapybara.animate()
                 .translationY(-sunkPx.toFloat())
-                .setDuration(500)
+                .setDuration(350)
                 .setInterpolator(DecelerateInterpolator(1.5f))
                 .start()
 
@@ -613,7 +643,7 @@ class YudaOverlayService : Service() {
                 if (isPeeking && overlayView === root) {
                     transitionToFullModal(root)
                 }
-            }, 3200L)
+            }, 1200L)
 
         } catch (e: Exception) {
             Log.e(TAG, "Gagal triggerPeekingYuda: ${e.message}")
@@ -627,15 +657,8 @@ class YudaOverlayService : Service() {
         val (screenWidthPx, screenHeightPx) = getRealScreenSize()
 
         val fullRoot = OverlayContainerLayout(this) {
-            if (activeSurface != null) {
-                val reactHost = (application as? ReactApplication)?.reactHost
-                reactHost?.onBackPressed() == true
-            } else if (isFullModal) {
-                dismissOverlay()
-                true
-            } else {
-                false
-            }
+            // Intervensi modal tidak boleh di-dismiss dengan tombol back
+            true
         }.apply {
             clipChildren = true
             clipToPadding = true
@@ -679,7 +702,9 @@ class YudaOverlayService : Service() {
                 val themedContext = ContextThemeWrapper(this, themeResId)
                 val density = resources.displayMetrics.density.coerceAtLeast(1f)
                 val reminderMinutes = (intervalSeconds / 60).coerceAtLeast(1)
-                val elapsedMinutes = (lastAccessibilityElapsedSeconds / 60).coerceAtLeast(reminderMinutes)
+                val safeElapsedSeconds = if (lastAccessibilityElapsedSeconds > 0) lastAccessibilityElapsedSeconds else intervalSeconds
+                val elapsedMinutes = (safeElapsedSeconds / 60)
+                val elapsedRemainingSeconds = (safeElapsedSeconds % 60)
                 val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
                 val isSleepTime = currentHour >= 22 || currentHour < 4
                 val actionPool = if (isSleepTime) {
@@ -692,11 +717,15 @@ class YudaOverlayService : Service() {
                 val initialProps = Bundle().apply {
                     putString("userName", userName)
                     putInt("durationMinutes", elapsedMinutes)
+                    putInt("durationSeconds", elapsedRemainingSeconds)
+                    putInt("totalElapsedSeconds", safeElapsedSeconds)
                     putInt("reminderMinutes", reminderMinutes)
                     putString("pauseType", "biasa")
                     putInt("pauseStage", pauseStageLevel)
+                    putInt("pauseCount", totalPauseCount)
                     putString("actionType", chosenAction)
-                    putInt("breathDurationSeconds", 30)
+                    val configuredPauseDuration = YudaPipModule.getPauseDurationSeconds(this@YudaOverlayService)
+                    putInt("breathDurationSeconds", configuredPauseDuration.coerceAtLeast(15))
                     putDouble("screenWidth", (screenWidthPx / density).toDouble())
                     putDouble("screenHeight", (screenHeightPx / density).toDouble())
                 }
@@ -866,8 +895,17 @@ class YudaOverlayService : Service() {
         }
         contentBox.addView(capyImg)
 
+        val safeElapsedSeconds = if (lastAccessibilityElapsedSeconds > 0) lastAccessibilityElapsedSeconds else intervalSeconds
+        val totalMins = safeElapsedSeconds / 60
+        val totalSecs = safeElapsedSeconds % 60
+        val durationFormatted = when {
+            totalMins > 0 && totalSecs > 0 -> "$totalMins Menit $totalSecs Detik"
+            totalMins > 0 -> "$totalMins Menit"
+            else -> "$totalSecs Detik"
+        }
+
         val titleTv = TextView(this).apply {
-            text = "Halo $userName, Kamu\nSudah Scrolling\nSelama 15 Menit"
+            text = "Halo $userName, Kamu\nSudah Scrolling\nSelama $durationFormatted"
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f)
             setTypeface(Typeface.DEFAULT_BOLD)
@@ -883,9 +921,8 @@ class YudaOverlayService : Service() {
 
         container.addView(contentBox)
 
-        container.setOnClickListener {
-            dismissOverlay()
-        }
+        // Native fallback modal tidak dismiss saat background diklik
+        // Pengguna harus memilih aksi intervensi
 
         return container
     }

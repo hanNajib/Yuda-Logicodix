@@ -10,9 +10,9 @@ import Svg, {
     Stop,
 } from 'react-native-svg';
 
-interface AppUsageItem {
+export interface AppUsageItem {
     id: string;
-    name: 'Instagram' | 'TikTok' | string;
+    name: 'Instagram' | 'TikTok' | 'Facebook' | 'Threads' | 'YouTube' | 'X (Twitter)' | string;
     usageTime: string;
     percentage: number;
     quotaLabel?: string;
@@ -101,6 +101,88 @@ function TikTokIcon({ size = 44 }: { size?: number }) {
     );
 }
 
+function FacebookIcon({ size = 44 }: { size?: number }) {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 100 100">
+            <Circle cx="50" cy="50" r="50" fill="#1877f2" />
+            <Path
+                d="M62 52.8h-8.8V85H40V52.8H34V42.2h6V35c0-8.2 5-12.8 12.4-12.8 3.6 0 7.3.6 7.3.6v8h-4.2c-4.1 0-5.5 2.6-5.5 5.2v6.2h9.2l-1.2 10.6z"
+                fill="#ffffff"
+            />
+        </Svg>
+    );
+}
+
+function YouTubeIcon({ size = 44 }: { size?: number }) {
+    return (
+        <View
+            className="items-center justify-center bg-white"
+            style={{
+                width: size,
+                height: size,
+                borderRadius: size * 0.28,
+            }}
+        >
+            <Ionicons
+                name="logo-youtube"
+                size={size * 0.85}
+                color="#ff0000"
+            />
+        </View>
+    );
+}
+
+function ThreadsIcon({ size = 44 }: { size?: number }) {
+    return (
+        <View
+            className="items-center justify-center bg-[#111827]"
+            style={{
+                width: size,
+                height: size,
+                borderRadius: size * 0.28,
+            }}
+        >
+            <Svg width={size * 0.62} height={size * 0.62} viewBox="0 0 24 24" fill="none">
+                <Path
+                    d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm3.923 11.22c-.12 2.24-1.464 3.633-3.805 3.633-2.616 0-4.148-1.854-4.148-4.636 0-3.088 1.77-4.808 4.316-4.808 2.378 0 3.738 1.488 3.864 3.493h-1.637c-.11-1.16-.867-1.922-2.227-1.922-1.644 0-2.627 1.156-2.627 3.237 0 2.012.983 3.064 2.457 3.064 1.474 0 2.148-.823 2.258-2.061H12v-1.554h3.923v1.554z"
+                    fill="#ffffff"
+                />
+            </Svg>
+        </View>
+    );
+}
+
+function XIcon({ size = 44 }: { size?: number }) {
+    return (
+        <View
+            className="items-center justify-center bg-[#111827]"
+            style={{
+                width: size,
+                height: size,
+                borderRadius: size * 0.28,
+            }}
+        >
+            <Svg width={size * 0.58} height={size * 0.58} viewBox="0 0 24 24" fill="none">
+                <Path
+                    d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+                    fill="#ffffff"
+                />
+            </Svg>
+        </View>
+    );
+}
+
+function RenderPolaAppIcon({ appName, size = 44 }: { appName: string; size?: number }) {
+    const lower = appName.toLowerCase();
+    if (lower.includes('instagram')) return <InstagramIcon size={size} />;
+    if (lower.includes('tiktok')) return <TikTokIcon size={size} />;
+    if (lower.includes('facebook')) return <FacebookIcon size={size} />;
+    if (lower.includes('youtube')) return <YouTubeIcon size={size} />;
+    if (lower.includes('threads')) return <ThreadsIcon size={size} />;
+    if (lower.includes('x') || lower.includes('twitter')) return <XIcon size={size} />;
+    return <InstagramIcon size={size} />;
+}
+
 function DonutGauge({
     percentage = 25,
     size = 64,
@@ -110,9 +192,10 @@ function DonutGauge({
     size?: number;
     strokeWidth?: number;
 }) {
+    const clamped = Math.min(100, Math.max(0, percentage));
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (circumference * percentage) / 100;
+    const strokeDashoffset = circumference - (circumference * clamped) / 100;
 
     return (
         <View
@@ -158,7 +241,7 @@ function DonutGauge({
                             lineHeight: size * 0.27,
                         }}
                     >
-                        {percentage}%
+                        {clamped}%
                     </Text>
 
                     <Text
@@ -177,24 +260,9 @@ function DonutGauge({
     );
 }
 
-const DEFAULT_APPS: AppUsageItem[] = [
-    {
-        id: 'ig',
-        name: 'Instagram',
-        usageTime: '1 Jam, 2 Menit',
-        percentage: 25,
-    },
-    {
-        id: 'tiktok',
-        name: 'TikTok',
-        usageTime: '1 Jam, 2 Menit',
-        percentage: 25,
-    },
-];
-
 export function AppUsageSection({
     scale = 1,
-    apps = DEFAULT_APPS,
+    apps = [],
 }: AppUsageSectionProps) {
     const s = scale;
 
@@ -231,52 +299,65 @@ export function AppUsageSection({
             </View>
 
             <View style={{ gap: 8 * s }}>
-                {apps.map((app) => (
+                {apps.length === 0 ? (
                     <View
-                        key={app.id}
-                        className="flex-row items-center bg-white"
+                        className="items-center justify-center bg-white"
                         style={{
-                            borderRadius: 20 * s,
-                            paddingVertical: 14 * s,
+                            borderRadius: 18 * s,
+                            paddingVertical: 20 * s,
                             paddingHorizontal: 16 * s,
                         }}
                     >
-                        <View style={{ marginRight: 14 * s }}>
-                            {app.name === 'Instagram' ? (
-                                <InstagramIcon size={46 * s} />
-                            ) : (
-                                <TikTokIcon size={46 * s} />
-                            )}
-                        </View>
-
-                        <View className="flex-1">
-                            <Text
-                                className="font-outfit-extrabold text-[#1c241e]"
-                                style={{ fontSize: 16 * s }}
-                            >
-                                {app.name}
-                            </Text>
-
-                            <Text
-                                className="font-outfit-medium text-[#2b362e]"
-                                style={{
-                                    fontSize: 12.5 * s,
-                                    marginTop: 2 * s,
-                                }}
-                            >
-                                {app.usageTime}
-                            </Text>
-                        </View>
-
-                        <DonutGauge
-                            percentage={app.percentage}
-                            size={64 * s}
-                            strokeWidth={6.5 * s}
-                        />
+                        <Text
+                            className="font-outfit-medium text-[#7a8a7e]"
+                            style={{ fontSize: 13 * s }}
+                        >
+                            Belum ada pemakaian aplikasi hari ini.
+                        </Text>
                     </View>
-                ))}
+                ) : (
+                    apps.map((app) => (
+                        <View
+                            key={app.id}
+                            className="flex-row items-center bg-white"
+                            style={{
+                                borderRadius: 20 * s,
+                                paddingVertical: 14 * s,
+                                paddingHorizontal: 16 * s,
+                            }}
+                        >
+                            <View style={{ marginRight: 14 * s }}>
+                                <RenderPolaAppIcon appName={app.name} size={46 * s} />
+                            </View>
+
+                            <View className="flex-1">
+                                <Text
+                                    className="font-outfit-extrabold text-[#1c241e]"
+                                    style={{ fontSize: 16 * s }}
+                                >
+                                    {app.name}
+                                </Text>
+
+                                <Text
+                                    className="font-outfit-medium text-[#2b362e]"
+                                    style={{
+                                        fontSize: 12.5 * s,
+                                        marginTop: 2 * s,
+                                    }}
+                                >
+                                    {app.usageTime}
+                                </Text>
+                            </View>
+
+                            <DonutGauge
+                                percentage={app.percentage}
+                                size={64 * s}
+                                strokeWidth={6.5 * s}
+                            />
+                        </View>
+                    ))
+                )}
             </View>
         </View>
     );
 }
-

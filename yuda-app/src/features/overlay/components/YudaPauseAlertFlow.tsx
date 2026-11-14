@@ -22,9 +22,12 @@ export type {
 export interface YudaPauseAlertFlowProps {
     userName?: string;
     durationMinutes?: number;
+    durationSeconds?: number;
+    totalElapsedSeconds?: number;
     reminderMinutes?: number;
     pauseType?: PauseType;
     pauseStage?: PauseBiasaStageLevel;
+    pauseCount?: number;
     breathDurationSeconds?: number;
     actionType?: PauseActionType;
     initialStage?: PauseAlertStage;
@@ -40,9 +43,12 @@ export interface YudaPauseAlertFlowProps {
 export function YudaPauseAlertFlow({
     userName = 'Gathan',
     durationMinutes = 15,
+    durationSeconds = 0,
+    totalElapsedSeconds,
     reminderMinutes = 15,
     pauseType = 'biasa',
     pauseStage = 1,
+    pauseCount = 1,
     breathDurationSeconds = 30,
     actionType,
     initialStage,
@@ -77,8 +83,11 @@ export function YudaPauseAlertFlow({
                 <PauseBiasaFlow
                     userName={userName}
                     durationMinutes={durationMinutes}
+                    durationSeconds={durationSeconds}
+                    totalElapsedSeconds={totalElapsedSeconds}
                     reminderMinutes={reminderMinutes}
                     pauseStage={pauseStage}
+                    pauseCount={pauseCount}
                     breathDurationSeconds={breathDurationSeconds}
                     actionType={actionType}
                     initialStage={initialStage}
@@ -94,8 +103,11 @@ export function YudaPauseAlertFlow({
                 <PauseBiasaFlow
                     userName={userName}
                     durationMinutes={durationMinutes}
+                    durationSeconds={durationSeconds}
+                    totalElapsedSeconds={totalElapsedSeconds}
                     reminderMinutes={reminderMinutes}
                     pauseStage={pauseStage}
+                    pauseCount={pauseCount}
                     breathDurationSeconds={breathDurationSeconds}
                     actionType={actionType}
                     initialStage={initialStage}
@@ -114,6 +126,10 @@ export function YudaPauseAlertFlow({
 
 const styles = StyleSheet.create({
     root: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
     },
 });

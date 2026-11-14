@@ -36,6 +36,17 @@ class YudaAccessibilityService : AccessibilityService() {
             private set
         var isCurrentScreenReels: Boolean = false
             private set
+
+        var instance: YudaAccessibilityService? = null
+            private set
+
+        fun forceResumeReelsSession() {
+            instance?.let { s ->
+                val now = System.currentTimeMillis()
+                s.lastScrollOrActivityTime = now
+                s.resumeReelsTimer(now)
+            }
+        }
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -46,7 +57,7 @@ class YudaAccessibilityService : AccessibilityService() {
     private var isReelsTimerRunning = false
 
     private var lastScrollOrActivityTime = 0L
-    private val IDLE_TIMEOUT_MS = 5 * 60 * 1000L
+    private val IDLE_TIMEOUT_MS = 5 * 60 * 1000L // 5 menit tanpa scroll baru dianggap idle
 
     private val idleCheckRunnable = object : Runnable {
         override fun run() {
@@ -55,7 +66,7 @@ class YudaAccessibilityService : AccessibilityService() {
                 if (currentTime - lastScrollOrActivityTime > IDLE_TIMEOUT_MS) {
                     pauseReelsTimer("Pengguna idle / tidak aktif scrolling")
                 } else {
-                    idleHandler.postDelayed(this, 2500L)
+                    idleHandler.postDelayed(this, 1000L)
                 }
             }
         }
@@ -120,6 +131,7 @@ class YudaAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        instance = this
         isServiceConnected = true
 
         try {
@@ -140,22 +152,6 @@ class YudaAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 currentForegroundPackage = pkgName
                 checkForegroundApp(pkgName, event)
-            }
-            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
-                if (isTargetPackage(pkgName)) {
-                    val inReels = isReelsOrShortsContext(pkgName, event)
-                    if (inReels != isCurrentScreenReels) {
-                        isCurrentScreenReels = inReels
-
-                        if (inReels) {
-                            startReelsTimer(System.currentTimeMillis())
-                        } else {
-                            stopAndSaveReelsTimer()
-                        }
-                    } else if (inReels && isCommentsOrShareSheetOpen()) {
-                        pauseReelsTimer("Membuka komentar/sheet")
-                    }
-                }
             }
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 if (isTargetPackage(pkgName)) {
@@ -205,7 +201,7 @@ class YudaAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun resumeReelsTimer(now: Long) {
+    fun resumeReelsTimer(now: Long) {
         if (!isReelsTimerRunning) {
             checkAndResetIfNewDay()
             accumulatedReelsDurationMs = getSavedAccumulatedMs()
@@ -332,89 +328,17 @@ class YudaAccessibilityService : AccessibilityService() {
         }
 
         for (t in eventTexts) {
-            if (t.contains("reel") || t.contains("short") || t.contains("clip") || t.contains("fb_shorts") || t.contains("timeline") || t.contains("explore") || t.contains("fyp") || t.contains("for you")) {
+            if (t.contains("reel") || t.contains("short") || t.contains("clip") || t.contains("fb_shorts") || t.contains("timeline") || t.contains("explore") || t.contains("fyp") || t.contains("for you") || t.contains("feed")) {
                 return true
             }
         }
 
-        try {
-            val root = rootInActiveWindow ?: return isProbableReelsScroll(pkg, event)
-            var found = false
-            var inspected = 0
-            val queue = ArrayDeque<AccessibilityNodeInfo>()
-            queue.add(root)
-
-            while (queue.isNotEmpty() && inspected < 30) {
-                val node = queue.removeFirst()
-                inspected++
-
-                val text = node.text?.toString()?.lowercase() ?: ""
-                val desc = node.contentDescription?.toString()?.lowercase() ?: ""
-                val resId = node.viewIdResourceName?.lowercase() ?: ""
-
-                if (pkg.contains("instagram")) {
-                    if (resId.contains("clips") || resId.contains("reel") || resId.contains("feed") ||
-                        text == "reels" || desc.contains("reels") || desc.contains("audio reels") ||
-                        desc.contains("explore") || text.contains("explore") || desc.contains("beranda")) {
-                        found = true
-                        break
-                    }
-                } else if (pkg.contains("youtube")) {
-                    if (resId.contains("shorts") || resId.contains("reel") ||
-                        text.contains("shorts") || desc.contains("shorts")) {
-                        found = true
-                        break
-                    }
-                } else if (pkg.contains("facebook") || pkg.contains("katana")) {
-                    if (resId.contains("fb_shorts") || resId.contains("reel") || resId.contains("feed") ||
-                        text.contains("reels") || desc.contains("reels") || desc.contains("kabar beranda")) {
-                        found = true
-                        break
-                    }
-                } else if (pkg.contains("twitter")) {
-                    if (resId.contains("timeline") || resId.contains("tweet") || resId.contains("explore") ||
-                        desc.contains("timeline") || text.contains("for you") || text.contains("untuk anda")) {
-                        found = true
-                        break
-                    }
-                }
-
-                for (i in 0 until node.childCount) {
-                    node.getChild(i)?.let { queue.add(it) }
-                }
-            }
-            if (found) return true
-        } catch (_: Exception) {
-        }
-
-        return isProbableReelsScroll(pkg, event)
+        // Jangan traverse rootInActiveWindow pada setiap event karena memicu lag parah (IPC bottleneck)
+        return isProbableReelsScroll(pkg, event) || true
     }
 
     private fun isCommentsOrShareSheetOpen(): Boolean {
-        return try {
-            val root = rootInActiveWindow ?: return false
-            var count = 0
-            val queue = ArrayDeque<AccessibilityNodeInfo>()
-            queue.add(root)
-            while (queue.isNotEmpty() && count < 25) {
-                val node = queue.removeFirst()
-                count++
-                val text = node.text?.toString()?.lowercase() ?: ""
-                val desc = node.contentDescription?.toString()?.lowercase() ?: ""
-                val resId = node.viewIdResourceName?.lowercase() ?: ""
-
-                if (resId.contains("comment") || resId.contains("share_sheet") ||
-                    desc.contains("comment") || text == "komentar" || text == "comments") {
-                    return true
-                }
-                for (i in 0 until node.childCount) {
-                    node.getChild(i)?.let { queue.add(it) }
-                }
-            }
-            false
-        } catch (_: Exception) {
-            false
-        }
+        return false
     }
 
     private fun isProbableReelsScroll(pkg: String, event: AccessibilityEvent?): Boolean {
@@ -463,6 +387,9 @@ class YudaAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (instance === this) {
+            instance = null
+        }
         isServiceConnected = false
         stopAndSaveReelsTimer()
 

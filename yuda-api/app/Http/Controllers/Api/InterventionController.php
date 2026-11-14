@@ -50,6 +50,7 @@ class InterventionController extends Controller
             'slots' => ['nullable', 'array'],
             'slots.*' => ['integer', 'min:0', 'max:120'],
             'interventions_triggered' => ['nullable', 'integer', 'min:0'],
+            'emotion' => ['nullable', 'string', 'max:50'],
             'instagram' => ['nullable', 'integer', 'min:0'],
             'tiktok' => ['nullable', 'integer', 'min:0'],
             'facebook' => ['nullable', 'integer', 'min:0'],
@@ -71,6 +72,7 @@ class InterventionController extends Controller
             slots: $validated['slots'] ?? [],
             interventionsTriggered: (int) ($validated['interventions_triggered'] ?? 0),
             socialTimes: $socialTimes,
+            emotion: $validated['emotion'] ?? null,
         );
 
         return response()->json([
@@ -96,6 +98,23 @@ class InterventionController extends Controller
             'status' => 'success',
             'range' => $range,
             'data' => $matrices,
+        ]);
+    }
+
+    /**
+     * Ambil data matriks screen time harian spesifik beserta pembanding hari sebelumnya dan pemakaian aplikasi.
+     */
+    public function getDailyMatrix(Request $request): JsonResponse
+    {
+        $user = $request->user('sanctum') ?: $request->user();
+        $guestUuid = $request->header('X-Guest-UUID') ?: $request->query('guest_uuid');
+        $date = $request->query('date');
+
+        $dailyData = $this->interventionService->getDailyMatrixDetail($user, $guestUuid, $date);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $dailyData,
         ]);
     }
 
@@ -197,7 +216,7 @@ class InterventionController extends Controller
     {
         $validated = $request->validate([
             'guest_uuid' => ['nullable', 'string', 'max:64'],
-            'scroll_interval_minutes' => ['nullable', 'integer', 'min:5', 'max:60'],
+            'scroll_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:60'],
             'tone_style' => ['nullable', 'string', 'in:lembut,tegas,humoris,faktual,reflektif'],
         ]);
 

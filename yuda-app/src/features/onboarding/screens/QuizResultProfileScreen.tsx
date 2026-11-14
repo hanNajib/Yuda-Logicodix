@@ -281,7 +281,7 @@ export default function QuizResultProfileScreen() {
                     >
                         <Image
                             source={yudaMakanSource}
-                            style={{ width: '100%', height: '100%' }}
+                            style={{ width: '100%', height: '100%', zIndex: -1 }}
                             resizeMode="contain"
                         />
                     </Animated.View>

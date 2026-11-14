@@ -1,90 +1,148 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, Text, TouchableOpacity, View } from 'react-native';
 
 interface CalendarMiniCardProps {
     scale?: number;
-    selectedDate?: number;
-    onSelectDate?: (date: number) => void;
+    selectedDate?: string; // Format 'YYYY-MM-DD'
+    onSelectDate?: (dateIso: string) => void;
+    taskDatesWithPending?: Set<string>;
+    taskDatesWithCompleted?: Set<string>;
 }
 
 interface CalendarDay {
+    dateIso: string;
     dayNumber: number;
     isCurrentMonth: boolean;
     statusDot?: 'green' | 'yellow' | 'red';
 }
 
 const DAYS_HEADER = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-
-const CALENDAR_ROWS: CalendarDay[][] = [
-    [
-        { dayNumber: 28, isCurrentMonth: false },
-        { dayNumber: 1, isCurrentMonth: true },
-        { dayNumber: 2, isCurrentMonth: true },
-        { dayNumber: 3, isCurrentMonth: true },
-        { dayNumber: 4, isCurrentMonth: true },
-        { dayNumber: 5, isCurrentMonth: true },
-        { dayNumber: 6, isCurrentMonth: true },
-    ],
-    [
-        { dayNumber: 7, isCurrentMonth: true },
-        { dayNumber: 8, isCurrentMonth: true },
-        { dayNumber: 9, isCurrentMonth: true, statusDot: 'yellow' },
-        { dayNumber: 10, isCurrentMonth: true, statusDot: 'green' },
-        { dayNumber: 11, isCurrentMonth: true, statusDot: 'red' },
-        { dayNumber: 12, isCurrentMonth: true, statusDot: 'green' },
-        { dayNumber: 13, isCurrentMonth: true },
-    ],
-    [
-        { dayNumber: 14, isCurrentMonth: true },
-        { dayNumber: 15, isCurrentMonth: true, statusDot: 'green' },
-        { dayNumber: 16, isCurrentMonth: true },
-        { dayNumber: 17, isCurrentMonth: true },
-        { dayNumber: 18, isCurrentMonth: true, statusDot: 'yellow' },
-        { dayNumber: 19, isCurrentMonth: true },
-        { dayNumber: 20, isCurrentMonth: true },
-    ],
-    [
-        { dayNumber: 21, isCurrentMonth: true },
-        { dayNumber: 22, isCurrentMonth: true },
-        { dayNumber: 23, isCurrentMonth: true },
-        { dayNumber: 24, isCurrentMonth: true, statusDot: 'green' },
-        { dayNumber: 25, isCurrentMonth: true },
-        { dayNumber: 26, isCurrentMonth: true },
-        { dayNumber: 27, isCurrentMonth: true },
-    ],
-    [
-        { dayNumber: 28, isCurrentMonth: true },
-        { dayNumber: 29, isCurrentMonth: true },
-        { dayNumber: 30, isCurrentMonth: true },
-        { dayNumber: 31, isCurrentMonth: true },
-        { dayNumber: 1, isCurrentMonth: false },
-        { dayNumber: 2, isCurrentMonth: false },
-        { dayNumber: 3, isCurrentMonth: false },
-    ],
+const MONTH_NAMES = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
+
+const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export function CalendarMiniCard({
     scale = 1,
-    selectedDate: controlledDate = 10,
+    selectedDate: controlledDate,
     onSelectDate,
+    taskDatesWithPending,
+    taskDatesWithCompleted,
 }: CalendarMiniCardProps) {
     const s = scale;
-    const [selectedDate, setSelectedDate] = useState<number>(controlledDate);
+
+    const today = useMemo(() => new Date(), []);
+    const [currentViewDate, setCurrentViewDate] = useState<Date>(() => {
+        if (controlledDate) {
+            const [y, m, d] = controlledDate.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+        return new Date();
+    });
+
+    const activeSelectedIso = useMemo(() => {
+        if (controlledDate) return controlledDate;
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }, [controlledDate, today]);
+
+    const viewYear = currentViewDate.getFullYear();
+    const viewMonth = currentViewDate.getMonth(); // 0-based
+
+    // Generate kalender grid (minggu demi minggu)
+    const calendarRows = useMemo(() => {
+        const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Minggu
+        const totalDaysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const totalDaysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+        const days: CalendarDay[] = [];
+
+        // Previous month days
+        for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+            const dayNum = totalDaysInPrevMonth - i;
+            const prevMonthDate = new Date(viewYear, viewMonth - 1, dayNum);
+            const y = prevMonthDate.getFullYear();
+            const m = String(prevMonthDate.getMonth() + 1).padStart(2, '0');
+            const d = String(dayNum).padStart(2, '0');
+            days.push({
+                dateIso: `${y}-${m}-${d}`,
+                dayNumber: dayNum,
+                isCurrentMonth: false,
+            });
+        }
+
+        // Current month days
+        for (let d = 1; d <= totalDaysInMonth; d++) {
+            const m = String(viewMonth + 1).padStart(2, '0');
+            const dayStr = String(d).padStart(2, '0');
+            const iso = `${viewYear}-${m}-${dayStr}`;
+
+            let statusDot: 'green' | 'yellow' | 'red' | undefined;
+            if (taskDatesWithPending?.has(iso)) {
+                statusDot = 'yellow';
+            } else if (taskDatesWithCompleted?.has(iso)) {
+                statusDot = 'green';
+            }
+
+            days.push({
+                dateIso: iso,
+                dayNumber: d,
+                isCurrentMonth: true,
+                statusDot,
+            });
+        }
+
+        // Next month days until 35 or 42 cells
+        const totalCells = days.length > 35 ? 42 : 35;
+        const remaining = totalCells - days.length;
+        for (let d = 1; d <= remaining; d++) {
+            const nextMonthDate = new Date(viewYear, viewMonth + 1, d);
+            const y = nextMonthDate.getFullYear();
+            const m = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+            const dayStr = String(d).padStart(2, '0');
+            days.push({
+                dateIso: `${y}-${m}-${dayStr}`,
+                dayNumber: d,
+                isCurrentMonth: false,
+            });
+        }
+
+        // Chunk into rows of 7
+        const rows: CalendarDay[][] = [];
+        for (let i = 0; i < days.length; i += 7) {
+            rows.push(days.slice(i, i + 7));
+        }
+        return rows;
+    }, [viewYear, viewMonth, taskDatesWithPending, taskDatesWithCompleted]);
+
+    const handlePrevMonth = () => {
+        setCurrentViewDate(new Date(viewYear, viewMonth - 1, 1));
+    };
+
+    const handleNextMonth = () => {
+        setCurrentViewDate(new Date(viewYear, viewMonth + 1, 1));
+    };
 
     const handleDatePress = (item: CalendarDay) => {
-        if (!item.isCurrentMonth) return;
-
-        setSelectedDate(item.dayNumber);
-        onSelectDate?.(item.dayNumber);
+        onSelectDate?.(item.dateIso);
+        if (!item.isCurrentMonth) {
+            const [y, m, d] = item.dateIso.split('-').map(Number);
+            setCurrentViewDate(new Date(y, m - 1, 1));
+        }
     };
 
-    const getDotColor = (type?: 'green' | 'yellow' | 'red') => {
-        if (type === 'green') return '#275c43';
-        if (type === 'yellow') return '#f5b838';
-        if (type === 'red') return '#e85a4f';
-        return 'transparent';
-    };
+    const selectedDateObj = useMemo(() => {
+        const [y, m, d] = activeSelectedIso.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }, [activeSelectedIso]);
+
+    const selectedDayName = DAY_NAMES[selectedDateObj.getDay()];
+    const selectedDateDisplay = `${selectedDateObj.getDate()} ${MONTH_NAMES[selectedDateObj.getMonth()].substring(0, 3)}, ${selectedDateObj.getFullYear()}`;
 
     const circleSize = 32 * s;
 
@@ -95,10 +153,7 @@ export function CalendarMiniCard({
                 borderRadius: 20 * s,
                 padding: 18 * s,
                 shadowColor: '#000',
-                shadowOffset: {
-                    width: 0,
-                    height: 2,
-                },
+                shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.04,
                 shadowRadius: 6,
                 elevation: 2,
@@ -110,7 +165,7 @@ export function CalendarMiniCard({
                         className="font-outfit-extrabold text-[#1c241e]"
                         style={{ fontSize: 16 * s }}
                     >
-                        {selectedDate} Mar, 2025
+                        {selectedDateDisplay}
                     </Text>
 
                     <View
@@ -127,7 +182,7 @@ export function CalendarMiniCard({
                             className="font-outfit-bold text-[#275c43]"
                             style={{ fontSize: 11.5 * s }}
                         >
-                            Rabu
+                            {selectedDayName}
                         </Text>
                     </View>
                 </View>
@@ -142,16 +197,12 @@ export function CalendarMiniCard({
                     }}
                 >
                     <TouchableOpacity
-                        hitSlop={{
-                            top: 8,
-                            bottom: 8,
-                            left: 8,
-                            right: 8,
-                        }}
+                        onPress={handlePrevMonth}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                         <Ionicons
                             name="chevron-back"
-                            size={13 * s}
+                            size={14 * s}
                             color="#275c43"
                         />
                     </TouchableOpacity>
@@ -163,20 +214,16 @@ export function CalendarMiniCard({
                             marginHorizontal: 8 * s,
                         }}
                     >
-                        Maret
+                        {MONTH_NAMES[viewMonth]} {viewYear}
                     </Text>
 
                     <TouchableOpacity
-                        hitSlop={{
-                            top: 8,
-                            bottom: 8,
-                            left: 8,
-                            right: 8,
-                        }}
+                        onPress={handleNextMonth}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                         <Ionicons
                             name="chevron-forward"
-                            size={13 * s}
+                            size={14 * s}
                             color="#275c43"
                         />
                     </TouchableOpacity>
@@ -205,16 +252,14 @@ export function CalendarMiniCard({
                 ))}
             </View>
 
-            {CALENDAR_ROWS.map((row, rIdx) => (
+            {calendarRows.map((row, rIdx) => (
                 <View
                     key={rIdx}
                     className="flex-row items-center justify-between"
                     style={{ marginVertical: 3 * s }}
                 >
                     {row.map((dayItem, dIdx) => {
-                        const isSelected =
-                            dayItem.isCurrentMonth &&
-                            dayItem.dayNumber === selectedDate;
+                        const isSelected = dayItem.dateIso === activeSelectedIso;
 
                         return (
                             <Pressable
@@ -257,7 +302,9 @@ export function CalendarMiniCard({
                                         style={{
                                             backgroundColor: isSelected
                                                 ? '#275c43'
-                                                : getDotColor(dayItem.statusDot),
+                                                : dayItem.statusDot === 'green'
+                                                    ? '#275c43'
+                                                    : '#f5b838',
                                             width: 4 * s,
                                             height: 4 * s,
                                             borderRadius: 2 * s,
@@ -265,11 +312,7 @@ export function CalendarMiniCard({
                                         }}
                                     />
                                 ) : (
-                                    <View
-                                        style={{
-                                            height: 6 * s,
-                                        }}
-                                    />
+                                    <View style={{ height: 6 * s }} />
                                 )}
                             </Pressable>
                         );

@@ -45,13 +45,8 @@ return new class extends Migration
             $table->unique(['user_id', 'guest_uuid', 'log_date'], 'unique_user_daily_matrix');
         });
 
-        // 3. Update tabel user_intervention_settings sesuai spesifikasi final
         Schema::table('user_intervention_settings', function (Blueprint $table) {
-            $table->string('tone_style', 50)->default('empati')->after('guest_uuid');
-            $table->unsignedSmallInteger('scroll_interval_minutes')->default(15)->after('tone_style');
-            $table->unsignedSmallInteger('last_pause_duration')->default(30)->after('current_pause_duration');
 
-            // Hapus kolom alert & pembanding lama
             $table->dropColumn([
                 'previous_week_screen_time_minutes',
                 'current_week_screen_time_minutes',

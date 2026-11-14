@@ -6,6 +6,7 @@ use App\Exceptions\GoogleTokenVerificationException;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Auth\GoogleTokenVerifier;
+use App\Services\GuestSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -152,6 +153,12 @@ class AuthController extends Controller
                 ['*'],
                 now()->addDays(30)
             )->plainTextToken;
+
+            // Sinkronkan data lokal / guest sebelumnya ke akun user yang baru login
+            $guestUuid = $request->header('X-Guest-UUID') ?: $request->input('guest_uuid');
+            if ($guestUuid) {
+                GuestSyncService::syncGuestDataToUser($user, $guestUuid);
+            }
 
             return response()->json([
                 'message' => 'Authentication successful.',

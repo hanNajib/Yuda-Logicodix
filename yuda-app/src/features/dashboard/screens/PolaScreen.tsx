@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import {
     Outfit_500Medium,
@@ -7,7 +8,7 @@ import {
     useFonts,
 } from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
     NativeScrollEvent,
     NativeSyntheticEvent,
@@ -25,6 +26,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuthStore } from '@/stores/useAuthStore';
+import { apiClient } from '@/services/apiClient';
 
 import {
     BottomNavBar,
@@ -39,6 +41,14 @@ import { ScrollTimeHeroCard } from '../components/pola/ScrollTimeHeroCard';
 const SAGE_BG = '#bccdc0';
 const SHEET_BG = '#F6F3EC';
 const REF_W = 420;
+
+function getTodayIsoString(): string {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
 
 interface PolaScreenProps {
     onTabChange?: (tab: DashboardTab) => void;
@@ -58,6 +68,52 @@ export default function PolaScreen({
     const displayName = userName || user?.name || 'Gathan';
 
     const [activeTab, setActiveTab] = useState<DashboardTab>('stats');
+
+    const todayIso = useMemo(() => getTodayIsoString(), []);
+
+    const { data: todayMatrixData } = useQuery({
+        queryKey: ['dailyScreenTimeMatrix', todayIso],
+        queryFn: async () => {
+            const res = await apiClient.get('/api/intervention/matrix/daily', {
+                params: { date: todayIso },
+            });
+            return res.data?.data;
+        },
+    });
+
+    const totalMinutes = todayMatrixData?.total_screen_time_minutes ?? 0;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const diffMinutes = todayMatrixData?.diff_minutes ?? 0;
+    const interventionsTriggered = todayMatrixData?.interventions_triggered ?? 0;
+    const slots = todayMatrixData?.slots ?? {};
+
+    const todayAppUsages = useMemo(() => {
+        if (!todayMatrixData?.app_usages) {
+            return [];
+        }
+        return todayMatrixData.app_usages
+            .filter((app: any) => (app.minutes ?? 0) > 0)
+            .map((app: any) => {
+                const hours = Math.floor(app.minutes / 60);
+                const mins = app.minutes % 60;
+                let usageTime = '0 Menit';
+                if (hours > 0 && mins > 0) {
+                    usageTime = `${hours} Jam, ${mins} Menit`;
+                } else if (hours > 0) {
+                    usageTime = `${hours} Jam`;
+                } else if (mins > 0) {
+                    usageTime = `${mins} Menit`;
+                }
+
+                return {
+                    id: app.key,
+                    name: app.name,
+                    usageTime,
+                    percentage: Math.round(app.percentage),
+                };
+            });
+    }, [todayMatrixData?.app_usages]);
 
     const [fontsLoaded] = useFonts({
         Outfit_500Medium,
@@ -248,8 +304,11 @@ export default function PolaScreen({
                     <ScrollTimeHeroCard
                         userName={displayName}
                         scale={s}
-                        hours={3}
-                        minutes={15}
+                        hours={hours}
+                        minutes={minutes}
+                        diffMinutes={diffMinutes}
+                        interventionsTriggered={interventionsTriggered}
+                        slots={slots}
                         onViewMore={() => router.push('/dashboard/detail-waktu-scroll')}
                     />
 
@@ -261,6 +320,7 @@ export default function PolaScreen({
 
                     <AppUsageSection
                         scale={s}
+                        apps={todayAppUsages}
                     />
 
                     <View

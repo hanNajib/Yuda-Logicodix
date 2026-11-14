@@ -30,11 +30,16 @@ interface YudaPipNativeModule {
   stopOverlayMonitor(): boolean;
   setIntervalMinutes(minutes: number): boolean;
   getIntervalMinutes(): number;
+  setPauseDurationSeconds(seconds: number): boolean;
+  getPauseDurationSeconds(): number;
   isOverlayMonitorRunning(): boolean;
   isAccessibilityServiceEnabled(): boolean;
   openAccessibilitySettings(): boolean;
   getTotalReelsDurationSeconds(): number;
   dismissActiveAlert(reason?: string): boolean;
+  hasUsageStatsPermission(): boolean;
+  requestUsageStatsWithPip(): boolean;
+  getAndroidUsageStats(daysBack?: number): Promise<any>;
 }
 
 let NativeModule: any = null;
@@ -142,6 +147,14 @@ export function getIntervalMinutes(): number {
   return safe(() => NativeModule?.getIntervalMinutes() ?? 15, 15);
 }
 
+export function setPauseDurationSeconds(seconds: number): boolean {
+  return safe(() => NativeModule?.setPauseDurationSeconds(seconds) ?? false, false);
+}
+
+export function getPauseDurationSeconds(): number {
+  return safe(() => NativeModule?.getPauseDurationSeconds() ?? 30, 30);
+}
+
 export function setAppDetectionMode(appId: string, mode: 'all' | 'trigger_only'): boolean {
   return safe(() => NativeModule?.setAppDetectionMode(appId, mode) ?? false, false);
 }
@@ -192,6 +205,22 @@ export function dismissActiveAlert(reason = 'dismiss'): boolean {
   return safe(() => NativeModule?.dismissActiveAlert(reason) ?? false, false);
 }
 
+export function hasUsageStatsPermission(): boolean {
+  return safe(() => NativeModule?.hasUsageStatsPermission() ?? false, false);
+}
+
+export function requestUsageStatsWithPip(): boolean {
+  return safe(() => NativeModule?.requestUsageStatsWithPip() ?? false, false);
+}
+
+export async function getAndroidUsageStats(daysBack = 7): Promise<any> {
+  try {
+    return (await NativeModule?.getAndroidUsageStats(daysBack)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function addPipModeListener(
   listener: (event: { isInPip: boolean }) => void
 ): Subscription | undefined {
@@ -233,6 +262,9 @@ export default {
   openAccessibilitySettings,
   getTotalReelsDurationSeconds,
   dismissActiveAlert,
+  hasUsageStatsPermission,
+  requestUsageStatsWithPip,
+  getAndroidUsageStats,
   addPipModeListener,
   addPermissionGrantedListener,
 };

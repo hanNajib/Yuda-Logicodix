@@ -3,6 +3,8 @@ package com.mieayamproject.yuda.pip
 import android.app.ActivityManager
 import android.app.AppOpsManager
 import android.app.PictureInPictureParams
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -24,6 +26,7 @@ import androidx.core.app.NotificationManagerCompat
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.ByteArrayOutputStream
+import java.util.Calendar
 
 class YudaPipModule : Module() {
 
@@ -31,8 +34,26 @@ class YudaPipModule : Module() {
         const val PREFS_NAME = "yuda_overlay_prefs"
         const val KEY_TARGET_PACKAGES = "target_packages"
         const val KEY_INTERVAL_MINUTES = "interval_minutes"
+        const val KEY_PAUSE_DURATION_SECONDS = "pause_duration_seconds"
         const val KEY_APP_DETECTION_MODE_PREFIX = "app_detection_mode_" // "trigger_only" (default) or "all"
         const val DEFAULT_INTERVAL_MINUTES = 15
+        const val DEFAULT_PAUSE_DURATION_SECONDS = 30
+        const val KEY_APP_FIRST_INSTALLED_AT = "app_first_installed_at"
+
+        fun getAppInstalledTime(context: Context): Long {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            var installedAt = prefs.getLong(KEY_APP_FIRST_INSTALLED_AT, 0L)
+            if (installedAt == 0L) {
+                try {
+                    val pkgInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                    installedAt = pkgInfo.firstInstallTime
+                } catch (_: Exception) {
+                    installedAt = System.currentTimeMillis()
+                }
+                prefs.edit().putLong(KEY_APP_FIRST_INSTALLED_AT, installedAt).apply()
+            }
+            return installedAt
+        }
 
         val DEFAULT_TARGET_PACKAGES = setOf(
             "com.instagram.android",
@@ -75,6 +96,16 @@ class YudaPipModule : Module() {
         fun setIntervalMinutes(context: Context, minutes: Int) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().putInt(KEY_INTERVAL_MINUTES, minutes).apply()
+        }
+
+        fun getPauseDurationSeconds(context: Context): Int {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getInt(KEY_PAUSE_DURATION_SECONDS, DEFAULT_PAUSE_DURATION_SECONDS)
+        }
+
+        fun setPauseDurationSeconds(context: Context, seconds: Int) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putInt(KEY_PAUSE_DURATION_SECONDS, seconds).apply()
         }
     }
 
@@ -166,6 +197,26 @@ class YudaPipModule : Module() {
     private fun isBatteryGranted(): Boolean =
         if (isXiaomi) isBackgroundAllowed() else isIgnoringBatteryOpt() && isBackgroundAllowed()
 
+    private fun isUsageStatsGranted(): Boolean {
+        val c = ctx() ?: return false
+        val appOps = c.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                c.packageName
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                c.packageName
+            )
+        }
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
+
     private fun isGranted(type: String): Boolean {
         val c = ctx() ?: return false
         return when (type) {
@@ -173,6 +224,7 @@ class YudaPipModule : Module() {
             "battery", "background" -> isBatteryGranted()
             "notification" -> NotificationManagerCompat.from(c).areNotificationsEnabled()
             "accessibility" -> YudaAccessibilityService.isServiceConnected
+            "usage_stats" -> isUsageStatsGranted()
             else -> false
         }
     }
@@ -498,6 +550,21 @@ class YudaPipModule : Module() {
             true
         }
 
+        Function("hasUsageStatsPermission") {
+            isUsageStatsGranted()
+        }
+
+        Function("requestUsageStatsWithPip") {
+            val activity = appContext.currentActivity ?: return@Function false
+            val pkg = activity.packageName
+            val intents = listOf(
+                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, Uri.parse("package:$pkg")),
+                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            )
+            launchSettingWithPip("usage_stats", intents, usePip = true)
+            true
+        }
+
         AsyncFunction("getInstalledApps") { includeIcons: Boolean? ->
             val context = ctx() ?: return@AsyncFunction emptyList<Map<String, String>>()
             val pm = context.packageManager
@@ -584,12 +651,33 @@ class YudaPipModule : Module() {
         Function("setIntervalMinutes") { minutes: Int ->
             val context = ctx() ?: return@Function false
             setIntervalMinutes(context, minutes)
+            if (YudaOverlayService.isRunning) {
+                try {
+                    val intent = Intent(context, YudaOverlayService::class.java).apply {
+                        action = YudaOverlayService.ACTION_UPDATE_INTERVAL
+                        putExtra(YudaOverlayService.EXTRA_INTERVAL_SECONDS, minutes * 60)
+                    }
+                    context.startService(intent)
+                } catch (_: Exception) {
+                }
+            }
             true
         }
 
         Function("getIntervalMinutes") {
             val context = ctx() ?: return@Function DEFAULT_INTERVAL_MINUTES
             getIntervalMinutes(context)
+        }
+
+        Function("setPauseDurationSeconds") { seconds: Int ->
+            val context = ctx() ?: return@Function false
+            setPauseDurationSeconds(context, seconds)
+            true
+        }
+
+        Function("getPauseDurationSeconds") {
+            val context = ctx() ?: return@Function DEFAULT_PAUSE_DURATION_SECONDS
+            getPauseDurationSeconds(context)
         }
 
         Function("startOverlayMonitor") { userName: String?, targetPackages: List<String>?, testMode: Boolean?, intervalSeconds: Int? ->
@@ -676,6 +764,290 @@ class YudaPipModule : Module() {
             } catch (_: Exception) {
                 false
             }
+        }
+
+        /**
+         * Mengambil statistik penggunaan aplikasi media sosial langsung dari UsageStatsManager Android.
+         * Mengembalikan:
+         * - weekly: List per hari (Senin s.d. Minggu) dengan total jam & menit
+         * - today_slots: Map 12 slot 2-jam hari ini (slot_00_02 s.d. slot_22_00)
+         * - today_total_minutes: Total menit hari ini
+         * - ranking: List aplikasi teratas beserta menit penggunaan
+         */
+        AsyncFunction("getAndroidUsageStats") { daysBack: Int? ->
+            val context = ctx() ?: return@AsyncFunction emptyMap<String, Any>()
+            if (!isUsageStatsGranted()) {
+                Log.w(TAG, "getAndroidUsageStats: Izin UsageStats belum diizinkan")
+                return@AsyncFunction mapOf("has_permission" to false)
+            }
+
+            val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+                ?: return@AsyncFunction emptyMap<String, Any>()
+
+            val days = daysBack ?: 7
+            val now = System.currentTimeMillis()
+            val installedAt = getAppInstalledTime(context)
+
+            // Start date instalasi Yuda (pukul 00:00:00 di hari instalasi)
+            val installCal = Calendar.getInstance().apply {
+                timeInMillis = installedAt
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val installDayStart = installCal.timeInMillis
+
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = now
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            val todayStart = calendar.timeInMillis
+
+            // Start of week (Senin)
+            val weekCalendar = Calendar.getInstance()
+            weekCalendar.timeInMillis = todayStart
+            var dayOfWeek = weekCalendar.get(Calendar.DAY_OF_WEEK) // 1=Sun, 2=Mon...
+            val diffToMonday = if (dayOfWeek == Calendar.SUNDAY) -6 else Calendar.MONDAY - dayOfWeek
+            weekCalendar.add(Calendar.DAY_OF_MONTH, diffToMonday)
+            val weekStart = weekCalendar.timeInMillis
+
+            val appPkgMap = mapOf(
+                "com.instagram.android" to "instagram",
+                "com.instagram.barcelona" to "threads",
+                "com.zhiliaoapp.musically" to "tiktok",
+                "com.ss.android.ugc.trill" to "tiktok",
+                "com.facebook.katana" to "facebook",
+                "com.facebook.lite" to "facebook",
+                "com.google.android.youtube" to "youtube",
+                "com.twitter.android" to "x",
+                "com.twitter.android.lite" to "x"
+            )
+
+            val appNames = mapOf(
+                "instagram" to "Instagram",
+                "tiktok" to "TikTok",
+                "facebook" to "Facebook",
+                "youtube" to "YouTube",
+                "threads" to "Threads",
+                "x" to "X (Twitter)"
+            )
+
+            // 1. Hitung ranking total & tren mingguan
+            val weeklyEvents = usm.queryEvents(weekStart, now)
+            val event = UsageEvents.Event()
+
+            val dayMinutesMap = mutableMapOf<Int, Long>() // Day of week (1=Mon ... 7=Sun) -> ms
+            for (i in 1..7) dayMinutesMap[i] = 0L
+
+            val appTotalMs = mutableMapOf<String, Long>()
+            appNames.keys.forEach { appTotalMs[it] = 0L }
+
+            val todaySlotsMs = IntArray(12) { 0 }
+            var todayTotalMs = 0L
+
+            // Map untuk menyimpan 12 slot per hari dalam minggu (1=Mon .. 7=Sun)
+            val daySlotsMap = mutableMapOf<Int, IntArray>()
+            // Map untuk menyimpan durasi per app per hari dalam minggu (1=Mon .. 7=Sun -> (appKey -> ms))
+            val dayAppMsMap = mutableMapOf<Int, MutableMap<String, Long>>()
+            for (i in 1..7) {
+                daySlotsMap[i] = IntArray(12) { 0 }
+                val appMap = mutableMapOf<String, Long>()
+                appNames.keys.forEach { appMap[it] = 0L }
+                dayAppMsMap[i] = appMap
+            }
+
+            var lastApp: String? = null
+            var lastEventTime: Long = 0L
+
+            while (weeklyEvents.hasNextEvent()) {
+                weeklyEvents.getNextEvent(event)
+                val targetKey = appPkgMap[event.packageName] ?: continue
+
+                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
+                    event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
+                ) {
+                    lastApp = targetKey
+                    lastEventTime = event.timeStamp
+                } else if (
+                    (event.eventType == UsageEvents.Event.ACTIVITY_PAUSED ||
+                        event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND) &&
+                    lastApp == targetKey && lastEventTime > 0
+                ) {
+                    val duration = (event.timeStamp - lastEventTime).coerceAtLeast(0L)
+
+                    // Hanya akumulasikan jika terjadi SEJAK aplikasi Yuda diinstall
+                    if (event.timeStamp >= installDayStart) {
+                        appTotalMs[targetKey] = (appTotalMs[targetKey] ?: 0L) + duration
+                    }
+
+                    // Tambah ke hari dalam minggu (hanya jika hari tersebut >= hari install Yuda ATAU sudah lewat 1 minggu)
+                    val isPastFirstWeek = (now - installDayStart) >= 7L * 24 * 3600 * 1000
+                    val isAfterOrOnInstallDay = event.timeStamp >= installDayStart
+
+                    val eventCal = Calendar.getInstance().apply { timeInMillis = event.timeStamp }
+                    val dWeek = eventCal.get(Calendar.DAY_OF_WEEK)
+                    val monIdx = if (dWeek == Calendar.SUNDAY) 7 else dWeek - 1 // 1=Mon .. 7=Sun
+
+                    if (isPastFirstWeek || isAfterOrOnInstallDay) {
+                        dayMinutesMap[monIdx] = (dayMinutesMap[monIdx] ?: 0L) + duration
+
+                        val currentDayAppMap = dayAppMsMap[monIdx]
+                        if (currentDayAppMap != null) {
+                            currentDayAppMap[targetKey] = (currentDayAppMap[targetKey] ?: 0L) + duration
+                        }
+
+                        val hour = eventCal.get(Calendar.HOUR_OF_DAY)
+                        val slotIdx = (hour / 2).coerceIn(0, 11)
+                        val durMinutes = (duration / 60000L).toInt()
+
+                        daySlotsMap[monIdx]?.let { slotsArr ->
+                            slotsArr[slotIdx] += durMinutes
+                        }
+                    }
+
+                    val durMinutes = (duration / 60000L).toInt()
+
+                    // Tambah ke slot hari ini jika terjadi hari ini
+                    if (event.timeStamp >= todayStart) {
+                        todayTotalMs += duration
+                        val hour = eventCal.get(Calendar.HOUR_OF_DAY)
+                        val slotIdx = (hour / 2).coerceIn(0, 11)
+                        todaySlotsMs[slotIdx] += durMinutes
+                    }
+
+                    lastApp = null
+                    lastEventTime = 0L
+                }
+            }
+
+            // Format Weekly Data (Sen s.d. Min)
+            val slotNames = listOf(
+                "slot_00_02", "slot_02_04", "slot_04_06", "slot_06_08",
+                "slot_08_10", "slot_10_12", "slot_12_14", "slot_14_16",
+                "slot_16_18", "slot_18_20", "slot_20_22", "slot_22_00"
+            )
+
+            val dayLabels = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
+            val weeklyList = dayLabels.mapIndexed { idx, label ->
+                val dayNum = idx + 1
+                val ms = dayMinutesMap[dayNum] ?: 0L
+                val mins = (ms / 60000L).toInt()
+                val hoursVal = Math.round((mins / 60.0) * 10) / 10.0
+
+                val daySlotsArr = daySlotsMap[dayNum] ?: IntArray(12) { 0 }
+                val daySlotsObj = mutableMapOf<String, Int>()
+                slotNames.forEachIndexed { sIdx, sName ->
+                    daySlotsObj[sName] = daySlotsArr[sIdx]
+                }
+
+                // Hitung ranking aplikasi spesifik di hari tersebut
+                val dayAppMap = dayAppMsMap[dayNum] ?: emptyMap<String, Long>()
+                val dayTotalMins = (dayAppMap.values.sum() / 60000L).toInt()
+                val sortedDayApps = dayAppMap.entries
+                    .map { (key, aMs) ->
+                        val aMins = (aMs / 60000L).toInt()
+                        Triple(key, appNames[key] ?: key, aMins)
+                    }
+                    .sortedByDescending { it.third }
+
+                val dayRanking = sortedDayApps.mapIndexed { rIdx, (key, name, aMins) ->
+                    val percentage = if (dayTotalMins > 0) Math.round((aMins.toDouble() / dayTotalMins) * 1000) / 10.0 else 0.0
+                    mapOf(
+                        "rank" to (rIdx + 1),
+                        "key" to key,
+                        "name" to name,
+                        "minutes" to aMins,
+                        "percentage" to percentage
+                    )
+                }
+
+                mapOf(
+                    "day" to label,
+                    "minutes" to mins,
+                    "value" to hoursVal,
+                    "slots" to daySlotsObj,
+                    "ranking" to dayRanking
+                )
+            }
+
+            // Format 12 Slots Hari Ini
+            val slotsMap = mutableMapOf<String, Int>()
+            slotNames.forEachIndexed { idx, name ->
+                slotsMap[name] = todaySlotsMs[idx]
+            }
+
+            // Format Ranking
+            val totalAllMinutes = (appTotalMs.values.sum() / 60000L).toInt()
+            val sortedApps = appTotalMs.entries
+                .map { (key, ms) ->
+                    val mins = (ms / 60000L).toInt()
+                    Triple(key, appNames[key] ?: key, mins)
+                }
+                .sortedByDescending { it.third }
+
+            val ranking = sortedApps.mapIndexed { index, (key, name, mins) ->
+                val percentage = if (totalAllMinutes > 0) Math.round((mins.toDouble() / totalAllMinutes) * 1000) / 10.0 else 0.0
+                mapOf(
+                    "rank" to (index + 1),
+                    "key" to key,
+                    "name" to name,
+                    "minutes" to mins,
+                    "percentage" to percentage
+                )
+            }
+
+            val topApp = ranking.firstOrNull() ?: mapOf(
+                "rank" to 1,
+                "key" to "instagram",
+                "name" to "Instagram",
+                "minutes" to 0,
+                "percentage" to 0.0
+            )
+
+            // Durasi per app per hari ini (untuk disetor ke backend setiap hari)
+            val todayAppsMinutes = mutableMapOf<String, Int>()
+            appNames.keys.forEach { todayAppsMinutes[it] = 0 }
+
+            val todayEvents = usm.queryEvents(todayStart, now)
+            var tLastApp: String? = null
+            var tLastEventTime: Long = 0L
+
+            while (todayEvents.hasNextEvent()) {
+                todayEvents.getNextEvent(event)
+                val targetKey = appPkgMap[event.packageName] ?: continue
+
+                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
+                    event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
+                ) {
+                    tLastApp = targetKey
+                    tLastEventTime = event.timeStamp
+                } else if (
+                    (event.eventType == UsageEvents.Event.ACTIVITY_PAUSED ||
+                        event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND) &&
+                    tLastApp == targetKey && tLastEventTime > 0
+                ) {
+                    val duration = (event.timeStamp - tLastEventTime).coerceAtLeast(0L)
+                    val m = (duration / 60000L).toInt()
+                    todayAppsMinutes[targetKey] = (todayAppsMinutes[targetKey] ?: 0) + m
+                    tLastApp = null
+                    tLastEventTime = 0L
+                }
+            }
+
+            mapOf(
+                "has_permission" to true,
+                "today_total_minutes" to (todayTotalMs / 60000L).toInt(),
+                "today_apps" to todayAppsMinutes,
+                "slots" to slotsMap,
+                "weekly" to weeklyList,
+                "ranking" to ranking,
+                "top_app" to topApp,
+                "total_all_minutes" to totalAllMinutes,
+                "installed_at" to installedAt
+            )
         }
     }
 }

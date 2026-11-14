@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import YudaPip from '@/modules/yuda-pip';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { DEBUG_CONFIG } from '@/constants/debugConfig';
 
 interface OverlayQuickControlCardProps {
     scale?: number;
@@ -13,7 +14,7 @@ export function OverlayQuickControlCard({
     scale: s = 1,
     userName = 'Gathan',
 }: OverlayQuickControlCardProps) {
-    const { selectedTargetPackages } = useAuthStore();
+    const { selectedTargetPackages, intervalMinutes } = useAuthStore();
     const [canDraw, setCanDraw] = useState(false);
     const [accessibilityOn, setAccessibilityOn] = useState(false);
     const [monitorRunning, setMonitorRunning] = useState(false);
@@ -40,7 +41,10 @@ export function OverlayQuickControlCard({
             YudaPip.stopOverlayMonitor();
             setMonitorRunning(false);
         } else {
-            const started = YudaPip.startOverlayMonitor(userName, selectedTargetPackages, true, 30);
+            const currentInterval = intervalMinutes && intervalMinutes > 0 ? intervalMinutes : 15;
+            const intervalSeconds = currentInterval * 60;
+            const enableDebugBubble = DEBUG_CONFIG.ENABLE_DEBUG_OVERLAY_BUBBLE;
+            const started = YudaPip.startOverlayMonitor(userName, selectedTargetPackages, enableDebugBubble, intervalSeconds);
             setMonitorRunning(started);
         }
     };
@@ -76,7 +80,7 @@ export function OverlayQuickControlCard({
                             className="font-outfit-medium text-[#526356]"
                             style={{ fontFamily: 'Outfit_500Medium', fontSize: 11.5 * s }}
                         >
-                            {monitorRunning ? '🟢 Aktif deteksi scroll (30 dtk)' : '⚪ Layanan mati'}
+                            {monitorRunning ? `🟢 Aktif deteksi scroll (${intervalMinutes || 15} mnt)` : '⚪ Layanan mati'}
                         </Text>
                     </View>
                 </View>

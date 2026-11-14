@@ -10,6 +10,21 @@ class UserDailyScreenTimeMatrix extends Model
 {
     use HasFactory;
 
+    public const SLOT_COLUMNS = [
+        'slot_00_02',
+        'slot_02_04',
+        'slot_04_06',
+        'slot_06_08',
+        'slot_08_10',
+        'slot_10_12',
+        'slot_12_14',
+        'slot_14_16',
+        'slot_16_18',
+        'slot_18_20',
+        'slot_20_22',
+        'slot_22_00',
+    ];
+
     protected $fillable = [
         'user_id',
         'guest_uuid',
@@ -34,6 +49,7 @@ class UserDailyScreenTimeMatrix extends Model
         'x',
         'total_screen_time_minutes',
         'interventions_triggered',
+        'emotion',
     ];
 
     protected $casts = [

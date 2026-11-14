@@ -85,19 +85,21 @@ class TaskController extends Controller
         }
 
         $validated = $request->validate([
-            'title'          => 'required|string|max:255',
-            'scheduled_date' => 'required|date_format:Y-m-d',
-            'scheduled_time' => 'nullable|date_format:H:i',
-            'guest_uuid'     => 'sometimes|string|max:64',
+            'title'                    => 'required|string|max:255',
+            'scheduled_date'           => 'required|date_format:Y-m-d',
+            'scheduled_time'           => 'nullable|date_format:H:i',
+            'guest_uuid'               => 'sometimes|string|max:64',
+            'google_calendar_event_id' => 'nullable|string|max:255',
         ]);
 
         $task = UserTask::create([
-            'user_id'        => $identity['user_id'],
-            'guest_uuid'     => $identity['guest_uuid'],
-            'title'          => $validated['title'],
-            'scheduled_date' => $validated['scheduled_date'],
-            'scheduled_time' => $validated['scheduled_time'] ?? null,
-            'is_completed'   => false,
+            'user_id'                  => $identity['user_id'],
+            'guest_uuid'               => $identity['guest_uuid'],
+            'title'                    => $validated['title'],
+            'scheduled_date'           => $validated['scheduled_date'],
+            'scheduled_time'           => $validated['scheduled_time'] ?? null,
+            'is_completed'             => false,
+            'google_calendar_event_id' => $validated['google_calendar_event_id'] ?? null,
         ]);
 
         return response()->json([
@@ -129,9 +131,10 @@ class TaskController extends Controller
         }
 
         $validated = $request->validate([
-            'title'          => 'sometimes|string|max:255',
-            'scheduled_date' => 'sometimes|date_format:Y-m-d',
-            'scheduled_time' => 'nullable|date_format:H:i',
+            'title'                    => 'sometimes|string|max:255',
+            'scheduled_date'           => 'sometimes|date_format:Y-m-d',
+            'scheduled_time'           => 'nullable|date_format:H:i',
+            'google_calendar_event_id' => 'nullable|string|max:255',
         ]);
 
         $task->update($validated);
@@ -208,17 +211,66 @@ class TaskController extends Controller
     }
 
     /**
+     * POST /api/tasks/sync-google
+     * Sinkronisasi event dari Google Calendar ke daftar Task
+     */
+    public function syncGoogle(Request $request): JsonResponse
+    {
+        $identity = $this->resolveIdentity($request);
+
+        if (! $identity['user_id'] && ! $identity['guest_uuid']) {
+            return $this->unauthorizedResponse();
+        }
+
+        $validated = $request->validate([
+            'events'                            => 'required|array',
+            'events.*.title'                    => 'required|string|max:255',
+            'events.*.scheduled_date'           => 'required|date_format:Y-m-d',
+            'events.*.scheduled_time'           => 'nullable|date_format:H:i',
+            'events.*.google_calendar_event_id' => 'required|string|max:255',
+        ]);
+
+        $syncedTasks = [];
+
+        foreach ($validated['events'] as $evt) {
+            $task = UserTask::updateOrCreate(
+                [
+                    'user_id'                  => $identity['user_id'],
+                    'guest_uuid'               => $identity['guest_uuid'],
+                    'google_calendar_event_id' => $evt['google_calendar_event_id'],
+                ],
+                [
+                    'title'          => $evt['title'],
+                    'scheduled_date' => $evt['scheduled_date'],
+                    'scheduled_time' => $evt['scheduled_time'] ?? null,
+                ]
+            );
+
+            $syncedTasks[] = $this->formatTask($task);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($syncedTasks) . ' task berhasil disinkronkan dari Google Calendar.',
+            'data'    => [
+                'tasks' => $syncedTasks,
+            ],
+        ]);
+    }
+
+    /**
      * Format output task
      */
     private function formatTask(UserTask $task): array
     {
         return [
-            'id'             => $task->id,
-            'title'          => $task->title,
-            'scheduled_date' => $task->scheduled_date->toDateString(),
-            'scheduled_time' => $task->scheduled_time,
-            'is_completed'   => $task->is_completed,
-            'completed_at'   => $task->completed_at?->toIso8601String(),
+            'id'                       => $task->id,
+            'title'                    => $task->title,
+            'scheduled_date'           => $task->scheduled_date->toDateString(),
+            'scheduled_time'           => $task->scheduled_time,
+            'is_completed'             => $task->is_completed,
+            'completed_at'             => $task->completed_at?->toIso8601String(),
+            'google_calendar_event_id' => $task->google_calendar_event_id,
         ];
     }
 

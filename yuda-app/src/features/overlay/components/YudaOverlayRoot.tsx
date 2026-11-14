@@ -12,9 +12,12 @@ import {
 export interface YudaOverlayRootProps {
     userName?: string;
     durationMinutes?: number;
+    durationSeconds?: number;
+    totalElapsedSeconds?: number;
     reminderMinutes?: number;
     pauseType?: PauseType;
     pauseStage?: number;
+    pauseCount?: number;
     breathDurationSeconds?: number;
     actionType?: PauseActionType;
     screenWidth?: number;
@@ -30,9 +33,12 @@ function normalizeStageLevel(stage?: number): PauseBiasaStageLevel {
 export function YudaOverlayRoot({
     userName = 'Gathan',
     durationMinutes = 15,
+    durationSeconds = 0,
+    totalElapsedSeconds,
     reminderMinutes = 15,
     pauseType = 'biasa',
     pauseStage = 1,
+    pauseCount = 1,
     breathDurationSeconds = 30,
     actionType,
     screenWidth,
@@ -47,8 +53,9 @@ export function YudaOverlayRoot({
     };
 
     useEffect(() => {
+        // Intervensi Yuda tidak dapat di-dismiss dengan tombol back Android
+        // Pengguna harus menyelesaikan instruksi Yuda
         const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-            YudaPip.dismissActiveAlert('dismiss');
             return true;
         });
         return () => sub.remove();
@@ -65,9 +72,12 @@ export function YudaOverlayRoot({
             <YudaPauseAlertFlow
                 userName={userName}
                 durationMinutes={durationMinutes}
+                durationSeconds={durationSeconds}
+                totalElapsedSeconds={totalElapsedSeconds}
                 reminderMinutes={reminderMinutes}
                 pauseType={pauseType}
                 pauseStage={normalizeStageLevel(pauseStage)}
+                pauseCount={pauseCount}
                 breathDurationSeconds={breathDurationSeconds}
                 actionType={actionType}
                 screenWidth={resolvedWidth}

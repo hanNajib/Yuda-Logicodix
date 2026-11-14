@@ -12,6 +12,7 @@ import {
 import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { syncScreenTimeIfDue } from "@/features/dashboard/services/screenTimeSyncService";
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -85,8 +86,9 @@ export default function RootLayout() {
         const canDraw = YudaPip.canDrawOverlays();
         const battery = YudaPip.isIgnoringBatteryOptimizations();
         const accessibility = YudaPip.isAccessibilityServiceEnabled();
+        const usageStats = typeof YudaPip.hasUsageStatsPermission === 'function' ? YudaPip.hasUsageStatsPermission() : true;
 
-        if (!canDraw || !battery || !accessibility) {
+        if (!canDraw || !battery || !accessibility || !usageStats) {
           if (!isOnboardingPermissions) {
             router.replace("/onboarding/permissions" as any);
           }
@@ -108,14 +110,18 @@ export default function RootLayout() {
         const canDraw = YudaPip.canDrawOverlays();
         const battery = YudaPip.isIgnoringBatteryOptimizations();
         const accessibility = YudaPip.isAccessibilityServiceEnabled();
+        const usageStats = typeof YudaPip.hasUsageStatsPermission === 'function' ? YudaPip.hasUsageStatsPermission() : true;
 
         const inOnboarding = (segments[0] as string) === "onboarding";
         const isOnboardingPermissions = inOnboarding && (segments[1] as string) === "permissions";
 
-        if (!canDraw || !battery || !accessibility) {
+        if (!canDraw || !battery || !accessibility || !usageStats) {
           if (!isOnboardingPermissions) {
             router.replace("/onboarding/permissions" as any);
           }
+        } else {
+          // Izin lengkap & app dibuka: Trigger smart throttled sync (min 15 menit & cek perubahan data)
+          syncScreenTimeIfDue({ reason: 'app_active' });
         }
       }
     });
