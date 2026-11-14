@@ -32,7 +32,6 @@ import { MoodSelectCard } from '../components/beranda/MoodSelectCard';
 import { ScreenTimeCard } from '../components/beranda/ScreenTimeCard';
 import { TipsCard } from '../components/beranda/TipsCard';
 import { ToDoListCard } from '../components/beranda/ToDoListCard';
-import { OverlayQuickControlCard } from '../components/beranda/OverlayQuickControlCard';
 import YudaPip from '@/modules/yuda-pip';
 import { syncScreenTimeIfDue } from '../services/screenTimeSyncService';
 import { YudaAlertModal } from '@/components/ui/YudaAlertModal';
@@ -347,10 +346,6 @@ export default function HomeScreen() {
                             }
                         }}
                     />
-
-                    <View style={{ height: 14 * s }} />
-
-                    <OverlayQuickControlCard scale={s} userName={displayName} />
 
                     <View style={{ height: 14 * s }} />
 

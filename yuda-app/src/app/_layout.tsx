@@ -14,6 +14,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { syncScreenTimeIfDue } from "@/features/dashboard/services/screenTimeSyncService";
 import { AppSplashScreen } from "@/components/ui/AppSplashScreen";
+import { DEBUG_CONFIG } from "@/constants/debugConfig";
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -44,7 +45,15 @@ export default function RootLayout() {
     Outfit_800ExtraBold,
   });
 
-  const { isHydrated, hasCompletedOnboarding, userToken, hydrateAuth } = useAuthStore();
+  const {
+    isHydrated,
+    hasCompletedOnboarding,
+    userToken,
+    userName,
+    selectedTargetPackages,
+    intervalMinutes,
+    hydrateAuth,
+  } = useAuthStore();
 
   useEffect(() => {
     async function prepareApp() {
@@ -65,7 +74,7 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
   useEffect(() => {
-    if (!isHydrated || !fontsLoaded) return;
+    if (!isHydrated || !fontsLoaded || showSplash) return;
 
     const isCallback = segments[0] === "auth" && segments[1] === "callback";
     if (isCallback) return;
@@ -102,7 +111,7 @@ export default function RootLayout() {
         router.replace("/" as any);
       }
     }
-  }, [isHydrated, hasCompletedOnboarding, userToken, segments]);
+  }, [isHydrated, hasCompletedOnboarding, userToken, segments, fontsLoaded, showSplash]);
 
   useEffect(() => {
     if (!isHydrated || !hasCompletedOnboarding) return;
@@ -122,7 +131,15 @@ export default function RootLayout() {
             router.replace("/onboarding/permissions" as any);
           }
         } else {
-          // Izin lengkap & app dibuka: Trigger smart throttled sync (min 15 menit & cek perubahan data)
+          // Izin lengkap & app dibuka: Pastikan background monitor reels selalu aktif otomatis
+          if (!YudaPip.isOverlayMonitorRunning()) {
+            const currentInterval = intervalMinutes && intervalMinutes > 0 ? intervalMinutes : 15;
+            const intervalSeconds = currentInterval * 60;
+            const enableDebugBubble = DEBUG_CONFIG.ENABLE_DEBUG_OVERLAY_BUBBLE;
+            YudaPip.startOverlayMonitor(userName || 'Yuda', selectedTargetPackages, enableDebugBubble, intervalSeconds);
+          }
+
+          // Trigger smart throttled sync (min 15 menit & cek perubahan data)
           syncScreenTimeIfDue({ reason: 'app_active' });
         }
       }
@@ -133,6 +150,10 @@ export default function RootLayout() {
 
   if (!isHydrated || !fontsLoaded) {
     return null;
+  }
+
+  if (showSplash) {
+    return <AppSplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
   return (
@@ -147,9 +168,6 @@ export default function RootLayout() {
         <Stack.Screen name="dashboard/detail-waktu-scroll" />
         <Stack.Screen name="dashboard/edit-profile" />
       </Stack>
-      {showSplash && (
-        <AppSplashScreen onFinish={() => setShowSplash(false)} />
-      )}
     </QueryClientProvider>
   );
 }

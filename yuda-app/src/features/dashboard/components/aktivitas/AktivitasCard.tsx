@@ -16,6 +16,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { YudaAlertModal, AlertType } from '@/components/ui/YudaAlertModal';
+import { useAuthStore } from '@/stores/useAuthStore';
 import {
     TaskItem,
     fetchTasks,
@@ -233,8 +234,10 @@ export function AktivitasCard({
     onTasksUpdated,
 }: AktivitasCardProps) {
     const s = scale;
+    const { userToken } = useAuthStore();
+    const isGuest = !userToken;
 
-    const todayIso = () => {
+    const getTodayIsoString = () => {
         const d = new Date();
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -242,7 +245,7 @@ export function AktivitasCard({
         return `${y}-${m}-${day}`;
     };
 
-    const targetDate = propDate || todayIso();
+    const targetDate = propDate || getTodayIsoString();
 
     const [tasks, setTasks] = useState<TaskItem[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -660,32 +663,34 @@ export function AktivitasCard({
                 </Pressable>
             </View>
 
-            {/* Tombol Sinkronisasi Google Calendar */}
-            <TouchableOpacity
-                onPress={handleSyncGoogleCalendar}
-                disabled={isSyncingGCal}
-                activeOpacity={0.8}
-                className="mb-[12px] flex-row items-center justify-center bg-white"
-                style={{
-                    borderRadius: 16 * s,
-                    paddingVertical: 10 * s,
-                    paddingHorizontal: 14 * s,
-                    borderWidth: 1,
-                    borderColor: '#e0e6e1',
-                }}
-            >
-                {isSyncingGCal ? (
-                    <ActivityIndicator size="small" color="#275c43" style={{ marginRight: 8 * s }} />
-                ) : (
-                    <Ionicons name="logo-google" size={16 * s} color="#275c43" style={{ marginRight: 8 * s }} />
-                )}
-                <Text
-                    className="font-outfit-bold text-[#275c43]"
-                    style={{ fontSize: 13 * s }}
+            {/* Tombol Sinkronisasi Google Calendar (hanya untuk user yang login, bukan guest) */}
+            {!isGuest && (
+                <TouchableOpacity
+                    onPress={handleSyncGoogleCalendar}
+                    disabled={isSyncingGCal}
+                    activeOpacity={0.8}
+                    className="mb-[12px] flex-row items-center justify-center bg-white"
+                    style={{
+                        borderRadius: 16 * s,
+                        paddingVertical: 10 * s,
+                        paddingHorizontal: 14 * s,
+                        borderWidth: 1,
+                        borderColor: '#e0e6e1',
+                    }}
                 >
-                    {isSyncingGCal ? 'Menyinkronkan Kalender...' : 'Sinkronkan dari Google Calendar'}
-                </Text>
-            </TouchableOpacity>
+                    {isSyncingGCal ? (
+                        <ActivityIndicator size="small" color="#275c43" style={{ marginRight: 8 * s }} />
+                    ) : (
+                        <Ionicons name="logo-google" size={16 * s} color="#275c43" style={{ marginRight: 8 * s }} />
+                    )}
+                    <Text
+                        className="font-outfit-bold text-[#275c43]"
+                        style={{ fontSize: 13 * s }}
+                    >
+                        {isSyncingGCal ? 'Menyinkronkan Kalender...' : 'Sinkronkan dari Google Calendar'}
+                    </Text>
+                </TouchableOpacity>
+            )}
 
             <View className="flex-row items-center justify-between">
                 <View
@@ -1066,33 +1071,35 @@ export function AktivitasCard({
                             </View>
                         )}
 
-                        {/* Checkbox integrasi Google Calendar */}
-                        <Pressable
-                            onPress={() => setSyncGCal(!syncGCal)}
-                            className="flex-row items-center"
-                            style={{ marginBottom: 20 * s }}
-                        >
-                            <View
-                                className="items-center justify-center border-2 border-[#275c43]"
-                                style={{
-                                    width: 22 * s,
-                                    height: 22 * s,
-                                    borderRadius: 6 * s,
-                                    backgroundColor: syncGCal ? '#275c43' : '#ffffff',
-                                    marginRight: 10 * s,
-                                }}
+                        {/* Checkbox integrasi Google Calendar (hanya untuk user yang login, bukan guest) */}
+                        {!isGuest && (
+                            <Pressable
+                                onPress={() => setSyncGCal(!syncGCal)}
+                                className="flex-row items-center"
+                                style={{ marginBottom: 20 * s }}
                             >
-                                {syncGCal && (
-                                    <Ionicons name="checkmark" size={15 * s} color="#ffffff" />
-                                )}
-                            </View>
-                            <Text
-                                className="font-outfit-medium text-[#2d3a31]"
-                                style={{ fontSize: 13 * s }}
-                            >
-                                Simpan juga ke Google Calendar
-                            </Text>
-                        </Pressable>
+                                <View
+                                    className="items-center justify-center border-2 border-[#275c43]"
+                                    style={{
+                                        width: 22 * s,
+                                        height: 22 * s,
+                                        borderRadius: 6 * s,
+                                        backgroundColor: syncGCal ? '#275c43' : '#ffffff',
+                                        marginRight: 10 * s,
+                                    }}
+                                >
+                                    {syncGCal && (
+                                        <Ionicons name="checkmark" size={15 * s} color="#ffffff" />
+                                    )}
+                                </View>
+                                <Text
+                                    className="font-outfit-medium text-[#2d3a31]"
+                                    style={{ fontSize: 13 * s }}
+                                >
+                                    Simpan juga ke Google Calendar
+                                </Text>
+                            </Pressable>
+                        )}
 
                         <View className="flex-row items-center justify-end">
                             <TouchableOpacity

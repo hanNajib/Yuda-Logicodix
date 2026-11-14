@@ -1,18 +1,17 @@
 import React, { useEffect } from 'react';
-import { View, Image, Text, useWindowDimensions, StyleSheet } from 'react-native';
+import { View, Image, Text, useWindowDimensions, StyleSheet, Dimensions, Platform } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withTiming,
     withSpring,
-    withSequence,
     withDelay,
     Easing,
     runOnJS,
 } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 
-const yudaHomeSource = require('../../assets/images/yuda/yuda-home.png');
+const yudaHomeSource = require('@/assets/images/yuda/yuda-home.png');
 
 interface AppSplashScreenProps {
     onFinish: () => void;
@@ -20,6 +19,7 @@ interface AppSplashScreenProps {
 
 export function AppSplashScreen({ onFinish }: AppSplashScreenProps) {
     const { width: W } = useWindowDimensions();
+    const screenDims = Dimensions.get('screen');
     const scale = W / 420;
 
     const opacity = useSharedValue(0);
@@ -85,8 +85,17 @@ export function AppSplashScreen({ onFinish }: AppSplashScreenProps) {
     }));
 
     return (
-        <Animated.View style={[styles.container, containerAnimatedStyle]}>
-            <StatusBar style="light" />
+        <Animated.View
+            style={[
+                styles.container,
+                {
+                    width: screenDims.width,
+                    height: screenDims.height,
+                },
+                containerAnimatedStyle,
+            ]}
+        >
+            <StatusBar style="light" translucent backgroundColor="transparent" />
             <View style={styles.centerContent}>
                 <Animated.View style={[mascotAnimatedStyle, styles.mascotContainer]}>
                     <Image
@@ -124,11 +133,16 @@ export function AppSplashScreen({ onFinish }: AppSplashScreenProps) {
 
 const styles = StyleSheet.create({
     container: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         backgroundColor: '#2F6B4F',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 99999,
+        elevation: 999,
     },
     centerContent: {
         alignItems: 'center',
