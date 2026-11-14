@@ -1,6 +1,21 @@
 import axios from 'axios';
+import * as Device from 'expo-device';
 import { API_BASE_URL } from '@/constants/api';
 import { useAuthStore } from '@/stores/useAuthStore';
+
+let cachedDeviceId: string | null = null;
+function getDeviceGuestUuid(): string {
+    if (cachedDeviceId) return cachedDeviceId;
+    try {
+        const id = Device.osBuildId || Device.modelName || 'device-id';
+        cachedDeviceId = `guest-${id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+        return cachedDeviceId;
+    } catch {
+        // ignore
+    }
+    cachedDeviceId = 'guest-default';
+    return cachedDeviceId;
+}
 
 export const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -17,6 +32,7 @@ apiClient.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        config.headers['X-Guest-UUID'] = getDeviceGuestUuid();
         return config;
     },
     (error) => Promise.reject(error)

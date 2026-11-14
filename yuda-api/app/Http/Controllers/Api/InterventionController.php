@@ -100,6 +100,23 @@ class InterventionController extends Controller
     }
 
     /**
+     * Ambil data matriks screen time harian spesifik beserta pembanding hari sebelumnya dan pemakaian aplikasi.
+     */
+    public function getDailyMatrix(Request $request): JsonResponse
+    {
+        $user = $request->user('sanctum') ?: $request->user();
+        $guestUuid = $request->header('X-Guest-UUID') ?: $request->query('guest_uuid');
+        $date = $request->query('date');
+
+        $dailyData = $this->interventionService->getDailyMatrixDetail($user, $guestUuid, $date);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $dailyData,
+        ]);
+    }
+
+    /**
      * 4. Tambah pesan intervensi baru (Mendukung Single Object atau Bulk Array of Objects).
      */
     public function storeMessages(Request $request): JsonResponse

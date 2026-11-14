@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
     aiQuestionnaireGuest: `${API_BASE_URL}/api/questionnaire/analyze`,
     interventionSettings: `${API_BASE_URL}/api/intervention/settings`,
     interventionMatrix: `${API_BASE_URL}/api/intervention/matrix`,
+    interventionMatrixDaily: `${API_BASE_URL}/api/intervention/matrix/daily`,
 };
 
 export const GOOGLE_AUTH_CONFIG = {
