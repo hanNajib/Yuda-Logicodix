@@ -169,19 +169,56 @@ export async function fetchCukupTauMessage(
         console.warn('[fetchCukupTauMessage] Gagal ambil pesan:', e);
     }
 
-    // Fallback jika offline
+    // Fallback jika offline (panjang pesan di atas 200 karakter untuk refleksi mendalam)
+    const emotionTitle = emotion.charAt(0).toUpperCase() + emotion.slice(1);
+    const fallbackMessages: Record<string, { header: string; message: string; tips: string; habitType: string; habitDesc: string }> = {
+        tenang: {
+            header: 'Pertahankan Ketenangan Hatimu',
+            message:
+                'Senang melihatmu merasa tenang hari ini. Di tengah derasnya arus informasi di media sosial, menjaga ketenangan batin adalah sebuah pencapaian yang sangat berharga. Teruslah hadir secara utuh, nikmati setiap detik tanpa harus tergesa-gesa menyerap semua hal di luar sana.',
+            tips: 'Simpan ponselmu sejenak, nikmati momen hening ini dan rasakan kedamaian di sekitarmu.',
+            habitType: 'nafas',
+            habitDesc: 'Tarik nafas perlahan selama beberapa detik dan hembuskan dengan tenang.',
+        },
+        cemas: {
+            header: 'Tarik Nafas, Kamu Sedang Baik-Baik Saja',
+            message:
+                'Wajar jika sesekali rasa cemas itu datang, terutama saat kita terus melihat pencapaian orang lain di linimasa. Ingatlah bahwa kamu tidak sedang tertinggal dalam perlombaan apapun. Perjalananmu memiliki waktunya sendiri, jadi berhentilah membandingkan diri dan kembalilah ke napasmu saat ini.',
+            tips: 'Jauhkan layar, pejamkan matamu, dan katakan pada diri sendiri bahwa kamu sudah berjuang dengan sangat baik.',
+            habitType: 'nafas',
+            habitDesc: 'Tarik nafas 4 detik, tahan 4 detik, lalu hembuskan perlahan 4 detik.',
+        },
+        bosan: {
+            header: 'Bosan Itu Tanda Pikiranmu Butuh Ruang',
+            message:
+                'Rasa bosan sering kali memancing jari kita untuk terus menggulir layar tanpa henti. Namun ketahuilah, rasa bosan sebenarnya adalah kesempatan emas bagi otakmu untuk beristirahat dan memunculkan ide-ide kreatif baru. Kamu tidak harus selalu mengisi setiap detik kosong dengan konten digital.',
+            tips: 'Letakkan ponsel, regangkan tubuhmu atau tataplah pemandangan di luar ruangan sejenak.',
+            habitType: 'peregangan',
+            habitDesc: 'Lemaskan pundak dan rentangkan tanganmu ke atas secara perlahan.',
+        },
+        lelah: {
+            header: 'Lelah Itu Valid, Tubuhmu Butuh Rehat',
+            message:
+                'Yuk berhenti sejenak. Kamu telah melewati banyak hal hari ini dan energimu berhak untuk dipulihkan. Terus menerus menatap layar justru akan membuat matamu semakin penat dan pikiran semakin bising. Beri izin pada dirimu sendiri untuk benar-benar beristirahat tanpa rasa bersalah.',
+            tips: 'Letakkan ponselmu jauh dari jangkauan, minumlah air putih hangat, dan pejamkan matamu beberapa saat.',
+            habitType: 'minum',
+            habitDesc: 'Ambil segelas air putih hangat dan teguk perlahan untuk menyegarkan tubuh.',
+        },
+    };
+
+    const selectedFallback = fallbackMessages[emotion.toLowerCase()] || fallbackMessages.lelah;
+
     return {
         id: 0,
         emotion,
         trigger_condition: triggerCondition,
         tone_style: toneStyle || 'lembut',
-        header: `Kamu Merasa ${emotion.charAt(0).toUpperCase() + emotion.slice(1)} Hari Ini Ya?`,
-        message:
-            'Yuk, berhenti sejenak. Kamu juga perlu waktu untuk dirimu sendiri. Nggak perlu terus mengikuti semua informasi. Beri pikiranmu ruang untuk beristirahat. Kamu nggak harus mengetahui semuanya hari ini.',
-        tips: 'Letakkan ponselmu, tarik nafas perlahan, dan alihkan perhatian ke lingkungan sekitarmu.',
+        header: selectedFallback.header,
+        message: selectedFallback.message,
+        tips: selectedFallback.tips,
         micro_habit: {
-            type: 'nafas',
-            instruction: 'Tarik nafas perlahan selama beberapa detik.',
+            type: selectedFallback.habitType,
+            instruction: selectedFallback.habitDesc,
         },
     };
 }

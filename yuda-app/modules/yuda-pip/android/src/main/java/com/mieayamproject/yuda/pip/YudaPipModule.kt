@@ -70,7 +70,7 @@ class YudaPipModule : Module() {
         fun getTargetPackages(context: Context): Set<String> {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val saved = prefs.getStringSet(KEY_TARGET_PACKAGES, null)
-            return if (saved.isNullOrEmpty()) DEFAULT_TARGET_PACKAGES else saved
+            return saved ?: DEFAULT_TARGET_PACKAGES
         }
 
         fun setTargetPackages(context: Context, packages: List<String>) {

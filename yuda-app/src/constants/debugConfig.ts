@@ -9,6 +9,6 @@ export const DEBUG_CONFIG = {
      * Set ke true untuk mode debug floating widget.
      * Set ke false untuk mode produksi/normal (hanya intervensi saat interval habis).
      */
-    ENABLE_DEBUG_OVERLAY_BUBBLE: true,
+    ENABLE_DEBUG_OVERLAY_BUBBLE: false,
 };
 

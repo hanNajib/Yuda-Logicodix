@@ -402,7 +402,7 @@ export function MoodSelectCard({
                                             }}
                                         >
                                             {resultMessage?.message ||
-                                                'Yuk, berhenti sejenak. Kamu juga perlu waktu untuk dirimu sendiri.\nNggak perlu terus mengikuti semua informasi. Beri pikiranmu ruang untuk beristirahat. Kamu nggak harus mengetahui semuanya hari ini.'}
+                                                'Yuk berhenti sejenak. Kamu telah melewati banyak hal hari ini dan energimu berhak untuk dipulihkan. Terus menerus menatap layar justru akan membuat matamu semakin penat dan pikiran semakin bising. Beri izin pada dirimu sendiri untuk benar-benar beristirahat tanpa rasa bersalah.'}
                                         </Text>
                                     </View>
 

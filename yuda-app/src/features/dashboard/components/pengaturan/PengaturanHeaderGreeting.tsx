@@ -25,8 +25,8 @@ interface PengaturanHeaderGreetingProps {
 }
 
 export function PengaturanHeaderGreeting({
-    userName = 'Gathan',
-    userEmail = 'gathanfairuz23@gmail.com',
+    userName = 'Yuda',
+    userEmail = 'Guest (Lokal)',
     avatarUrl,
     scale = 1,
     onEditProfile,

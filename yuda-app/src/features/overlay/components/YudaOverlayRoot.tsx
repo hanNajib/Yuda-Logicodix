@@ -31,7 +31,7 @@ function normalizeStageLevel(stage?: number): PauseBiasaStageLevel {
 }
 
 export function YudaOverlayRoot({
-    userName = 'Gathan',
+    userName = 'Yuda',
     durationMinutes = 15,
     durationSeconds = 0,
     totalElapsedSeconds,

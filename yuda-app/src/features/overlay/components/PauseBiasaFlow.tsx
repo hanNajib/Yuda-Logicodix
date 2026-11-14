@@ -73,16 +73,16 @@ const BIASA_STAGE_FLOWS: Record<PauseBiasaStageLevel, PauseAlertStage[]> = {
     3: ['alert', 'pauseIntro', 'pauseAction', 'missionSuccess', 'taskReminder', 'breakChoice'],
 };
 
-const yudaTandaSeruSource = require('../../../../assets/images/yuda/yuda-tandaseru.png');
-const yudaHalfBodySource = require('../../../../assets/images/yuda/yudahalfbody.png');
-const yudaHandHalfSource = require('../../../../assets/images/yuda/yuda-hand-half.png');
-const yudaXdSource = require('../../../../assets/images/yuda/yuda_xD.png');
-const yudaQuestioningSource = require('../../../../assets/images/yuda/yuda-questioning.png');
+const yudaTandaSeruSource = require('@/assets/images/yuda/yuda-tandaseru.png');
+const yudaHalfBodySource = require('@/assets/images/yuda/yudahalfbody.png');
+const yudaHandHalfSource = require('@/assets/images/yuda/yuda-hand-half.png');
+const yudaXdSource = require('@/assets/images/yuda/yuda_xD.png');
+const yudaQuestioningSource = require('@/assets/images/yuda/yuda-questioning.png');
 
-const yudaNafasSource = require('../../../../assets/images/yuda/yuda_nafas.png');
-const yudaMinumSource = require('../../../../assets/images/yuda/yuda_minum.png');
-const yudaPereganganSource = require('../../../../assets/images/yuda/yuda_peregangan.png');
-const yudaTidurSource = require('../../../../assets/images/yuda/yuda_tidur.png');
+const yudaNafasSource = require('@/assets/images/yuda/yuda_nafas.png');
+const yudaMinumSource = require('@/assets/images/yuda/yuda_minum.png');
+const yudaPereganganSource = require('@/assets/images/yuda/yuda_peregangan.png');
+const yudaTidurSource = require('@/assets/images/yuda/yuda_tidur.png');
 
 interface ActionConfig {
     introActionTitle: string;

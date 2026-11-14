@@ -41,7 +41,7 @@ export interface YudaPauseAlertFlowProps {
 }
 
 export function YudaPauseAlertFlow({
-    userName = 'Gathan',
+    userName = 'Yuda',
     durationMinutes = 15,
     durationSeconds = 0,
     totalElapsedSeconds,

@@ -46,6 +46,25 @@ export async function evaluateWeeklyProgress(currentInterval: number, currentPau
         const today = new Date();
         const currentWeekKey = getWeekKey(today);
 
+        // Cek apakah user sudah menginstal aplikasi minimal 7 hari
+        let installedAt = 0;
+        if (typeof YudaPip?.getAndroidUsageStats === 'function') {
+            try {
+                const stats = await YudaPip.getAndroidUsageStats(1);
+                if (stats?.installed_at) {
+                    installedAt = Number(stats.installed_at);
+                }
+            } catch (_e) {
+                // ignore
+            }
+        }
+
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+        if (installedAt > 0 && (today.getTime() - installedAt < sevenDaysMs)) {
+            // Pengguna baru menginstal kurang dari 7 hari, belum saatnya evaluasi mingguan
+            return null;
+        }
+
         // Cek apakah minggu ini sudah pernah dievaluasi/ditampilkan
         const lastEvaluatedWeek = await SecureStore.getItemAsync(KEY_LAST_EVALUATED_WEEK);
         if (lastEvaluatedWeek === currentWeekKey) {
@@ -106,8 +125,13 @@ export async function evaluateWeeklyProgress(currentInterval: number, currentPau
             }
         }
 
+        // Jika tidak ada data perbandingan minggu sebelumnya (prevWeekTotal == 0) dan pastWeekTotal == 0,
+        // berarti user belum memiliki data mingguan yang cukup
+        if (prevWeekTotal === 0 && pastWeekTotal === 0) {
+            return null;
+        }
+
         // Tentukan apakah progres naik (screentime turun) atau progres turun (screentime naik)
-        // Jika belum ada data perbandingan minggu sebelumnya, default ke progres positif (improved)
         const isImproved = prevWeekTotal === 0 ? true : pastWeekTotal <= prevWeekTotal;
 
         // Aturan:

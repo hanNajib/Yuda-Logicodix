@@ -78,8 +78,8 @@ export default function PengaturanScreen({
         logout,
     } = useAuthStore();
 
-    const displayName = userName || user?.name || 'Gathan';
-    const displayEmail = user?.email || 'gathanfairuz23@gmail.com';
+    const displayName = userName || user?.name || 'Yuda';
+    const displayEmail = user?.email || (userToken ? 'Akun terhubung' : 'Guest (Lokal)');
 
     const [activeTab, setActiveTab] = useState<DashboardTab>('settings');
 
@@ -269,7 +269,7 @@ export default function PengaturanScreen({
             'logout',
             async () => {
                 await logout();
-                router.replace('/(auth)/login');
+                router.replace('/auth');
             },
             'Keluar',
             () => {},

@@ -118,7 +118,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             if (savedPackagesJson) {
                 try {
                     const parsed = JSON.parse(savedPackagesJson);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
+                    if (Array.isArray(parsed)) {
                         packages = parsed;
                     }
                 } catch {

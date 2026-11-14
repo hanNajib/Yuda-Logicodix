@@ -1,5 +1,5 @@
-export const API_BASE_URL =
-    process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:8000";
+const rawBaseUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:8000";
+export const API_BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
 export const API_ENDPOINTS = {
     googleNative: `${API_BASE_URL}/api/auth/google/native`,
