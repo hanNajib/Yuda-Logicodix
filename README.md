@@ -367,7 +367,7 @@ npx expo run:android
 
 | Jenis akun | Cara masuk |
 |------------|-----------|
-| **Autentikasi Google** | Disarankan login dengan akun demo (Google); `email: lavimieayam@gmail.com` `pass: lavi-mieayamLOREM_456` (atau akun Google pribadi juri)  |
+| **Autentikasi Google** | Disarankan login dengan akun demo (Google); `email: lavimieayam@gmail.com` `pass: lavi-mieayamLOREM_4567` (atau akun Google pribadi juri)  |
 | **Akun lokal** | Tidak memerlukan kredensial. Pengguna hanya diminta memasukkan **nama**. |
 
 ### h. Dokumentasi Penggunaan AI
