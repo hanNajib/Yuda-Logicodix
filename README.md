@@ -375,16 +375,18 @@ npx expo run:android
 | Tool AI | Digunakan untuk | Bagian proyek | Bagaimana hasilnya diverifikasi/diadaptasi |
 |---------|-----------------|---------------|---------------------------------------------|
 | `Claude (Anthropic)` | Merancang 10 pertanyaan kuisioner onboarding berbasis jurnal beserta kerangka output (jam rawan, tipe, afirmasi) | Kuisioner Page | Pertanyaan dicocokkan dengan jurnal rujukan dan disederhanakan agar mudah dipahami lalu diimplementasikan pada **Kuisioner Page.** |
-| `Claude (Anthropic)` | Menyusun README ini | Dokumentasi | Dilengkapi dan diperiksa ulang oleh tim |
-| `Google Gemini API` | Fitur di dalam produk: menganalisis jawaban kuisioner pengguna | Kuisioner Page (`/api/ai/questionnaire` untuk pengguna login dan `/api/questionnaire/analyze` untuk tamu, keduanya melalui layanan AI yang sama) | Prompt dibangun dari 10 jawaban kuisioner, dan output dipastikan berupa structured output. Jika AI gagal, dipakai generator fallback berbasis aturan. |
-| `Google Gemini API` | Fitur di dalam produk: membuat 180 pesan kartu intervensi setiap minggu (60 kombinasi emosi, pemicu, dan nada, masing-masing 3 variasi) | `InterventionGenerationService` dan `ProcessInterventionBatchJob` | Hasil divalidasi ketat (field wajib, nilai enum, tepat 180 pesan dan 60 kombinasi) sebelum diaktifkan secara atomik. Generasi yang gagal tidak diaktifkan sehingga generasi sebelumnya tetap dipakai. |
-| [ISI: tool lain] | [ISI] | [ISI] | [ISI] |
+| `Claude (Anthropic)` | Menyusun dan menstrukturkan draf dokumentasi proyek | Dokumentasi (`README.md`) | Dilengkapi, disesuaikan dengan kode riil, dan diperiksa ulang oleh tim |
+| `Google Gemini API` | Fitur di dalam produk: menganalisis jawaban kuisioner pengguna secara dinamis | Kuisioner Page (`/api/ai/questionnaire` dan `/api/questionnaire/analyze`) | Prompt dirancang dengan *structured output* JSON. Dilengkapi validasi skema ketat dan *rule-based fallback generator* jika API bermasalah. |
+| `Google Gemini API` | Fitur di dalam produk: membuat 180 pesan kartu intervensi mingguan (60 kombinasi emosi, pemicu, nada) | `InterventionGenerationService` dan `ProcessInterventionBatchJob` | Hasil divalidasi ketat (field wajib, enum, validasi jumlah 180 pesan) sebelum diaktifkan secara atomik ke database. |
+| `Google AI Studio` | Prototyping, eksperimen *system prompt*, dan validasi skema JSON response | Backend AI Module | Prompt diuji berulang dengan berbagai variasi input jawaban ekstrem untuk memastikan stabilitas format output sebelum masuk ke kode Laravel. |
+| `Claude / GitHub Copilot` | Asistensi penulisan *boilerplate code*, helper logic, dan integrasi custom hooks React Native | Mobile App & Backend API | Kode hasil AI tidak langsung dipakai mentah-mentah; selalu di-refactor, diselaraskan dengan standar PSR-12 (Laravel) / TypeScript, dan diuji lewat unit/manual test. |
+| `Claude / ChatGPT` | Brainstorming tone of voice, copy micro-interaction, dan variasi persona tipe doomscrolling (mis. *Night Owl*, dsb.) | Konten & UI Copy | Disesuaikan dengan karakteristik anak muda/mahasiswa Indonesia agar komunikatif, empatik, dan tidak menggurui. |
 
 ### i. Atribusi
 
 | Jenis | Nama | Sumber / URL | Lisensi |
 |-------|------|--------------|---------|
-| Jurnal rujukan latar belakang dan kuisioner | Lihat docs/references/ | Tautan atau DOI pada tiap referensi | — |
+| Jurnal rujukan latar belakang dan kuisioner | Lihat [README Referensi](docs/references/README.md) | Tautan atau DOI pada tiap referensi | — |
 
 ### j. Catatan Bagi Juri
 Seandainya ada kendala dalam membuka Aplikasi YUDA, silahkan menonaktifkan Google Play Protect dan aktifkan pengaturan terbatas.
